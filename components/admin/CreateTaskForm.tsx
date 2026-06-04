@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { createAdminTicket } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 
@@ -22,7 +23,7 @@ function Submit() {
 }
 
 export function CreateTaskForm({ projects }: { projects: ProjectOption[] }) {
-  const [state, action] = useFormState(createAdminTicket, initial);
+  const [state, action] = useActionState(createAdminTicket, initial);
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 

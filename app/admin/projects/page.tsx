@@ -8,7 +8,7 @@ import { formatHours } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: projects }, { data: clients }] = await Promise.all([
     supabase.from("project_stats").select("*").order("name"),

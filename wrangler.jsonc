@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "studioservice",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-01",
+  // nodejs_compat lets the Stripe & Supabase SDKs use Node APIs.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Custom domain. Because uriyaganor.com is on this same Cloudflare
+  // account, deploy auto-creates the DNS record + SSL cert — no manual
+  // CNAME needed.
+  "routes": [{ "pattern": "service.uriyaganor.com", "custom_domain": true }]
+  // Runtime secrets (SUPABASE_SERVICE_ROLE_KEY, STRIPE_*) are NOT here.
+  // Set them with `wrangler secret put <NAME>` or in the CF dashboard.
+  // NEXT_PUBLIC_* vars are inlined at build time from .env.local.
+}

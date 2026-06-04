@@ -5,8 +5,9 @@ type CookieToSet = { name: string; value: string; options: CookieOptions };
 
 // Server-side Supabase client for Server Components & Server Actions.
 // Reads the user's session from cookies; all queries run under RLS.
-export function createClient() {
-  const cookieStore = cookies();
+// In Next 15 `cookies()` is async, so this is async too.
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

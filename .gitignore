@@ -5,3 +5,7 @@ out/
 .DS_Store
 *.tsbuildinfo
 next-env.d.ts
+# Cloudflare / OpenNext
+.open-next/
+.dev.vars
+.wrangler/

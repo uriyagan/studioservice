@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 // the file bytes to the returned URL, then records metadata via
 // the attachFile action.
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

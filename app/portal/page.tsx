@@ -11,7 +11,7 @@ interface TicketRow extends Ticket {
 }
 
 export default async function PortalPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

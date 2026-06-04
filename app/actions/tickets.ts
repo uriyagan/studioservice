@@ -12,7 +12,7 @@ export async function createTicket(
   formData: FormData
 ): Promise<TicketResult> {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -55,7 +55,7 @@ export async function attachFile(
   filePath: string,
   fileName: string
 ): Promise<{ ok: boolean; error?: string }> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("attachments").insert({
     ticket_id: ticketId,
     file_url: filePath,

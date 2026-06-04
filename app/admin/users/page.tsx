@@ -7,7 +7,7 @@ import { formatDate } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: clients } = await supabase
     .from("profiles")
     .select("*")

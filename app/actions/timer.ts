@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 // also enforces this at the database level (defense in depth).
 
 async function assertAdmin() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -80,7 +80,7 @@ export async function completeTask(ticketId: string) {
 // Close the currently-running segment (end_time IS NULL), if any,
 // computing its duration from start_time.
 async function closeActiveSegment(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   ticketId: string
 ) {
   const { data: active } = await supabase

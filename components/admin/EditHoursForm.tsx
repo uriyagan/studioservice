@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { updateProjectHours } from "@/app/actions/admin";
 
 const initial = { ok: false, error: undefined as string | undefined };
@@ -26,7 +27,7 @@ export function EditHoursForm({
   projectId: string;
   current: number;
 }) {
-  const [state, action] = useFormState(updateProjectHours, initial);
+  const [state, action] = useActionState(updateProjectHours, initial);
 
   return (
     <form action={action} className="flex items-center gap-2">

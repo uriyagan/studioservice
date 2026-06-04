@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { createClientUser } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 
@@ -17,7 +18,7 @@ function Submit() {
 }
 
 export function CreateUserForm() {
-  const [state, action] = useFormState(createClientUser, initial);
+  const [state, action] = useActionState(createClientUser, initial);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

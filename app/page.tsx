@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 // Root — route to the right home based on auth + role.
 export default async function Home() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

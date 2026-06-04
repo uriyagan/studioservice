@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
+import { useActionState } from "react";
 import { createProject } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Profile } from "@/lib/types";
@@ -18,7 +19,7 @@ function Submit() {
 }
 
 export function CreateProjectForm({ clients }: { clients: Profile[] }) {
-  const [state, action] = useFormState(createProject, initial);
+  const [state, action] = useActionState(createProject, initial);
   const [isRetainer, setIsRetainer] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 

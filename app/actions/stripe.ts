@@ -9,7 +9,7 @@ import { findPackage } from "@/lib/packages";
 // the number of hours travel in metadata so the webhook can
 // increment total_hours_allocated after payment succeeds.
 export async function buyHourPackage(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

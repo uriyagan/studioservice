@@ -14,7 +14,7 @@ interface TicketRow extends Ticket {
 }
 
 export default async function AdminDashboard() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const [{ data: tickets }, { data: projectList }] = await Promise.all([
     supabase
