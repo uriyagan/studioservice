@@ -1,0 +1,66 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+type TicketResult = { ok: boolean; error?: string; ticketId?: string };
+
+// Client submits a new task/ticket on their own project. RLS
+// guarantees they can only insert against a project they own.
+export async function createTicket(
+  _prev: TicketResult,
+  formData: FormData
+): Promise<TicketResult> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "לא מחובר" };
+
+    const projectId = String(formData.get("project_id") ?? "");
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const link = String(formData.get("link") ?? "").trim();
+
+    if (!projectId || !title) {
+      return { ok: false, error: "כותרת נדרשת" };
+    }
+
+    const { data, error } = await supabase
+      .from("tickets")
+      .insert({
+        project_id: projectId,
+        title,
+        description: description || null,
+        link: link || null,
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/portal");
+    revalidatePath("/admin");
+    return { ok: true, ticketId: data.id };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Persist an uploaded file's metadata against a ticket. The actual
+// bytes are uploaded directly to Storage from the browser; this
+// records the row so the admin can see/download it.
+export async function attachFile(
+  ticketId: string,
+  filePath: string,
+  fileName: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = createClient();
+  const { error } = await supabase.from("attachments").insert({
+    ticket_id: ticketId,
+    file_url: filePath,
+    file_name: fileName,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
