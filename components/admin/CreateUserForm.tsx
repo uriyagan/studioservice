@@ -30,7 +30,10 @@ export function CreateUserForm() {
 
   return (
     <form ref={formRef} action={action} className="space-y-3">
-      <input name="name" placeholder="שם" className={fieldCls} />
+      <div className="flex gap-2">
+        <input name="first_name" placeholder="שם פרטי" className={fieldCls} />
+        <input name="last_name" placeholder="שם משפחה" className={fieldCls} />
+      </div>
       <input
         name="email"
         type="email"

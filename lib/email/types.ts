@@ -108,7 +108,10 @@ export const MERGE_TAGS: {
     group: "כללי",
     emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin"],
     tags: [
-      { token: "{client_name}", label: "שם הלקוח" },
+      { token: "{first_name}", label: "שם פרטי" },
+      { token: "{last_name}", label: "שם משפחה" },
+      { token: "{full_name}", label: "שם מלא" },
+      { token: "{client_name}", label: "שם הלקוח (מלא)" },
       { token: "{project_name}", label: "שם הפרויקט" },
       { token: "{portal_url}", label: "קישור לפורטל" },
       { token: "{site_url}", label: "כתובת האתר" },
@@ -146,5 +149,10 @@ export const MERGE_TAGS: {
       { token: "{hours_added}", label: "שעות שנוספו" },
       { token: "{buy_url}", label: "קישור לרכישת חבילה" },
     ],
+  },
+  {
+    group: "סיכום משימות (מייל סיום חבילה)",
+    emails: ["package_depleted"],
+    tags: [{ token: "{tasks_summary}", label: "טבלת כל המשימות שבוצעו + זמן" }],
   },
 ];

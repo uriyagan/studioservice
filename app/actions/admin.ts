@@ -32,7 +32,9 @@ export async function createClientUser(
     await assertAdmin();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
-    const name = String(formData.get("name") ?? "").trim();
+    const firstName = String(formData.get("first_name") ?? "").trim();
+    const lastName = String(formData.get("last_name") ?? "").trim();
+    const name = `${firstName} ${lastName}`.trim();
     const role = formData.get("role") === "admin" ? "admin" : "client";
 
     if (!email || password.length < 6) {
@@ -44,7 +46,7 @@ export async function createClientUser(
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role },
+      user_metadata: { name, first_name: firstName, last_name: lastName, role },
     });
     if (error) return { ok: false, error: error.message };
 
@@ -97,7 +99,9 @@ export async function updateClientUser(
   try {
     const supabase = await assertAdmin();
     const id = String(formData.get("id") ?? "");
-    const name = String(formData.get("name") ?? "").trim();
+    const firstName = String(formData.get("first_name") ?? "").trim();
+    const lastName = String(formData.get("last_name") ?? "").trim();
+    const name = `${firstName} ${lastName}`.trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const role = formData.get("role") === "admin" ? "admin" : "client";
@@ -128,7 +132,13 @@ export async function updateClientUser(
 
     const { error: profErr } = await supabase
       .from("profiles")
-      .update({ name: name || null, email, role })
+      .update({
+        name: name || null,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        email,
+        role,
+      })
       .eq("id", id);
     if (profErr) return { ok: false, error: profErr.message };
 

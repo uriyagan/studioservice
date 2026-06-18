@@ -5,7 +5,9 @@ export type TicketStatus = "pending" | "in_progress" | "paused" | "completed";
 export interface Profile {
   id: string;
   email: string;
-  name: string | null;
+  name: string | null; // combined display name, kept in sync with first+last
+  first_name: string | null;
+  last_name: string | null;
   role: Role;
   created_at: string;
 }

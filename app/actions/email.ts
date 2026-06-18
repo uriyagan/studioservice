@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { renderEmailHtml, substituteTags } from "@/lib/email/render";
+import { renderEmailHtml, renderTasksSummary, substituteTags } from "@/lib/email/render";
 import { sendEmail } from "@/lib/email/send";
 import {
   BrandSettings,
@@ -31,6 +31,9 @@ type Result = { ok: boolean; error?: string };
 
 // Sample values so merge tags render to something in test emails.
 const SAMPLE_VARS: Record<string, string> = {
+  first_name: "ישראל",
+  last_name: "ישראלי",
+  full_name: "ישראל ישראלי",
   client_name: "ישראל ישראלי",
   project_name: "פרויקט לדוגמה",
   portal_url: "https://service.uriyaganor.com/portal",
@@ -146,10 +149,18 @@ export async function sendTestEmail(input: {
 
     if (!input.to) return { ok: false, error: "יש להזין כתובת למשלוח" };
 
+    const rawVars = {
+      tasks_summary: renderTasksSummary([
+        { title: "עיצוב באנר לקמפיין", seconds: 5400 },
+        { title: "תיקוני אתר", seconds: 3600 },
+        { title: "פגישת אפיון", seconds: 1800 },
+      ]),
+    };
     const subject = substituteTags(input.subject || "בדיקה", SAMPLE_VARS);
     const html = substituteTags(
       renderEmailHtml({ blocks: input.blocks, design: input.design, brand }),
-      SAMPLE_VARS
+      SAMPLE_VARS,
+      rawVars
     );
 
     await sendEmail({

@@ -92,7 +92,10 @@ export function UserRow({
       {editing && (
         <form ref={formRef} action={editAction} className="mt-3 space-y-3 rounded-lg bg-slate-50 p-3">
           <input type="hidden" name="id" value={client.id} />
-          <input name="name" defaultValue={client.name ?? ""} placeholder="שם" className={inputCls} />
+          <div className="flex gap-2">
+            <input name="first_name" defaultValue={client.first_name ?? ""} placeholder="שם פרטי" className={inputCls} />
+            <input name="last_name" defaultValue={client.last_name ?? ""} placeholder="שם משפחה" className={inputCls} />
+          </div>
           <input
             name="email"
             type="email"

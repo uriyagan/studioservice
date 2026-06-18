@@ -176,12 +176,59 @@ ${body}
 }
 
 // Replace {token} occurrences in a string with provided values.
-// Unknown tokens are left untouched (helps debugging).
-export function substituteTags(input: string, vars: Record<string, string | number | undefined>): string {
+// `vars` values are HTML-escaped; `rawVars` values (e.g. the tasks
+// summary table) are injected as-is. Unknown tokens are left untouched.
+export function substituteTags(
+  input: string,
+  vars: Record<string, string | number | undefined>,
+  rawVars: Record<string, string | undefined> = {}
+): string {
   let out = input;
+  for (const [token, val] of Object.entries(rawVars)) {
+    if (val === undefined) continue;
+    out = out.split(`{${token}}`).join(val);
+  }
   for (const [token, val] of Object.entries(vars)) {
     if (val === undefined) continue;
     out = out.split(`{${token}}`).join(esc(val));
   }
   return out;
+}
+
+// Format seconds as a Hebrew "Xש Yד" duration.
+function fmtDur(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h && m) return `${h} ש׳ ${m} ד׳`;
+  if (h) return `${h} ש׳`;
+  return `${m} ד׳`;
+}
+
+// Build the completed-tasks summary table (HTML) for {tasks_summary}.
+export function renderTasksSummary(
+  rows: { title: string | null; seconds: number }[]
+): string {
+  if (!rows.length) return "<p>לא בוצעו משימות.</p>";
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td style="padding:8px;border-bottom:1px solid #eee;">${esc(
+          r.title || "ללא שם"
+        )}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap;">${esc(
+          fmtDur(r.seconds)
+        )}</td></tr>`
+    )
+    .join("");
+  const totalSec = rows.reduce((a, r) => a + (r.seconds || 0), 0);
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0;font-size:14px;">
+<thead><tr>
+<th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">משימה</th>
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">זמן</th>
+</tr></thead>
+<tbody>${body}</tbody>
+<tfoot><tr><td style="padding:8px;font-weight:700;">סה״כ</td><td style="padding:8px;text-align:left;font-weight:700;white-space:nowrap;">${esc(
+    fmtDur(totalSec)
+  )}</td></tr></tfoot>
+</table>`;
 }
