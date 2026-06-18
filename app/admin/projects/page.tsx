@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { CreateProjectForm } from "@/components/admin/CreateProjectForm";
-import { EditHoursForm } from "@/components/admin/EditHoursForm";
+import { ProjectRow } from "@/components/admin/ProjectRow";
 import { Profile, ProjectStats } from "@/lib/types";
-import { formatHours } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -37,38 +36,7 @@ export default async function ProjectsPage() {
             </Card>
           )}
           {rows.map((p) => (
-            <Card key={p.id}>
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-slate-900">{p.name}</h3>
-                  {p.is_retainer ? (
-                    <span className="mt-1 inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
-                      ריטיינר · שעות בלתי מוגבלות
-                    </span>
-                  ) : (
-                    <p className="mt-1 text-sm text-slate-500">
-                      נוצלו {formatHours(p.hours_used)} מתוך{" "}
-                      {formatHours(p.total_hours_allocated)} ·{" "}
-                      <span className="font-medium text-slate-700">
-                        נותרו {formatHours(p.hours_remaining)}
-                      </span>
-                    </p>
-                  )}
-                </div>
-
-                {!p.is_retainer && (
-                  <div>
-                    <p className="mb-1 text-xs text-slate-400">
-                      עדכון סך שעות
-                    </p>
-                    <EditHoursForm
-                      projectId={p.id}
-                      current={p.total_hours_allocated}
-                    />
-                  </div>
-                )}
-              </div>
-            </Card>
+            <ProjectRow key={p.id} project={p} clients={clientList} />
           ))}
         </div>
       </div>

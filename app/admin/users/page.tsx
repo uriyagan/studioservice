@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { CreateUserForm } from "@/components/admin/CreateUserForm";
+import { UserRow } from "@/components/admin/UserRow";
 import { Profile } from "@/lib/types";
-import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -40,20 +40,7 @@ export default async function UsersPage() {
                 </p>
               )}
               {rows.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between py-3"
-                >
-                  <div>
-                    <p className="font-medium text-slate-800">
-                      {c.name || "—"}
-                    </p>
-                    <p className="text-sm text-slate-500">{c.email}</p>
-                  </div>
-                  <span className="text-xs text-slate-400">
-                    {formatDate(c.created_at)}
-                  </span>
-                </div>
+                <UserRow key={c.id} client={c} />
               ))}
             </div>
           </Card>
