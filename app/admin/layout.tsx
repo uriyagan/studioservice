@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/admin", label: "דשבורד" },
   { href: "/admin/projects", label: "פרויקטים" },
   { href: "/admin/users", label: "משתמשים" },
+  { href: "/admin/emails", label: "מיילים" },
 ];
 
 export default async function AdminLayout({
