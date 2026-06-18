@@ -182,6 +182,60 @@ export async function createAdminTicket(
   }
 }
 
+// Manually log used time as a completed task (deducts from the
+// package via the project_stats view). Creates a completed ticket
+// plus one closed time-log segment of the given duration.
+export async function addManualTime(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    const supabase = await assertAdmin();
+    const projectId = String(formData.get("project_id") ?? "") || null;
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const hours = Number(formData.get("hours") ?? 0);
+    const minutes = Number(formData.get("minutes") ?? 0);
+    const seconds = Math.round((hours * 60 + minutes) * 60);
+
+    if (!projectId) return { ok: false, error: "יש לבחור פרויקט" };
+    if (!title) return { ok: false, error: "כותרת נדרשת" };
+    if (!Number.isFinite(seconds) || seconds <= 0)
+      return { ok: false, error: "יש להזין זמן גדול מאפס" };
+
+    const now = new Date();
+    const start = new Date(now.getTime() - seconds * 1000);
+
+    const { data: ticket, error } = await supabase
+      .from("tickets")
+      .insert({
+        project_id: projectId,
+        title,
+        description: description || null,
+        status: "completed",
+        completed_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: error.message };
+
+    const { error: logError } = await supabase.from("time_logs").insert({
+      ticket_id: ticket.id,
+      start_time: start.toISOString(),
+      end_time: now.toISOString(),
+      duration_seconds: seconds,
+    });
+    if (logError) return { ok: false, error: logError.message };
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/projects");
+    revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 // Edit a task retroactively: title, project assignment, description.
 // Used to name/assign a task started via the immediate timer.
 export async function updateTicket(

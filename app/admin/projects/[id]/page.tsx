@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
+import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { ProjectStats } from "@/lib/types";
 import { formatHours } from "@/lib/format";
 
@@ -62,7 +63,10 @@ export default async function ProjectPage({
               </p>
             )}
           </div>
-          <CreateTaskForm fixedProjectId={id} />
+          <div className="flex flex-wrap items-start gap-2">
+            <ManualTimeForm fixedProjectId={id} />
+            <CreateTaskForm fixedProjectId={id} />
+          </div>
         </div>
       </div>
 

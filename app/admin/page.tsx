@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
+import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,10 @@ export default async function AdminDashboard() {
         <div className="flex flex-wrap items-start gap-2">
           <QuickStartButton />
           {projects.length > 0 ? (
-            <CreateTaskForm projects={projects} />
+            <>
+              <ManualTimeForm projects={projects} />
+              <CreateTaskForm projects={projects} />
+            </>
           ) : (
             <p className="text-sm text-amber-600">
               צור פרויקט תחילה כדי להוסיף משימות.
