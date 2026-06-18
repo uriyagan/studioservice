@@ -8,13 +8,17 @@ export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   const supabase = await createClient();
-  const { data: clients } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("role", "client")
-    .order("created_at", { ascending: false });
+  const [{ data: users }, { data: auth }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .order("role", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase.auth.getUser(),
+  ]);
 
-  const rows = (clients ?? []) as Profile[];
+  const rows = (users ?? []) as Profile[];
+  const myId = auth.user?.id;
 
   return (
     <div className="space-y-8">
@@ -23,7 +27,7 @@ export default async function UsersPage() {
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-1">
           <Card>
-            <h2 className="mb-4 font-semibold text-slate-900">לקוח חדש</h2>
+            <h2 className="mb-4 font-semibold text-slate-900">משתמש חדש</h2>
             <CreateUserForm />
           </Card>
         </div>
@@ -31,16 +35,16 @@ export default async function UsersPage() {
         <div className="md:col-span-2">
           <Card>
             <h2 className="mb-4 font-semibold text-slate-900">
-              לקוחות ({rows.length})
+              משתמשים ({rows.length})
             </h2>
             <div className="divide-y divide-slate-100">
               {rows.length === 0 && (
                 <p className="py-4 text-sm text-slate-400">
-                  עדיין אין לקוחות.
+                  עדיין אין משתמשים.
                 </p>
               )}
-              {rows.map((c) => (
-                <UserRow key={c.id} client={c} />
+              {rows.map((u) => (
+                <UserRow key={u.id} client={u} isSelf={u.id === myId} />
               ))}
             </div>
           </Card>

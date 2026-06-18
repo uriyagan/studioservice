@@ -33,6 +33,7 @@ export async function createClientUser(
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const name = String(formData.get("name") ?? "").trim();
+    const role = formData.get("role") === "admin" ? "admin" : "client";
 
     if (!email || password.length < 6) {
       return { ok: false, error: "אימייל וסיסמה (6+ תווים) נדרשים" };
@@ -43,7 +44,7 @@ export async function createClientUser(
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role: "client" },
+      user_metadata: { name, role },
     });
     if (error) return { ok: false, error: error.message };
 
@@ -99,11 +100,20 @@ export async function updateClientUser(
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
+    const role = formData.get("role") === "admin" ? "admin" : "client";
 
     if (!id) return { ok: false, error: "מזהה משתמש חסר" };
     if (!email) return { ok: false, error: "אימייל נדרש" };
     if (password && password.length < 6) {
       return { ok: false, error: "סיסמה חייבת להיות 6+ תווים" };
+    }
+
+    // Guard: an admin can't strip their own admin role (lockout).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id === id && role !== "admin") {
+      return { ok: false, error: "אי אפשר להסיר לעצמך הרשאת אדמין" };
     }
 
     const admin = createAdminClient();
@@ -118,7 +128,7 @@ export async function updateClientUser(
 
     const { error: profErr } = await supabase
       .from("profiles")
-      .update({ name: name || null, email })
+      .update({ name: name || null, email, role })
       .eq("id", id);
     if (profErr) return { ok: false, error: profErr.message };
 
@@ -137,9 +147,16 @@ export async function deleteClientUser(
   formData: FormData
 ): Promise<ActionResult> {
   try {
-    await assertAdmin();
+    const supabase = await assertAdmin();
     const id = String(formData.get("id") ?? "");
     if (!id) return { ok: false, error: "מזהה משתמש חסר" };
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user?.id === id) {
+      return { ok: false, error: "אי אפשר למחוק את עצמך" };
+    }
 
     const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(id);

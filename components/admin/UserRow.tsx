@@ -31,11 +31,18 @@ function DeleteBtn() {
   );
 }
 
-export function UserRow({ client }: { client: Profile }) {
+export function UserRow({
+  client,
+  isSelf = false,
+}: {
+  client: Profile;
+  isSelf?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [editState, editAction] = useActionState(updateClientUser, initial);
   const [delState, delAction] = useActionState(deleteClientUser, initial);
   const formRef = useRef<HTMLFormElement>(null);
+  const isAdmin = client.role === "admin";
 
   useEffect(() => {
     if (editState.ok) setEditing(false);
@@ -45,7 +52,19 @@ export function UserRow({ client }: { client: Profile }) {
     <div className="py-3">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-medium text-slate-800">{client.name || "—"}</p>
+          <p className="flex items-center gap-2 truncate font-medium text-slate-800">
+            {client.name || "—"}
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                isAdmin
+                  ? "bg-primary-light text-primary"
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {isAdmin ? "מנהל" : "לקוח"}
+            </span>
+            {isSelf && <span className="text-xs text-slate-400">(אתה)</span>}
+          </p>
           <p className="truncate text-sm text-slate-500">{client.email}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -55,23 +74,25 @@ export function UserRow({ client }: { client: Profile }) {
           <Button variant="ghost" onClick={() => setEditing((v) => !v)}>
             {editing ? "ביטול" : "עריכה"}
           </Button>
-          <form
-            action={delAction}
-            onSubmit={(e) => {
-              if (!confirm(`למחוק את הלקוח "${client.name || client.email}"? הפרויקט שלו יישמר ללא לקוח משויך.`))
-                e.preventDefault();
-            }}
-          >
-            <input type="hidden" name="id" value={client.id} />
-            <DeleteBtn />
-          </form>
+          {!isSelf && (
+            <form
+              action={delAction}
+              onSubmit={(e) => {
+                if (!confirm(`למחוק את המשתמש "${client.name || client.email}"? פרויקט משויך יישמר ללא לקוח.`))
+                  e.preventDefault();
+              }}
+            >
+              <input type="hidden" name="id" value={client.id} />
+              <DeleteBtn />
+            </form>
+          )}
         </div>
       </div>
 
       {editing && (
         <form ref={formRef} action={editAction} className="mt-3 space-y-3 rounded-lg bg-slate-50 p-3">
           <input type="hidden" name="id" value={client.id} />
-          <input name="name" defaultValue={client.name ?? ""} placeholder="שם הלקוח" className={inputCls} />
+          <input name="name" defaultValue={client.name ?? ""} placeholder="שם" className={inputCls} />
           <input
             name="email"
             type="email"
@@ -86,6 +107,18 @@ export function UserRow({ client }: { client: Profile }) {
             placeholder="סיסמה חדשה (השאר ריק כדי לא לשנות)"
             className={inputCls}
           />
+          <select
+            name="role"
+            defaultValue={client.role}
+            disabled={isSelf}
+            className={`${inputCls} disabled:opacity-60`}
+          >
+            <option value="client">לקוח</option>
+            <option value="admin">מנהל (אדמין)</option>
+          </select>
+          {isSelf && (
+            <p className="text-xs text-slate-400">לא ניתן לשנות לעצמך הרשאה.</p>
+          )}
           {editState.error && <p className="text-sm text-red-600">{editState.error}</p>}
           <SaveBtn />
         </form>

@@ -25,27 +25,30 @@ export function CreateUserForm() {
     if (state.ok) formRef.current?.reset();
   }, [state.ok]);
 
+  const fieldCls =
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
+
   return (
     <form ref={formRef} action={action} className="space-y-3">
-      <input
-        name="name"
-        placeholder="שם הלקוח"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-      />
+      <input name="name" placeholder="שם" className={fieldCls} />
       <input
         name="email"
         type="email"
         required
         placeholder="אימייל"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+        className={fieldCls}
       />
       <input
         name="password"
         type="text"
         required
         placeholder="סיסמה (6+ תווים)"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+        className={fieldCls}
       />
+      <select name="role" defaultValue="client" className={fieldCls}>
+        <option value="client">לקוח</option>
+        <option value="admin">מנהל (אדמין)</option>
+      </select>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state.ok && (
         <p className="text-sm text-emerald-600">המשתמש נוצר בהצלחה ✓</p>
