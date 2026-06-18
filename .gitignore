@@ -9,3 +9,7 @@ next-env.d.ts
 .open-next/
 .dev.vars
 .wrangler/
+# Google Drive duplicate files (e.g. "page 2.tsx", "package 2.json")
+* 2.*
+* 2
+*\ 2.*
