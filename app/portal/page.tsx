@@ -46,7 +46,7 @@ export default async function PortalPage() {
     .filter((t) => t.status === "completed")
     .map((t) => ({
       id: t.id,
-      title: t.title,
+      title: t.title ?? "—",
       completed_at: t.completed_at,
       seconds: sumLoggedSeconds(t.time_logs),
     }));
