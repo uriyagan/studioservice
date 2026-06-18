@@ -32,10 +32,12 @@ create index if not exists projects_client_id_idx on public.projects(client_id);
 -- ─────────────────────────────────────────────────────────
 --  3. TICKETS / TASKS
 -- ─────────────────────────────────────────────────────────
+-- project_id + title are NULLABLE so a timer can be started instantly
+-- on a blank task, then named + assigned to a project retroactively.
 create table if not exists public.tickets (
   id           uuid primary key default gen_random_uuid(),
-  project_id   uuid not null references public.projects(id) on delete cascade,
-  title        text not null,
+  project_id   uuid references public.projects(id) on delete cascade,
+  title        text,
   description  text,
   link         text,
   status       text not null default 'pending'
@@ -204,10 +206,14 @@ create policy "tickets: client inserts on own project"
   );
 
 -- Only the admin changes status / runs the timer workflow.
-create policy "tickets: admin update/delete"
+create policy "tickets: admin update"
   on public.tickets for update
   using (public.is_admin())
   with check (public.is_admin());
+
+create policy "tickets: admin delete"
+  on public.tickets for delete
+  using (public.is_admin());
 
 -- ── time_logs ─────────────────────────────────────────────
 create policy "time_logs: read own project or admin"

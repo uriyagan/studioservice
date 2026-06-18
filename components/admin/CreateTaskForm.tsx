@@ -22,7 +22,13 @@ function Submit() {
   );
 }
 
-export function CreateTaskForm({ projects }: { projects: ProjectOption[] }) {
+export function CreateTaskForm({
+  projects = [],
+  fixedProjectId,
+}: {
+  projects?: ProjectOption[];
+  fixedProjectId?: string;
+}) {
   const [state, action] = useActionState(createAdminTicket, initial);
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -51,18 +57,27 @@ export function CreateTaskForm({ projects }: { projects: ProjectOption[] }) {
       action={action}
       className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:grid-cols-2"
     >
-      <select name="project_id" required className={inputCls} defaultValue="">
-        <option value="" disabled>
-          בחר פרויקט...
-        </option>
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
+      {fixedProjectId ? (
+        <input type="hidden" name="project_id" value={fixedProjectId} />
+      ) : (
+        <select name="project_id" required className={inputCls} defaultValue="">
+          <option value="" disabled>
+            בחר פרויקט...
           </option>
-        ))}
-      </select>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
 
-      <input name="title" required placeholder="כותרת המשימה" className={inputCls} />
+      <input
+        name="title"
+        required
+        placeholder="כותרת המשימה"
+        className={`${inputCls} ${fixedProjectId ? "sm:col-span-2" : ""}`}
+      />
 
       <textarea
         name="description"

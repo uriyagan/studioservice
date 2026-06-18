@@ -182,6 +182,65 @@ export async function createAdminTicket(
   }
 }
 
+// Edit a task retroactively: title, project assignment, description.
+// Used to name/assign a task started via the immediate timer.
+export async function updateTicket(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    const supabase = await assertAdmin();
+    const id = String(formData.get("id") ?? "");
+    const title = String(formData.get("title") ?? "").trim();
+    const projectId = String(formData.get("project_id") ?? "") || null;
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (!id) return { ok: false, error: "מזהה משימה חסר" };
+
+    const { error } = await supabase
+      .from("tickets")
+      .update({
+        title: title || null,
+        project_id: projectId,
+        description: description || null,
+      })
+      .eq("id", id);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/projects");
+    if (projectId) revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Delete a task. Cascades its time logs + attachments (FK cascade).
+// Uses the service-role client (tickets have no RLS delete policy).
+export async function deleteTicket(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  try {
+    await assertAdmin();
+    const id = String(formData.get("id") ?? "");
+    const projectId = String(formData.get("project_id") ?? "");
+    if (!id) return { ok: false, error: "מזהה משימה חסר" };
+
+    const admin = createAdminClient();
+    const { error } = await admin.from("tickets").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/projects");
+    if (projectId) revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 // Full project edit: name, client link, retainer toggle, hours.
 export async function updateProject(
   _prev: ActionResult,

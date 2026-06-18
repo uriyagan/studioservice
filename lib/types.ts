@@ -31,8 +31,10 @@ export interface ProjectStats {
 
 export interface Ticket {
   id: string;
-  project_id: string;
-  title: string;
+  // Nullable so a timer can be started immediately, then assigned a
+  // project + title retroactively.
+  project_id: string | null;
+  title: string | null;
   description: string | null;
   link: string | null;
   status: TicketStatus;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
@@ -52,7 +53,12 @@ export function ProjectRow({
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-slate-900">{project.name}</h3>
+          <Link
+            href={`/admin/projects/${project.id}`}
+            className="font-semibold text-slate-900 hover:text-primary hover:underline"
+          >
+            {project.name}
+          </Link>
           {project.is_retainer ? (
             <span className="mt-1 inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
               ריטיינר · שעות בלתי מוגבלות

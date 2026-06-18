@@ -23,6 +23,28 @@ async function assertAdmin() {
   return supabase;
 }
 
+// Immediate start: create a blank task (no project, no title) and
+// start its timer right now. Project + name are filled in later via
+// updateTicket. Returns the new ticket id.
+export async function quickStartTimer(): Promise<string> {
+  const supabase = await assertAdmin();
+
+  const { data: ticket, error: ticketError } = await supabase
+    .from("tickets")
+    .insert({ status: "in_progress" })
+    .select("id")
+    .single();
+  if (ticketError) throw new Error(ticketError.message);
+
+  const { error: logError } = await supabase
+    .from("time_logs")
+    .insert({ ticket_id: ticket.id });
+  if (logError) throw new Error(logError.message);
+
+  revalidatePath("/admin");
+  return ticket.id;
+}
+
 // "Start Treatment" / "Resume Timer" — both open a fresh active
 // time-log segment and mark the ticket in_progress.
 export async function startTimer(ticketId: string) {
