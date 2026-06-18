@@ -1,0 +1,75 @@
+// High-level: load a template + brand settings, render to HTML,
+// substitute merge tags, and send. Best-effort — never throws to the
+// caller (a failed email must not break completing a task, etc.).
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { renderEmailHtml, substituteTags } from "./render";
+import { DEFAULT_BRAND, EmailKey } from "./types";
+
+const FALLBACK_SUBJECT: Record<EmailKey, string> = {
+  welcome: "ברוכים הבאים",
+  password_reset: "איפוס סיסמה",
+  task_completed: "המשימה הושלמה",
+  package_half: "ניצלת 50% מהחבילה",
+  package_depleted: "החבילה הסתיימה",
+  hours_added: "נוספו שעות לחבילה",
+  new_task_admin: "פנייה חדשה מלקוח",
+};
+
+type Vars = Record<string, string | number | undefined>;
+
+export async function dispatchEmail(
+  key: EmailKey,
+  to: string | string[],
+  vars: Vars
+): Promise<{ sent: boolean; reason?: string }> {
+  try {
+    const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
+    if (recipients.length === 0) return { sent: false, reason: "no recipients" };
+
+    const db = createAdminClient() as unknown as {
+      from: (t: string) => any;
+    };
+
+    const { data: tpl } = await db
+      .from("email_templates")
+      .select("*")
+      .eq("template_key", key)
+      .maybeSingle();
+
+    if (tpl && tpl.enabled === false) return { sent: false, reason: "disabled" };
+
+    const { data: settingsRow } = await db
+      .from("email_settings")
+      .select("*")
+      .eq("id", true)
+      .maybeSingle();
+
+    const brand = {
+      fromName: settingsRow?.from_name || DEFAULT_BRAND.fromName,
+      fromEmail: settingsRow?.from_email || DEFAULT_BRAND.fromEmail,
+      logoUrl: settingsRow?.logo_url || DEFAULT_BRAND.logoUrl,
+      brandColor: settingsRow?.brand_color || DEFAULT_BRAND.brandColor,
+    };
+
+    const blocks = Array.isArray(tpl?.blocks) ? tpl.blocks : [];
+    const subjectTemplate = tpl?.subject || FALLBACK_SUBJECT[key];
+    const subject = substituteTags(subjectTemplate, vars);
+    const html = substituteTags(
+      renderEmailHtml({ blocks, design: tpl?.design ?? undefined, brand }),
+      vars
+    );
+
+    const { sendEmail } = await import("./send");
+    await sendEmail({
+      to: recipients,
+      subject,
+      html,
+      from: `${brand.fromName} <${brand.fromEmail}>`,
+    });
+    return { sent: true };
+  } catch (e) {
+    console.error(`dispatchEmail(${key}) failed:`, (e as Error).message);
+    return { sent: false, reason: (e as Error).message };
+  }
+}
