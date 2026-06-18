@@ -43,26 +43,30 @@ A private web **Client Portal + Time-Tracking system** for the studio — replac
 
 ## 4. Commands
 
+**Deploy = `git push origin main`.** A GitHub Actions workflow
+([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) builds with OpenNext and deploys to
+Cloudflare on every push to `main`. No local build needed — git is the single source of truth.
+Manual trigger: GitHub → Actions → "Deploy to Cloudflare" → Run workflow.
+
+One-time setup: the GitHub repo must have a secret `CLOUDFLARE_API_TOKEN` (Cloudflare → My Profile →
+API Tokens → "Edit Cloudflare Workers" template). All `NEXT_PUBLIC_*` build vars are set inside the
+workflow (they're public — they ship in the browser bundle). Runtime Worker secrets
+(`SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_*`) already live on the Worker via `wrangler secret put` and
+survive deploys.
+
 ```bash
 # Local dev (Node, http://localhost:3000)
 npm run dev
 
-# Local Cloudflare preview (real workerd runtime, reads .dev.vars)
-npm run cf:preview
-
 # Typecheck
 npx tsc --noEmit
 
-# DEPLOY to production (rebuild + push to Cloudflare + custom domain)
-NEXT_PUBLIC_SITE_URL=https://service.uriyaganor.com npm run cf:deploy
-
-# Back up code
+# DEPLOY → just push; CI builds & deploys
 git push origin main
-```
 
-> ⚠️ Always prefix the deploy with `NEXT_PUBLIC_SITE_URL=https://service.uriyaganor.com` so the
-> production URL gets inlined (it's a build-time `NEXT_PUBLIC_` var). Without it the build picks up
-> `http://localhost:3000` from `.env.local`.
+# Manual local deploy (fallback only — slow on Google Drive, avoid):
+# NEXT_PUBLIC_SITE_URL=https://service.uriyaganor.com npm run cf:deploy
+```
 
 ---
 

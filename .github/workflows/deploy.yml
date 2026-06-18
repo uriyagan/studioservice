@@ -1,0 +1,38 @@
+name: Deploy to Cloudflare
+
+# Push to main → cloud build + deploy. No local work needed.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Cancel an in-flight deploy if a newer push arrives.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & deploy (OpenNext → Cloudflare Workers)
+        run: npm run cf:deploy
+        env:
+          # NEXT_PUBLIC_* are inlined at build time. All public by design
+          # (they ship in the browser bundle).
+          NEXT_PUBLIC_SITE_URL: https://service.uriyaganor.com
+          NEXT_PUBLIC_SUPABASE_URL: https://eepbcsidaitixxrjzgiw.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_NQ9mv6yjGBxwGmTBLKf7-w_K9m9783Q
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_PASTE_HERE
+          # wrangler auth. ACCOUNT_ID is not secret; the token is.
+          CLOUDFLARE_ACCOUNT_ID: 8b904080ccb2858612d4edba364d85b2
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
