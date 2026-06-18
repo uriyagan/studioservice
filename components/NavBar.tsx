@@ -6,10 +6,12 @@ import { logout } from "@/app/actions/auth";
 
 export function NavBar({
   title,
+  logoSrc,
   links,
   userName,
 }: {
   title: string;
+  logoSrc?: string;
   links: { href: string; label: string }[];
   userName: string;
 }) {
@@ -19,7 +21,12 @@ export function NavBar({
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <span className="font-bold text-slate-900">{title}</span>
+          {logoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoSrc} alt={title} className="h-8 w-auto" />
+          ) : (
+            <span className="font-bold text-slate-900">{title}</span>
+          )}
           <nav className="flex items-center gap-1">
             {links.map((link) => {
               const active =

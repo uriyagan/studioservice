@@ -30,7 +30,8 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
-        title="ניהול — Studio"
+        title="Uriya Ganor Studio"
+        logoSrc="/studio-logo.svg"
         links={LINKS}
         userName={profile?.name || user.email || ""}
       />
