@@ -8,11 +8,15 @@ export function formatDuration(totalSeconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
 }
 
-// Decimal hours (e.g. 12.5) → human string ("12.5 שעות").
+// Decimal hours (e.g. 9.95) → human "X שעות Y דקות" (e.g. "9 שעות 57 דקות",
+// "5 דקות", "10 שעות"). Avoids confusing decimals like "9.95 שעות".
 export function formatHours(hours: number): string {
-  return `${Number(hours).toLocaleString("he-IL", {
-    maximumFractionDigits: 2,
-  })} שעות`;
+  const totalMin = Math.max(0, Math.round(Number(hours || 0) * 60));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h && m) return `${h} שעות ${m} דקות`;
+  if (h) return `${h} שעות`;
+  return `${m} דקות`;
 }
 
 // Seconds → HH:MM (no seconds) — for client-facing displays.

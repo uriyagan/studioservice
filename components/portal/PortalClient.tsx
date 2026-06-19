@@ -5,7 +5,7 @@ import { HourPackageRow, Profile, ProjectStats, Purchase, TicketStatus } from "@
 import { Card, StatCard } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { formatDurationShort, formatDate, formatHours, formatHoursClock } from "@/lib/format";
+import { formatDurationShort, formatDate, formatHours } from "@/lib/format";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
@@ -252,7 +252,7 @@ function PurchaseView({
                   <div className="mb-1.5 flex items-center justify-between gap-3">
                     <span className="font-medium text-slate-800">{p.name}</span>
                     <span className="text-sm font-medium text-slate-700">
-                      נותרו {formatHoursClock(remaining)} מתוך {formatHoursClock(total)} שעות
+                      נותרו {formatHours(remaining)} מתוך {formatHours(total)}
                     </span>
                   </div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
@@ -262,7 +262,7 @@ function PurchaseView({
                     />
                   </div>
                   <p className="mt-1 text-xs text-slate-400">
-                    נוצלו {formatHoursClock(used)} · נותרו {formatHoursClock(remaining)}
+                    נוצלו {formatHours(used)} · נותרו {formatHours(remaining)}
                   </p>
                 </div>
               );

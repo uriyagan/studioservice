@@ -143,7 +143,7 @@ export const MERGE_TAGS: {
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
-      { token: "{task_time}", label: "זמן ביצוע המשימה (שע:דק:שנ)" },
+      { token: "{task_time}", label: "זמן ביצוע המשימה" },
       { token: "{task_url}", label: "קישור למשימה (מנהל)" },
     ],
   },
@@ -156,10 +156,10 @@ export const MERGE_TAGS: {
     group: "שעות חבילה",
     emails: ["task_completed", "package_half", "package_depleted", "hours_added"],
     tags: [
-      { token: "{hours_used}", label: "שעות שנוצלו (שע:דק)" },
-      { token: "{hours_remaining}", label: "זמן שנותר בחבילה (שע:דק)" },
-      { token: "{total_hours}", label: "סך שעות בחבילה (שע:דק)" },
-      { token: "{hours_added}", label: "שעות שנוספו (שע:דק)" },
+      { token: "{hours_used}", label: "שעות שנוצלו" },
+      { token: "{hours_remaining}", label: "זמן שנותר בחבילה" },
+      { token: "{total_hours}", label: "סך שעות בחבילה" },
+      { token: "{hours_added}", label: "שעות שנוספו" },
       { token: "{buy_url}", label: "קישור לרכישת חבילה" },
     ],
   },

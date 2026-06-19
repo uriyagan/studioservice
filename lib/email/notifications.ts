@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "./dispatch";
 import { renderTasksSummary } from "./render";
 import { replyAddress } from "./thread";
-import { formatDuration, formatHoursClock, sumLoggedSeconds } from "@/lib/format";
+import { formatHours, sumLoggedSeconds } from "@/lib/format";
 
 const SITE = "https://service.uriyaganor.com";
 
@@ -51,10 +51,10 @@ export async function notifyTaskCompleted(ticketId: string) {
             project_name: stats.name ?? "",
             task_title: ticket.title ?? "",
             task_description: ticket.description ?? "",
-            task_time: formatDuration(taskSeconds),
-            hours_used: formatHoursClock(stats.hours_used),
-            hours_remaining: formatHoursClock(stats.hours_remaining),
-            total_hours: formatHoursClock(stats.total_hours_allocated),
+            task_time: formatHours(taskSeconds / 3600),
+            hours_used: formatHours(stats.hours_used),
+            hours_remaining: formatHours(stats.hours_remaining),
+            total_hours: formatHours(stats.total_hours_allocated),
             portal_url: `${SITE}/portal`,
             site_url: SITE,
           },
@@ -105,9 +105,9 @@ export async function checkUsageThresholds(projectId: string) {
       full_name: client.name ?? "",
       client_name: client.name ?? "",
       project_name: stats?.name ?? proj.name ?? "",
-      hours_used: formatHoursClock(used),
-      hours_remaining: formatHoursClock(remaining),
-      total_hours: formatHoursClock(total),
+      hours_used: formatHours(used),
+      hours_remaining: formatHours(remaining),
+      total_hours: formatHours(total),
       buy_url: `${SITE}/portal`,
       portal_url: `${SITE}/portal`,
       site_url: SITE,

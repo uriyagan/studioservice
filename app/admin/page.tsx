@@ -5,7 +5,7 @@ import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { StatCard } from "@/components/ui/Card";
-import { formatDurationShort } from "@/lib/format";
+import { formatHours } from "@/lib/format";
 import { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -113,7 +113,7 @@ export default async function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="משימות פתוחות לטיפול" value={String(openCount)} accent />
         <StatCard label="לקוחות עם חבילה פעילה" value={String(activeClientSet.size)} />
-        <StatCard label="שעות שעבדנו החודש" value={formatDurationShort(monthSeconds)} />
+        <StatCard label="שעות שעבדנו החודש" value={formatHours(monthSeconds / 3600)} />
       </div>
 
       <TasksTable tasks={rows} projects={projects} admins={admins} currentUserId={user?.id} />
