@@ -164,13 +164,16 @@ export function renderEmailHtml(opts: {
 <body style="margin:0;padding:0;background:${d.emailBackground};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${d.emailBackground};">
 <tr><td align="center" style="padding:${d.outerPadding}px;">
-<table role="presentation" width="${d.contentWidth}" cellpadding="0" cellspacing="0" style="width:${d.contentWidth}px;max-width:100%;background:${d.contentBackground};border-radius:${d.borderRadius}px;overflow:hidden;">
-<tr><td dir="rtl" style="padding:${d.innerPadding}px;text-align:${d.contentAlign};font-family:${fontStack(
+<!--[if mso]><table role="presentation" width="${d.contentWidth}" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+<div style="max-width:${d.contentWidth}px;margin:0 auto;background:${d.contentBackground};border-radius:${d.borderRadius}px;overflow:hidden;">
+<div dir="rtl" style="padding:${d.innerPadding}px;text-align:${d.contentAlign};font-family:${fontStack(
     d.fontFamily
   )};font-size:${d.fontSize}px;color:${d.textColor};">
 ${header}
 ${body}
-</td></tr></table>
+</div>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table>
 </body></html>`;
 }
