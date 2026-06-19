@@ -34,7 +34,10 @@ export function CreateClientForm() {
         <input name="last_name" placeholder="שם משפחה" className={cls} />
       </div>
       <input name="email" type="email" required placeholder="אימייל" className={cls} />
-      <input name="password" type="text" required placeholder="סיסמה (6+ תווים)" className={cls} />
+      <input name="password" type="text" placeholder="סיסמה (אופציונלי)" className={cls} />
+      <p className="-mt-1 text-[11px] text-slate-400">
+        השאר ריק — הלקוח יקבל מייל עם קישור ליצירת סיסמה בעצמו.
+      </p>
       <input name="phone" placeholder="טלפון" className={cls} dir="ltr" />
       <input name="company" placeholder="חברה / עסק" className={cls} />
       <input name="address" placeholder="כתובת" className={cls} />

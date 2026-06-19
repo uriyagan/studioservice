@@ -4,7 +4,17 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderEmailHtml, substituteTags } from "./render";
-import { DEFAULT_BRAND, EmailKey } from "./types";
+import { DEFAULT_BRAND, EmailBlock, EmailKey } from "./types";
+
+// Built-in fallback bodies used when an admin hasn't designed the
+// template yet (so e.g. the welcome email still carries its link).
+const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
+  welcome: [
+    { id: "h", type: "heading", text: "ברוכים הבאים, {first_name}!", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "נוצר עבורך חשבון בפורטל השירות. לחצו על הכפתור כדי לבחור סיסמה ולהתחבר.", align: "right", size: "15" },
+    { id: "b", type: "button", text: "יצירת סיסמה", href: "{set_password_link}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "16" },
+  ],
+};
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   welcome: "ברוכים הבאים",
@@ -52,7 +62,8 @@ export async function dispatchEmail(
       brandColor: settingsRow?.brand_color || DEFAULT_BRAND.brandColor,
     };
 
-    const blocks = Array.isArray(tpl?.blocks) ? tpl.blocks : [];
+    const blocks =
+      Array.isArray(tpl?.blocks) && tpl.blocks.length ? tpl.blocks : DEFAULT_BLOCKS[key] ?? [];
     const subjectTemplate = tpl?.subject || FALLBACK_SUBJECT[key];
     const subject = substituteTags(subjectTemplate, vars);
     const html = substituteTags(

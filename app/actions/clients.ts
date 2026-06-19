@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderEmailHtml, substituteTags } from "@/lib/email/render";
 import { sendEmail } from "@/lib/email/send";
+import { dispatchEmail } from "@/lib/email/dispatch";
 import { DEFAULT_BRAND, EmailBlock } from "@/lib/email/types";
+
+const SITE = "https://service.uriyaganor.com";
 
 type Result = { ok: boolean; error?: string };
 
@@ -46,11 +49,15 @@ export async function createClientFull(
   try {
     await assertAdmin();
     const email = String(formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
-    if (!email || password.length < 6) {
-      return { ok: false, error: "אימייל וסיסמה (6+ תווים) נדרשים" };
+    const typedPassword = String(formData.get("password") ?? "");
+    if (!email) return { ok: false, error: "אימייל נדרש" };
+    if (typedPassword && typedPassword.length < 6) {
+      return { ok: false, error: "סיסמה חייבת להיות 6+ תווים" };
     }
     const fields = detailFields(formData);
+    // If the admin didn't set a password, generate a random one — the
+    // client will set their own via the welcome-email link.
+    const password = typedPassword || `${crypto.randomUUID()}${crypto.randomUUID()}`;
 
     const admin = createAdminClient();
     const { data, error } = await admin.auth.admin.createUser({
@@ -70,6 +77,30 @@ export async function createClientFull(
     if (id) {
       const db = admin as unknown as { from: (t: string) => any };
       await db.from("profiles").update(fields).eq("id", id);
+    }
+
+    // Send the welcome email with a set-password link (best-effort;
+    // respects the "welcome" template's enabled toggle).
+    try {
+      const { data: linkData } = await admin.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: { redirectTo: `${SITE}/set-password` },
+      });
+      const setLink = linkData?.properties?.action_link ?? `${SITE}/login`;
+      await dispatchEmail("welcome", email, {
+        first_name: fields.first_name ?? "",
+        last_name: fields.last_name ?? "",
+        full_name: fields.name ?? "",
+        client_name: fields.name ?? "",
+        email,
+        set_password_link: setLink,
+        login_url: `${SITE}/login`,
+        portal_url: `${SITE}/portal`,
+        site_url: SITE,
+      });
+    } catch {
+      /* non-fatal: client is created even if the email fails */
     }
 
     revalidatePath("/admin/clients");

@@ -121,6 +121,7 @@ export const MERGE_TAGS: {
     group: "משתמש חדש",
     emails: ["welcome"],
     tags: [
+      { token: "{set_password_link}", label: "קישור ליצירת סיסמה" },
       { token: "{email}", label: "אימייל הכניסה" },
       { token: "{login_url}", label: "קישור להתחברות" },
     ],
