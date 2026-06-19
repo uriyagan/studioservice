@@ -22,7 +22,7 @@ A private web **Client Portal + Time-Tracking system** for the studio — replac
 |---|---|
 | **Live site** | https://service.uriyaganor.com |
 | **GitHub repo** | https://github.com/uriyagan/studioservice (branch `main`) |
-| **Local project dir** | `/Users/uriyaganor/Library/CloudStorage/GoogleDrive-info@uriyaganor.com/My Drive/פרוייקטים 2026/Studio Service App` |
+| **Working dir** | `~/code/studioservice` (clone of the GitHub repo, **off Google Drive**). The old Drive folder is abandoned — it silently zeroed files and made `" 2"` duplicates. Work + commit + deploy from `~/code/studioservice` only. |
 | **Host** | Cloudflare Workers, worker name `studioservice` |
 | **Cloudflare account** | `info@uriyaganor.com` — account ID `8b904080ccb2858612d4edba364d85b2` (wrangler already authenticated on this Mac) |
 | **Supabase project** | ref `eepbcsidaitixxrjzgiw` → https://eepbcsidaitixxrjzgiw.supabase.co |
@@ -35,7 +35,8 @@ A private web **Client Portal + Time-Tracking system** for the studio — replac
 - **Next.js 15.5.19** (App Router) + **React 19.2.7** + TypeScript
 - **Supabase** — Postgres + Auth + Storage (uses the NEW key format: `sb_publishable_…` as the anon/public key, `sb_secret_…` as the service-role key)
 - **Tailwind CSS 3.4** — RTL via logical props (`ms-`/`me-`/`ps-`/`pe-`); primary color = black (`#111111`)
-- **Stripe 16** — Checkout + webhook (NOT yet configured — placeholders in place)
+- **Stripe** — Checkout + webhook, **configured in TEST mode** (secrets `STRIPE_SECRET_KEY` `sk_test_…` + `STRIPE_WEBHOOK_SECRET` on the Worker). Charges in **EUR**. Webhook endpoint: `/api/stripe/webhook` (event `checkout.session.completed`).
+- **Resend** — transactional email (`RESEND_API_KEY` Worker secret; from `info@uriyaganor.com`, domain verified on Cloudflare DNS).
 - **Hosting:** Cloudflare Workers via **OpenNext** adapter `@opennextjs/cloudflare` 1.19.11 + wrangler 4.97
   - Chosen over Vercel because the domain `uriyaganor.com` is already on Cloudflare and the owner already uses Workers.
 
@@ -187,3 +188,29 @@ Cloudflare Workers at service.uriyaganor.com with SSL.**
 - `.open-next/`, `.dev.vars`, `.wrangler/`, `.env*.local` are gitignored. Never commit secrets.
 - This project is unrelated to WooDonkey (the WordPress-plugin suite in a sibling folder). Ignore WooDonkey's
   CLAUDE.md cart-fee / build.sh notes here.
+
+---
+
+## 12. Major additions (2026-06-18 session)
+
+Working dir moved off Google Drive → `~/code/studioservice`. Deploy is now `git push` → GitHub Actions → Cloudflare (see §4).
+
+**Admin**
+- **Clients tab** (`/admin/clients`) — create client with full details (first/last name, email, phone, company, address, notes); **client card** (`/admin/clients/[id]`): edit details, assign to multiple projects, see remaining hours per project, send an initiated (free-form, brand-wrapped) email.
+- **Users tab** — admin/client **role** selection on create + edit (with self-lockout guards).
+- **Projects** — full edit + delete; per-project page (`/admin/projects/[id]`); project names link to it.
+- **Dashboard** — sortable, column-configurable **tasks table** (title/client/status/date/exec-time + timer + edit/delete). Quick "התחל טיימר מיידי" + manual time entry.
+- **Emails tab** (`/admin/emails`) — WYSIWYG **email builder** (drag-drop blocks, inline rich text, design panel, merge tags, send-test) + brand/sender settings. 7 templates; each has a פעיל/כבוי toggle.
+- **Billing tab** (`/admin/billing`) — manage hour packages (name/hours/price/active) in-app; prices in **EUR**.
+
+**Client portal**
+- Multi-project switcher; "+ משימה חדשה" button; task form with multiple links + modern drag-drop file upload; "הפרטים שלי" self-service; "רכישת שעות" (DB packages) + **purchase history with receipts**.
+- Onboarding: clients are created **without** a password → welcome email with a **set-password link** (`/set-password`). Branded "forgot password" on login.
+
+**Email automations (all wired, via `lib/email/`):** welcome, password_reset, task_completed, package_half (50%), package_depleted (incl. completed-tasks table), hours_added (Stripe), new_task_admin. Built/rendered/sent entirely in JS (`render.ts` → `dispatch.ts` → Resend `send.ts`); fired from `lib/email/notifications.ts` + the Stripe webhook + client/auth actions. Threshold emails fire once via `projects.notified_half/notified_depleted` (reset when hours are added).
+
+**Migrations applied** (all run in Supabase; files in `supabase/migrations/`): `tasks_quickstart_delete`, `email_billing`, `name_split`, `client_fields`, `billing_phase2`.
+
+**Key new files:** `app/actions/{clients,packages,email,stripe,auth}.ts` · `lib/email/*` · `components/email-builder/*` · `components/admin/{TasksTable,ClientDetailsForm,ClientProjects,SendClientEmail,PackagesManager,CreateClientForm,...}.tsx` · `app/set-password/page.tsx` · `app/api/stripe/webhook/route.ts`.
+
+**Open / nice-to-have:** design the 7 email templates in the builder (they send with sensible defaults until then); the `hour_packages.price_ils` / `purchases.amount_ils` column names hold EUR values (cosmetic misnomer).

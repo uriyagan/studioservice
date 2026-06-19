@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { stripe, stripeWebhookCrypto } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
 
@@ -10,7 +10,13 @@ export async function POST(req: NextRequest) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!,
+      undefined,
+      stripeWebhookCrypto
+    );
   } catch (err) {
     return new NextResponse(`Webhook error: ${(err as Error).message}`, { status: 400 });
   }

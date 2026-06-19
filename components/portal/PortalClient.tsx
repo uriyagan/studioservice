@@ -28,26 +28,44 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function PortalClient({
-  project,
-  completedTasks,
+  projects,
+  completedByProject,
   profile,
   packages,
   purchases,
 }: {
-  project: ProjectStats;
-  completedTasks: CompletedTask[];
+  projects: ProjectStats[];
+  completedByProject: Record<string, CompletedTask[]>;
   profile: MyProfile;
   packages: HourPackageRow[];
   purchases: Purchase[];
 }) {
   const [tab, setTab] = useState<Tab>("status");
+  const [projectId, setProjectId] = useState(projects[0].id);
+  const project = projects.find((p) => p.id === projectId) ?? projects[0];
+  const completedTasks = completedByProject[project.id] ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">ברוכים הבאים לפורטל השירות</p>
+        <div className="flex flex-wrap items-center gap-3">
+          {projects.length > 1 ? (
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-lg font-bold text-slate-900 outline-none focus:border-primary"
+              dir="rtl"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
+          )}
+          <p className="text-sm text-slate-500">ברוכים הבאים לפורטל השירות</p>
         </div>
         <Button onClick={() => setTab("submit")}>+ משימה חדשה</Button>
       </div>

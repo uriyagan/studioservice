@@ -10,6 +10,13 @@ interface TicketRow extends Ticket {
   time_logs: TimeLog[];
 }
 
+export interface CompletedTask {
+  id: string;
+  title: string;
+  completed_at: string | null;
+  seconds: number;
+}
+
 export default async function PortalPage() {
   const supabase = await createClient();
   const {
@@ -22,41 +29,40 @@ export default async function PortalPage() {
     .eq("id", user!.id)
     .maybeSingle();
 
-  // A client may have one or more projects; show the first for now.
-  const { data: projects } = await supabase
+  const { data: projectRows } = await supabase
     .from("project_stats")
     .select("*")
     .eq("client_id", user!.id)
     .order("name");
-  const project = (projects ?? [])[0] ?? null;
+  const projects = (projectRows ?? []) as ProjectStats[];
 
-  if (!project) {
+  if (projects.length === 0) {
     return (
       <Card>
-        <p className="text-slate-600">
-          עדיין לא שויך אליך פרויקט. אנא פנה אלינו.
-        </p>
+        <p className="text-slate-600">עדיין לא שויך אליך פרויקט. אנא פנה אלינו.</p>
       </Card>
     );
   }
 
-  const proj = project as ProjectStats;
-
+  // Completed tasks per project (one query for all the client's projects).
+  const projectIds = projects.map((p) => p.id);
   const { data: tickets } = await supabase
     .from("tickets")
     .select("*, time_logs(*)")
-    .eq("project_id", proj.id)
+    .in("project_id", projectIds)
     .order("created_at", { ascending: false });
 
-  const rows = (tickets ?? []) as TicketRow[];
-  const completed = rows
-    .filter((t) => t.status === "completed")
-    .map((t) => ({
+  const completedByProject: Record<string, CompletedTask[]> = {};
+  for (const id of projectIds) completedByProject[id] = [];
+  for (const t of (tickets ?? []) as (TicketRow & { project_id: string })[]) {
+    if (t.status !== "completed") continue;
+    (completedByProject[t.project_id] ??= []).push({
       id: t.id,
       title: t.title ?? "—",
       completed_at: t.completed_at,
       seconds: sumLoggedSeconds(t.time_logs),
-    }));
+    });
+  }
 
   const db = supabase as unknown as { from: (t: string) => any };
   const [{ data: pkgs }, { data: purchaseRows }] = await Promise.all([
@@ -68,8 +74,8 @@ export default async function PortalPage() {
 
   return (
     <PortalClient
-      project={proj}
-      completedTasks={completed}
+      projects={projects}
+      completedByProject={completedByProject}
       packages={packages}
       purchases={purchases}
       profile={{
