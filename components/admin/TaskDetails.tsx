@@ -115,7 +115,7 @@ export function TaskDetails({
                   download={f.name}
                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
-                  <FileText className="h-4 w-4 shrink-0 text-slate-400" />
+                  <FileText className="h-4 w-4 shrink-0 text-black" />
                   <span className="truncate">{f.name}</span>
                   <span className="ms-auto inline-flex shrink-0 items-center gap-1 text-xs text-primary">
                     <Download className="h-3.5 w-3.5" /> הורדה

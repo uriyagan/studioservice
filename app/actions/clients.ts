@@ -191,6 +191,40 @@ export async function assignProjects(
   }
 }
 
+// Permanently delete a client: detach their projects (kept, just
+// unassigned) and remove the auth user + profile.
+export async function deleteClient(
+  _prev: Result,
+  formData: FormData
+): Promise<Result> {
+  try {
+    const { userId } = await assertAdmin();
+    const id = String(formData.get("id") ?? "");
+    if (!id) return { ok: false, error: "מזהה לקוח חסר" };
+    if (id === userId) return { ok: false, error: "אי אפשר למחוק את עצמך" };
+
+    const admin = createAdminClient();
+    // Keep the projects/work — just unassign so we don't orphan FK refs.
+    await admin.from("projects").update({ client_id: null }).eq("client_id", id);
+    // Remove project memberships (table may not exist yet — ignore errors).
+    try {
+      await (admin as unknown as { from: (t: string) => any }).from("project_members").delete().eq("profile_id", id);
+    } catch {
+      /* table absent */
+    }
+
+    const { error } = await admin.auth.admin.deleteUser(id);
+    // If the auth user was already gone, still clear the profile row.
+    if (error && !/not.*found/i.test(error.message)) return { ok: false, error: error.message };
+    await admin.from("profiles").delete().eq("id", id);
+
+    revalidatePath("/admin/clients");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 // Send an initiated (free-form) email to a client, wrapped in the
 // studio brand design. Merge tags ({first_name} etc.) are supported.
 export async function sendClientEmail(

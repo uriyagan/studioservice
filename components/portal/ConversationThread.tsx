@@ -191,7 +191,7 @@ export function ConversationThread({
                   <div className="mt-2 space-y-1">
                     {m.attachments.map((a, i) => (
                       <a key={i} href={a.url} download={a.name} className="flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1 text-xs text-slate-700 hover:bg-white">
-                        <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
                         <span className="truncate">{a.name}</span>
                       </a>
                     ))}

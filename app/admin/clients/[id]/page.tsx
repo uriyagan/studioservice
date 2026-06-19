@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { ClientProjects, ProjectOpt } from "@/components/admin/ClientProjects";
+import { DeleteClientButton } from "@/components/admin/DeleteClientButton";
 import { ArrowRight } from "@/components/icons";
 import { Profile, ProjectStats } from "@/lib/types";
 
@@ -60,6 +61,18 @@ export default async function ClientCardPage({
           <ClientProjects clientId={c.id} projects={projectOpts} />
         </Card>
       </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">מחיקת לקוח</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              מסיר את הלקוח לצמיתות. הפרויקטים יישמרו אך ינותקו ממנו.
+            </p>
+          </div>
+          <DeleteClientButton clientId={c.id} name={c.name || c.email || ""} />
+        </div>
+      </Card>
     </div>
   );
 }

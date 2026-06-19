@@ -47,7 +47,7 @@ export function ClientTaskThread({
         <div className="mt-1.5 space-y-1">
           {files.map((f, i) => (
             <a key={i} href={f.url} download={f.name} className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-primary">
-              <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
               <span className="truncate">{f.name}</span>
               <span className="text-primary">הורדה</span>
             </a>

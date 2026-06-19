@@ -238,7 +238,7 @@ export function TicketForm({
             dragOver ? "border-primary bg-primary-light/40" : "border-slate-300 hover:border-primary hover:bg-slate-50"
           }`}
         >
-          <UploadCloud className="h-7 w-7 text-slate-400" />
+          <UploadCloud className="h-7 w-7 text-black" />
           <p className="text-sm font-medium text-slate-700">גרור קבצים לכאן או לחץ להעלאה</p>
           <p className="text-xs text-slate-400">הקבצים מתחילים לעלות מיד עם הבחירה</p>
         </label>

@@ -11,7 +11,7 @@ const variants: Record<Variant, string> = {
     "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-400",
   warning:
     "bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-300",
-  ghost: "bg-transparent text-slate-600 hover:bg-slate-100",
+  ghost: "bg-transparent text-black hover:bg-slate-100",
 };
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {

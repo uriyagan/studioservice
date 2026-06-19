@@ -314,7 +314,7 @@ function PurchaseView({
 
       <div>
         <h2 className="mb-3 flex items-center gap-1.5 font-semibold text-slate-900">
-          <History className="h-4 w-4 text-slate-500" /> היסטוריית רכישות
+          <History className="h-4 w-4 text-black" /> היסטוריית רכישות
         </h2>
         <Card>
         {purchases.length === 0 ? (
