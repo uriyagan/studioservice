@@ -52,16 +52,17 @@ export function ProjectRow({
 
   return (
     <Card>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex items-center gap-4">
+        <Link
+          href={`/admin/projects/${project.id}`}
+          className="max-w-[200px] shrink-0 truncate font-semibold text-slate-900 hover:text-primary hover:underline"
+        >
+          {project.name}
+        </Link>
+
         <div className="min-w-0 flex-1">
-          <Link
-            href={`/admin/projects/${project.id}`}
-            className="font-semibold text-slate-900 hover:text-primary hover:underline"
-          >
-            {project.name}
-          </Link>
           {project.is_retainer ? (
-            <span className="mt-1 inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
+            <span className="inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
               ריטיינר · שעות בלתי מוגבלות
             </span>
           ) : (
@@ -71,16 +72,16 @@ export function ProjectRow({
               const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
               const bar = pct <= 20 ? "bg-red-500" : pct <= 50 ? "bg-amber-500" : "bg-emerald-500";
               return (
-                <div className="mt-1.5 max-w-md">
-                  <div className="mb-1 flex items-center justify-between gap-2 text-sm text-slate-500">
-                    <span>
-                      נוצלו {formatHours(project.hours_used)} מתוך {formatHours(project.total_hours_allocated)}
-                    </span>
-                    <span className="font-bold text-slate-800">{pct}% נותרו</span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="flex items-center gap-3"
+                  title={`נוצלו ${formatHours(project.hours_used)} מתוך ${formatHours(project.total_hours_allocated)}`}
+                >
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                     <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
                   </div>
+                  <span className="shrink-0 whitespace-nowrap text-sm">
+                    <b className="text-slate-800">{pct}%</b> <span className="text-slate-500">נותרו</span>
+                  </span>
                 </div>
               );
             })()
