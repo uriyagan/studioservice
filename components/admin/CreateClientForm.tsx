@@ -39,7 +39,10 @@ export function CreateClientForm() {
         השאר ריק — הלקוח יקבל מייל עם קישור ליצירת סיסמה בעצמו.
       </p>
       <input name="phone" placeholder="טלפון" className={cls} dir="ltr" />
-      <input name="company" placeholder="חברה / עסק" className={cls} />
+      <div className="flex gap-2">
+        <input name="company" placeholder="חברה / עסק" className={cls} />
+        <input name="company_number" placeholder="מספר חברה" className={cls} />
+      </div>
       <input name="address" placeholder="כתובת" className={cls} />
       <textarea name="notes" rows={2} placeholder="הערות פנימיות" className={cls} />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

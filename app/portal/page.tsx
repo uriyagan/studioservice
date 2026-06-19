@@ -25,7 +25,7 @@ export default async function PortalPage() {
 
   const { data: myProfile } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, phone, company, address, notes")
+    .select("id, first_name, last_name, phone, company, company_number, address, notes")
     .eq("id", user!.id)
     .maybeSingle();
 
@@ -84,8 +84,16 @@ export default async function PortalPage() {
         last_name: myProfile?.last_name ?? null,
         phone: myProfile?.phone ?? null,
         company: myProfile?.company ?? null,
+        company_number: myProfile?.company_number ?? null,
         address: myProfile?.address ?? null,
         notes: null,
+      }}
+      billing={{
+        company: myProfile?.company ?? "",
+        company_number: myProfile?.company_number ?? "",
+        email: user!.email ?? "",
+        phone: myProfile?.phone ?? "",
+        address: myProfile?.address ?? "",
       }}
     />
   );

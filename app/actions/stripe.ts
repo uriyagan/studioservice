@@ -1,64 +1,87 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { stripe, siteUrl } from "@/lib/stripe";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { stripe } from "@/lib/stripe";
 
-// Start a Stripe Checkout for an hour top-up. Package is read from
-// the in-app hour_packages table. project_id, hours, package_name and
-// client_id travel in metadata so the webhook can add the hours,
-// record the purchase, and email the client after payment succeeds.
-export async function buyHourPackage(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("לא מחובר");
+// Create a PaymentIntent for an hour-package purchase. Card details are
+// collected in-page via the Stripe Payment Element; this returns the
+// client secret to confirm against. project/hours/client travel in
+// metadata so the webhook can add the hours after payment.
+export async function createPaymentIntent(input: {
+  packageId: string;
+  projectId: string;
+}): Promise<{ ok: boolean; clientSecret?: string; amount?: number; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "לא מחובר" };
 
-  const projectId = String(formData.get("project_id") ?? "");
-  const packageId = String(formData.get("package_id") ?? "");
-  if (!projectId || !packageId) throw new Error("חבילה לא תקינה");
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data: pkg } = await db
+      .from("hour_packages")
+      .select("*")
+      .eq("id", input.packageId)
+      .eq("active", true)
+      .maybeSingle();
+    if (!pkg) return { ok: false, error: "חבילה לא נמצאה" };
 
-  const db = supabase as unknown as { from: (t: string) => any };
-  const { data: pkg } = await db
-    .from("hour_packages")
-    .select("*")
-    .eq("id", packageId)
-    .eq("active", true)
-    .maybeSingle();
-  if (!pkg) throw new Error("חבילה לא נמצאה");
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", input.projectId)
+      .single();
+    if (!project) return { ok: false, error: "פרויקט לא נמצא" };
 
-  // Confirm the project belongs to the logged-in client (RLS-backed).
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("id", projectId)
-    .single();
-  if (!project) throw new Error("פרויקט לא נמצא");
-
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    customer_email: user.email ?? undefined,
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: "eur",
-          unit_amount: Math.round(Number(pkg.price_ils) * 100), // cents (EUR)
-          product_data: { name: pkg.name },
-        },
+    const pi = await stripe.paymentIntents.create({
+      amount: Math.round(Number(pkg.price_ils) * 100),
+      currency: "eur",
+      receipt_email: user.email ?? undefined,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        project_id: input.projectId,
+        hours: String(pkg.hours),
+        package_name: pkg.name,
+        client_id: user.id,
       },
-    ],
-    metadata: {
-      project_id: projectId,
-      hours: String(pkg.hours),
-      package_name: pkg.name,
-      client_id: user.id,
-    },
-    success_url: `${siteUrl()}/portal?purchase=success`,
-    cancel_url: `${siteUrl()}/portal?purchase=cancelled`,
-  });
+    });
 
-  if (!session.url) throw new Error("יצירת תשלום נכשלה");
-  redirect(session.url);
+    return { ok: true, clientSecret: pi.client_secret ?? undefined, amount: Number(pkg.price_ils) };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Save the billing details the client entered back onto their profile
+// (so they're pre-filled next time). Scoped to the caller's own row.
+export async function saveBillingDetails(input: {
+  company: string;
+  company_number: string;
+  phone: string;
+  address: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "לא מחובר" };
+
+    const admin = createAdminClient() as unknown as { from: (t: string) => any };
+    const { error } = await admin
+      .from("profiles")
+      .update({
+        company: input.company || null,
+        company_number: input.company_number || null,
+        phone: input.phone || null,
+        address: input.address || null,
+      })
+      .eq("id", user.id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }

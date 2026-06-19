@@ -5,11 +5,11 @@ import { HourPackageRow, Profile, ProjectStats, Purchase } from "@/lib/types";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatHours } from "@/lib/format";
-import { buyHourPackage } from "@/app/actions/stripe";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
+import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
 
-type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "address" | "notes">;
+type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
 
 interface CompletedTask {
   id: string;
@@ -33,12 +33,14 @@ export function PortalClient({
   profile,
   packages,
   purchases,
+  billing,
 }: {
   projects: ProjectStats[];
   completedByProject: Record<string, CompletedTask[]>;
   profile: MyProfile;
   packages: HourPackageRow[];
   purchases: Purchase[];
+  billing: BillingInfo;
 }) {
   const [tab, setTab] = useState<Tab>("status");
   const [projectId, setProjectId] = useState(projects[0].id);
@@ -97,7 +99,7 @@ export function PortalClient({
         </Card>
       )}
       {tab === "purchase" && (
-        <PurchaseView projectId={project.id} packages={packages} purchases={purchases} />
+        <PurchaseView projectId={project.id} packages={packages} purchases={purchases} billing={billing} />
       )}
       {tab === "details" && (
         <Card>
@@ -184,14 +186,28 @@ function PurchaseView({
   projectId,
   packages,
   purchases,
+  billing,
 }: {
   projectId: string;
   packages: HourPackageRow[];
   purchases: Purchase[];
+  billing: BillingInfo;
 }) {
+  const [selected, setSelected] = useState<HourPackageRow | null>(null);
+
   return (
     <div className="space-y-8">
-      {packages.length === 0 ? (
+      {selected ? (
+        <Card>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">תשלום עבור {selected.name}</h2>
+            <button onClick={() => setSelected(null)} className="text-sm text-slate-500 hover:text-slate-700">
+              ← בחירת חבילה אחרת
+            </button>
+          </div>
+          <PurchaseForm pkg={selected} projectId={projectId} billing={billing} onCancel={() => setSelected(null)} />
+        </Card>
+      ) : packages.length === 0 ? (
         <Card>
           <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
         </Card>
@@ -201,16 +217,12 @@ function PurchaseView({
             <Card key={pkg.id} className="flex flex-col">
               <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
               <p className="mt-2 text-3xl font-bold text-slate-900">
-€{Number(pkg.price_ils).toLocaleString("he-IL")}
+                €{Number(pkg.price_ils).toLocaleString("he-IL")}
               </p>
               <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
-              <form action={buyHourPackage} className="mt-4">
-                <input type="hidden" name="project_id" value={projectId} />
-                <input type="hidden" name="package_id" value={pkg.id} />
-                <Button type="submit" className="w-full">
-                  רכישה
-                </Button>
-              </form>
+              <Button type="button" className="mt-4 w-full" onClick={() => setSelected(pkg)}>
+                רכישה
+              </Button>
             </Card>
           ))}
         </div>

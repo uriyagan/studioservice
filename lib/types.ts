@@ -10,6 +10,7 @@ export interface Profile {
   last_name: string | null;
   phone: string | null;
   company: string | null;
+  company_number: string | null;
   address: string | null;
   notes: string | null;
   role: Role;

@@ -36,6 +36,7 @@ function detailFields(fd: FormData) {
     name: `${firstName} ${lastName}`.trim() || null,
     phone: String(fd.get("phone") ?? "").trim() || null,
     company: String(fd.get("company") ?? "").trim() || null,
+    company_number: String(fd.get("company_number") ?? "").trim() || null,
     address: String(fd.get("address") ?? "").trim() || null,
     notes: String(fd.get("notes") ?? "").trim() || null,
   };

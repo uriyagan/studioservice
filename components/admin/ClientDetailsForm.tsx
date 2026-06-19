@@ -12,7 +12,7 @@ export function ClientDetailsForm({
   profile,
   mode,
 }: {
-  profile: Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "address" | "notes">;
+  profile: Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
   mode: "admin" | "self";
 }) {
   const [msg, setMsg] = useState<string | null>(null);
@@ -42,7 +42,10 @@ export function ClientDetailsForm({
         <input name="last_name" defaultValue={profile.last_name ?? ""} placeholder="שם משפחה" className={cls} />
       </div>
       <input name="phone" defaultValue={profile.phone ?? ""} placeholder="טלפון" className={cls} dir="ltr" />
-      <input name="company" defaultValue={profile.company ?? ""} placeholder="חברה / עסק" className={cls} />
+      <div className="flex gap-2">
+        <input name="company" defaultValue={profile.company ?? ""} placeholder="חברה / עסק" className={cls} />
+        <input name="company_number" defaultValue={profile.company_number ?? ""} placeholder="מספר חברה" className={cls} />
+      </div>
       <input name="address" defaultValue={profile.address ?? ""} placeholder="כתובת" className={cls} />
       {mode === "admin" && (
         <textarea name="notes" defaultValue={profile.notes ?? ""} rows={2} placeholder="הערות פנימיות" className={cls} />
