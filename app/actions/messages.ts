@@ -6,6 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
 import { logMessage, replyAddress } from "@/lib/email/thread";
 
+// Append the download flag so the signed URL serves the file as an attachment
+// (forces a download) with its original name, instead of opening in the tab.
+const withDownload = (url: string, name: string) =>
+  url && url !== "#"
+    ? `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(name)}`
+    : url;
+
 export interface ThreadMessage {
   id: string;
   direction: "in" | "out";
@@ -51,7 +58,7 @@ async function enrichMessages(
   }
   const byMsg: Record<string, { name: string; url: string }[]> = {};
   for (const a of attRows) {
-    (byMsg[a.message_id] ??= []).push({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" });
+    (byMsg[a.message_id] ??= []).push({ name: a.file_name, url: withDownload(urlByPath[a.file_url] ?? "#", a.file_name) });
   }
 
   return rows.map((r) => ({
@@ -145,7 +152,7 @@ export async function getTaskAttachments(
     for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
       if (s.path) urlByPath[s.path] = s.signedUrl;
     }
-    return attRows.map((a) => ({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" }));
+    return attRows.map((a) => ({ name: a.file_name, url: withDownload(urlByPath[a.file_url] ?? "#", a.file_name) }));
   } catch {
     return [];
   }
@@ -189,7 +196,7 @@ export async function getMyTaskAttachments(
     for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
       if (s.path) urlByPath[s.path] = s.signedUrl;
     }
-    return attRows.map((a) => ({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" }));
+    return attRows.map((a) => ({ name: a.file_name, url: withDownload(urlByPath[a.file_url] ?? "#", a.file_name) }));
   } catch {
     return [];
   }

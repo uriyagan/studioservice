@@ -124,13 +124,12 @@ export function TaskCard({
                 <a
                   key={i}
                   href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  download={a.name}
                   className="inline-flex items-center gap-1.5 text-sm text-slate-700 hover:text-primary"
                 >
                   <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
                   <span className="truncate">{a.name}</span>
-                  <span className="text-xs text-primary">הורדה ↗</span>
+                  <span className="text-xs text-primary">הורדה</span>
                 </a>
               ))}
             </div>

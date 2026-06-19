@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link2, FileText } from "@/components/icons";
+import { Link2, FileText, Download } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
 import { getTaskAttachments } from "@/app/actions/messages";
 
@@ -28,6 +28,21 @@ export function TaskDetails({
   useEffect(() => {
     getTaskAttachments(ticketId).then(setFiles);
   }, [ticketId]);
+
+  // Trigger a download for each file (staggered so the browser doesn't block).
+  const downloadAll = () => {
+    (files ?? []).forEach((f, i) => {
+      setTimeout(() => {
+        const a = document.createElement("a");
+        a.href = f.url;
+        a.download = f.name;
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }, i * 400);
+    });
+  };
 
   const Section = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div>
@@ -74,17 +89,26 @@ export function TaskDetails({
             <p className="text-sm text-slate-400">טוען…</p>
           ) : files.length ? (
             <div className="space-y-1.5">
+              {files.length > 1 && (
+                <button
+                  onClick={downloadAll}
+                  className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                >
+                  <Download className="h-4 w-4" /> הורדת כל הקבצים ({files.length})
+                </button>
+              )}
               {files.map((f, i) => (
                 <a
                   key={i}
                   href={f.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  download={f.name}
                   className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-slate-400" />
                   <span className="truncate">{f.name}</span>
-                  <span className="ms-auto shrink-0 text-xs text-primary">הורדה ↗</span>
+                  <span className="ms-auto inline-flex shrink-0 items-center gap-1 text-xs text-primary">
+                    <Download className="h-3.5 w-3.5" /> הורדה
+                  </span>
                 </a>
               ))}
             </div>
