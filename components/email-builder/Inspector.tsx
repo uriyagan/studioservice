@@ -1,9 +1,49 @@
 "use client";
 
-import { Trash2, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { Trash2, Plus, UploadCloud } from "lucide-react";
 import type { EmailBlock } from "@/lib/email/types";
+import { uploadEmailImage } from "@/app/actions/email";
 import { ALIGN_OPTS, SOCIAL_NETWORKS, blockLabel } from "./blocks";
 import { Stepper } from "./Stepper";
+
+function ImageUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <div>
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          setBusy(true);
+          setErr(null);
+          const fd = new FormData();
+          fd.set("file", file);
+          const r = await uploadEmailImage(fd);
+          setBusy(false);
+          if (r.ok && r.url) onUploaded(r.url);
+          else setErr(r.error || "ההעלאה נכשלה");
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={busy}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+      >
+        <UploadCloud className="h-4 w-4" /> {busy ? "מעלה…" : "העלאת קובץ"}
+      </button>
+      {err && <p className="mt-1 text-[11px] text-red-600">{err}</p>}
+    </div>
+  );
+}
 
 const inputCls =
   "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
@@ -123,6 +163,7 @@ export function Inspector({
           <Field label="כתובת תמונה">
             <input value={s.src ?? ""} onChange={(e) => onChange({ src: e.target.value })} dir="ltr" className={inputCls} placeholder="https://..." />
           </Field>
+          <ImageUpload onUploaded={(url) => onChange({ src: url })} />
           <Field label="טקסט חלופי (alt)">
             <input value={s.alt ?? ""} onChange={(e) => onChange({ alt: e.target.value })} className={inputCls} />
           </Field>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { renderEmailHtml, renderTasksSummary, substituteTags } from "@/lib/email/render";
 import { sendEmail } from "@/lib/email/send";
 import {
@@ -50,6 +51,29 @@ const SAMPLE_VARS: Record<string, string> = {
   hours_added: "5",
   buy_url: "https://service.uriyaganor.com/portal",
 };
+
+// Upload an image to the public email-assets bucket; returns its
+// public URL for use as an image block's src.
+export async function uploadEmailImage(
+  formData: FormData
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    await assertAdmin();
+    const file = formData.get("file") as File | null;
+    if (!file) return { ok: false, error: "לא נבחר קובץ" };
+    const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const admin = createAdminClient();
+    const { error } = await admin.storage
+      .from("email-assets")
+      .upload(path, file, { contentType: file.type || undefined, upsert: false });
+    if (error) return { ok: false, error: error.message };
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return { ok: true, url: `${base}/storage/v1/object/public/email-assets/${path}` };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
 
 export async function saveEmailTemplate(input: {
   key: EmailKey;
