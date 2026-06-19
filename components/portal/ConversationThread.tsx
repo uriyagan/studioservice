@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useId } from "react";
 import { X, Paperclip, Link2, Loader2, FileText } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +46,7 @@ export function ConversationThread({
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const dropRef = useRef<HTMLInputElement>(null);
+  const fileInputId = useId();
 
   const reload = () => load(ticketId).then(setMessages);
   useEffect(() => {
@@ -211,6 +211,8 @@ export function ConversationThread({
 
         {/* Selected files */}
         {files.length > 0 && (
+          <>
+          <p className="text-xs font-medium text-slate-500">{files.length} קבצים מצורפים</p>
           <ul className="space-y-1.5">
             {files.map((f, i) => (
               <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
@@ -226,6 +228,7 @@ export function ConversationThread({
               </li>
             ))}
           </ul>
+          </>
         )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -249,16 +252,8 @@ export function ConversationThread({
           >
             <Link2 className="h-4 w-4" /> לינק
           </button>
-          <button
-            type="button"
-            onClick={() => dropRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-            title="צירוף קובץ"
-          >
-            <Paperclip className="h-4 w-4" /> קובץ
-          </button>
           <input
-            ref={dropRef}
+            id={fileInputId}
             type="file"
             multiple
             className="hidden"
@@ -267,6 +262,13 @@ export function ConversationThread({
               e.target.value = "";
             }}
           />
+          <label
+            htmlFor={fileInputId}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            title="צירוף קובץ"
+          >
+            <Paperclip className="h-4 w-4" /> קובץ
+          </label>
         </div>
       </div>
     </Modal>
