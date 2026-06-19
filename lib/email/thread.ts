@@ -28,21 +28,23 @@ export async function logMessage(msg: {
 }): Promise<string | null> {
   try {
     const db = createAdminClient() as unknown as { from: (t: string) => any };
-    const { data } = await db
-      .from("messages")
-      .insert({
-        ticket_id: msg.ticketId,
-        direction: msg.direction,
-        from_email: msg.fromEmail ?? null,
-        to_email: msg.toEmail ?? null,
-        subject: msg.subject ?? null,
-        body_text: msg.bodyText ?? null,
-        body_html: msg.bodyHtml ?? null,
-        links: msg.links ?? null,
-      })
-      .select("id")
-      .single();
-    return data?.id ?? null;
+    const base = {
+      ticket_id: msg.ticketId,
+      direction: msg.direction,
+      from_email: msg.fromEmail ?? null,
+      to_email: msg.toEmail ?? null,
+      subject: msg.subject ?? null,
+      body_text: msg.bodyText ?? null,
+      body_html: msg.bodyHtml ?? null,
+    };
+    // Include `links` only when present; retry without it if the column
+    // hasn't been added yet (migration not run) so sends never hard-fail.
+    const payload = msg.links != null ? { ...base, links: msg.links } : base;
+    let res = await db.from("messages").insert(payload).select("id").single();
+    if (res.error && msg.links != null) {
+      res = await db.from("messages").insert(base).select("id").single();
+    }
+    return res.data?.id ?? null;
   } catch (e) {
     console.error("logMessage failed:", (e as Error).message);
     return null;

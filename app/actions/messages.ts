@@ -171,12 +171,21 @@ export async function recordMessageAttachment(input: {
     }
 
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
-    const { error } = await adb.from("attachments").insert({
+    let { error } = await adb.from("attachments").insert({
       ticket_id: input.ticketId,
       message_id: input.messageId,
       file_url: input.path,
       file_name: input.fileName,
     });
+    // Fall back to a ticket-level attachment if the message_id column
+    // hasn't been added yet (migration not run).
+    if (error) {
+      ({ error } = await adb.from("attachments").insert({
+        ticket_id: input.ticketId,
+        file_url: input.path,
+        file_name: input.fileName,
+      }));
+    }
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e) {
