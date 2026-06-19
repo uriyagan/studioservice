@@ -347,6 +347,15 @@ export async function updateProject(
     if (!projectId) return { ok: false, error: "מזהה פרויקט חסר" };
     if (!name) return { ok: false, error: "שם פרויקט נדרש" };
 
+    // If the admin tops up hours here (not via Stripe), re-arm the usage
+    // threshold emails so 50%/depleted can fire again.
+    const { data: cur } = await supabase
+      .from("projects")
+      .select("total_hours_allocated")
+      .eq("id", projectId)
+      .maybeSingle();
+    const toppedUp = !isRetainer && totalHours > Number(cur?.total_hours_allocated ?? 0);
+
     const { error } = await supabase
       .from("projects")
       .update({
@@ -354,6 +363,7 @@ export async function updateProject(
         client_id: clientId,
         is_retainer: isRetainer,
         total_hours_allocated: totalHours,
+        ...(toppedUp ? { notified_half: false, notified_depleted: false } : {}),
       })
       .eq("id", projectId);
     if (error) return { ok: false, error: error.message };

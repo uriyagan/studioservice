@@ -38,12 +38,20 @@ async function enrichMessages(
     .select("message_id, file_url, file_name")
     .in("message_id", ids);
 
-  const byMsg: Record<string, { name: string; url: string }[]> = {};
-  for (const a of (atts ?? []) as { message_id: string; file_url: string; file_name: string }[]) {
+  const attRows = (atts ?? []) as { message_id: string; file_url: string; file_name: string }[];
+  // Sign all download URLs in one batch instead of one round-trip each.
+  const urlByPath: Record<string, string> = {};
+  if (attRows.length) {
     const { data: signed } = await adb.storage
       .from("attachments")
-      .createSignedUrl(a.file_url, 3600);
-    (byMsg[a.message_id] ??= []).push({ name: a.file_name, url: signed?.signedUrl ?? "#" });
+      .createSignedUrls(attRows.map((a) => a.file_url), 3600);
+    for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
+      if (s.path) urlByPath[s.path] = s.signedUrl;
+    }
+  }
+  const byMsg: Record<string, { name: string; url: string }[]> = {};
+  for (const a of attRows) {
+    (byMsg[a.message_id] ??= []).push({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" });
   }
 
   return rows.map((r) => ({
@@ -128,14 +136,16 @@ export async function getTaskAttachments(
       .is("message_id", null)
       .order("created_at", { ascending: true });
 
-    const out: { name: string; url: string }[] = [];
-    for (const a of (atts ?? []) as { file_url: string; file_name: string }[]) {
-      const { data: signed } = await adb.storage
-        .from("attachments")
-        .createSignedUrl(a.file_url, 3600);
-      out.push({ name: a.file_name, url: signed?.signedUrl ?? "#" });
+    const attRows = (atts ?? []) as { file_url: string; file_name: string }[];
+    if (!attRows.length) return [];
+    const { data: signed } = await adb.storage
+      .from("attachments")
+      .createSignedUrls(attRows.map((a) => a.file_url), 3600);
+    const urlByPath: Record<string, string> = {};
+    for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
+      if (s.path) urlByPath[s.path] = s.signedUrl;
     }
-    return out;
+    return attRows.map((a) => ({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" }));
   } catch {
     return [];
   }

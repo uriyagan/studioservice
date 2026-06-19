@@ -32,10 +32,13 @@ export async function createInvoicePayment(input: {
       .maybeSingle();
     if (!pkg) return { ok: false, error: "חבילה לא נמצאה" };
 
+    // Verify the caller owns this project (defense-in-depth beyond RLS;
+    // the webhook later credits hours by project_id with the service role).
     const { data: project } = await supabase
       .from("projects")
       .select("id")
       .eq("id", input.projectId)
+      .eq("client_id", user.id)
       .single();
     if (!project) return { ok: false, error: "פרויקט לא נמצא" };
 

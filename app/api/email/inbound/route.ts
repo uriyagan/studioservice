@@ -7,9 +7,10 @@ import { dispatchEmail } from "@/lib/email/dispatch";
 // reply+<ticketId>@... recipient back to a task, stores the message,
 // and pings the admins.
 export async function POST(req: NextRequest) {
-  // Shared-secret check (token in the webhook URL).
+  // Shared-secret check (token in the webhook URL). Fail closed: if the
+  // secret isn't configured, reject rather than accept forged inbound mail.
   const expected = process.env.INBOUND_WEBHOOK_TOKEN;
-  if (expected && req.nextUrl.searchParams.get("token") !== expected) {
+  if (!expected || req.nextUrl.searchParams.get("token") !== expected) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
