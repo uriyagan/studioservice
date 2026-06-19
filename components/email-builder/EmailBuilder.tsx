@@ -67,7 +67,6 @@ export function EmailBuilder({
   const [selected, setSelected] = useState<Loc | null>(null);
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [testTo, setTestTo] = useState("");
   const [showTags, setShowTags] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
@@ -121,8 +120,8 @@ export function EmailBuilder({
 
   const onSendTest = () =>
     startSend(async () => {
-      const r = await sendTestEmail({ to: testTo, subject, blocks, design });
-      flash(r.ok ? "מייל בדיקה נשלח ✓" : r.error || "שליחה נכשלה");
+      const r = await sendTestEmail({ subject, blocks, design });
+      flash(r.ok ? "מייל בדיקה נשלח אליך ✓" : r.error || "שליחה נכשלה");
     });
 
   const dActive = activeId ? parseDrag(activeId) : null;
@@ -171,7 +170,6 @@ export function EmailBuilder({
           <button onClick={() => setShowTags(true)} className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
             תגיות דינמיות
           </button>
-          <input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="אימייל לבדיקה" dir="ltr" className={`${inputCls} w-44`} />
           <Button variant="secondary" disabled={isSending} onClick={onSendTest}>
             {isSending ? "שולח..." : "שלח בדיקה"}
           </Button>

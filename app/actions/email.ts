@@ -124,15 +124,19 @@ export async function saveBrandSettings(input: BrandSettings): Promise<Result> {
 }
 
 // Render the *current* (possibly unsaved) builder content and send a
-// test to the given address, with sample merge-tag values.
+// test to the logged-in admin, with sample merge-tag values.
 export async function sendTestEmail(input: {
-  to: string;
   subject: string;
   blocks: EmailBlock[];
   design: EmailDesign;
 }): Promise<Result> {
   try {
     const supabase = await assertAdmin();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const to = user?.email;
+    if (!to) return { ok: false, error: "לא נמצא אימייל למשתמש המחובר" };
     const db = supabase as unknown as { from: (t: string) => any };
     const { data: s } = await db
       .from("email_settings")
@@ -146,8 +150,6 @@ export async function sendTestEmail(input: {
       logoUrl: s?.logo_url || DEFAULT_BRAND.logoUrl,
       brandColor: s?.brand_color || DEFAULT_BRAND.brandColor,
     };
-
-    if (!input.to) return { ok: false, error: "יש להזין כתובת למשלוח" };
 
     const rawVars = {
       tasks_summary: renderTasksSummary([
@@ -164,7 +166,7 @@ export async function sendTestEmail(input: {
     );
 
     await sendEmail({
-      to: input.to,
+      to,
       subject: `[בדיקה] ${subject}`,
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
