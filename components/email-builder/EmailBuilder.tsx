@@ -46,18 +46,28 @@ import { saveEmailTemplate, sendTestEmail, setEmailEnabled } from "@/app/actions
 const inputCls =
   "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
+type TemplateSource = {
+  key: EmailKey;
+  title: string;
+  subject: string;
+  blocks: EmailBlock[];
+  design: EmailDesign;
+};
+
 export function EmailBuilder({
   emailKey,
   initialSubject,
   initialBlocks,
   initialDesign,
   initialEnabled,
+  sources = [],
 }: {
   emailKey: EmailKey;
   initialSubject: string;
   initialBlocks: EmailBlock[];
   initialDesign: EmailDesign;
   initialEnabled: boolean;
+  sources?: TemplateSource[];
 }) {
   const router = useRouter();
   const [blocks, setBlocks] = useState<EmailBlock[]>(initialBlocks);
@@ -124,6 +134,21 @@ export function EmailBuilder({
       flash(r.ok ? "מייל בדיקה נשלח אליך ✓" : r.error || "שליחה נכשלה");
     });
 
+  // Copy blocks + design + subject from another already-designed template
+  // into the editor (not saved until the user clicks שמירה).
+  const onCopyFrom = (srcKey: string) => {
+    const src = sources.find((s) => s.key === srcKey);
+    if (!src) return;
+    if (!window.confirm(`להעתיק את כל העיצוב והתוכן מהתבנית "${src.title}"? הפעולה תחליף את התוכן הנוכחי (ניתן לבטל לפני שמירה).`))
+      return;
+    const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
+    setBlocks(clone(src.blocks));
+    setDesign(clone(src.design));
+    setSubject(src.subject);
+    setSelected(null);
+    flash(`הועתק מ"${src.title}" — בדקו ולחצו שמירה`);
+  };
+
   const dActive = activeId ? parseDrag(activeId) : null;
   const overlayLabel = dActive
     ? dActive.kind === "new"
@@ -152,6 +177,25 @@ export function EmailBuilder({
               </option>
             ))}
           </select>
+          {sources.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) onCopyFrom(e.target.value);
+                e.target.value = "";
+              }}
+              className={inputCls}
+              dir="rtl"
+              title="העתקת עיצוב ותוכן מתבנית קיימת"
+            >
+              <option value="">העתק מתבנית…</option>
+              {sources.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          )}
           <label className="flex items-center gap-1.5 text-sm text-slate-700">
             <input type="checkbox" checked={enabled} onChange={(e) => onToggleEnabled(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-primary" />
             פעיל
