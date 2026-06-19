@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logMessage, replyAddress, ticketIdFromAddress } from "@/lib/email/thread";
+import { cleanInboundReply, logMessage, replyAddress, ticketIdFromAddress } from "@/lib/email/thread";
 import { dispatchEmail } from "@/lib/email/dispatch";
 
 // Receives parsed inbound emails (Resend Inbound webhook). Matches the
@@ -80,6 +80,9 @@ export async function POST(req: NextRequest) {
       .replace(/\s+/g, " ")
       .trim() || null;
   }
+
+  // Strip quoted original, app footers, and signature — keep just the reply.
+  if (text) text = cleanInboundReply(text);
 
   try {
     await logMessage({

@@ -16,6 +16,68 @@ export function ticketIdFromAddress(to: string): string | null {
   return m ? m[1] : null;
 }
 
+// Strip the noise from an inbound email reply (quoted original, app footers
+// like "Sent with Spark", and the trailing signature block) so only the new
+// message text remains.
+export function cleanInboundReply(raw: string): string {
+  if (!raw) return raw;
+  const lines = raw.replace(/\r\n?/g, "\n").split("\n");
+
+  // 1) Cut from the first quoted-original / app-footer / signature-delimiter line.
+  const isBoundary = (l: string): boolean => {
+    const t = l.trim();
+    if (!t) return false;
+    if (t.startsWith(">")) return true;
+    if (/^-{2,}$/.test(t) || /^_{5,}/.test(t)) return true; // "--" sig / "____"
+    if (/^On\b.*\bwrote:?\s*$/i.test(t)) return true; // "On <date> ... wrote:"
+    if (/^-{2,}\s*Original Message/i.test(t)) return true;
+    if (/^From:\s/i.test(t) && l.includes("@")) return true; // forwarded header
+    if (/^בתאריך\b/.test(t)) return true; // Hebrew quote header
+    if (/כתב(ה)?\s*:?\s*$/.test(t) && /\d/.test(t)) return true;
+    if (/^Sent (with|from|via)\b/i.test(t)) return true; // Spark / "Sent from my iPhone"
+    if (/^Get Outlook for\b/i.test(t)) return true;
+    return false;
+  };
+  let cut = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    if (isBoundary(lines[i])) {
+      cut = i;
+      break;
+    }
+  }
+  const kept = lines.slice(0, cut);
+
+  // 2) Strip a trailing signature block (contact-info lines + the name above).
+  const isSig = (l: string): boolean => {
+    const t = l.trim();
+    if (!t) return false;
+    if (/\|/.test(t)) return true; // brand pipe line
+    if (/https?:\/\//i.test(t)) return true;
+    if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(t)) return true; // email
+    if (/\+?\d[\d().\s-]{6,}\d/.test(t)) return true; // phone
+    if (/\b(Founder|CEO|CTO|COO|Manager|Director|Ltd|Inc|LLC)\b/i.test(t)) return true;
+    if (/(מנכ.?ל|מייסד|מנהל|בע.?מ)/.test(t)) return true;
+    return false;
+  };
+  while (kept.length && !kept[kept.length - 1].trim()) kept.pop();
+  let removedSig = false;
+  while (kept.length && isSig(kept[kept.length - 1])) {
+    kept.pop();
+    removedSig = true;
+  }
+  if (removedSig) {
+    while (kept.length && !kept[kept.length - 1].trim()) kept.pop();
+    const last = (kept[kept.length - 1] || "").trim();
+    // A lone short line just above the signature is likely the sender's name.
+    if (kept.length > 1 && last && last.split(/\s+/).length <= 3 && !/[.!?,:;]$/.test(last)) {
+      kept.pop();
+    }
+  }
+
+  const result = kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return result || raw.trim();
+}
+
 export async function logMessage(msg: {
   ticketId: string;
   direction: "in" | "out";
