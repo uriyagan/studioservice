@@ -52,10 +52,10 @@ export function ProjectRow({
 
   return (
     <Card>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <Link
           href={`/admin/projects/${project.id}`}
-          className="max-w-[200px] shrink-0 truncate font-semibold text-slate-900 hover:text-primary hover:underline"
+          className="min-w-0 max-w-[120px] shrink truncate font-semibold text-slate-900 hover:text-primary hover:underline sm:max-w-[200px]"
         >
           {project.name}
         </Link>
