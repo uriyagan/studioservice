@@ -41,9 +41,12 @@ export function PortalClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
-        <p className="mt-1 text-sm text-slate-500">ברוכים הבאים לפורטל השירות</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
+          <p className="mt-1 text-sm text-slate-500">ברוכים הבאים לפורטל השירות</p>
+        </div>
+        <Button onClick={() => setTab("submit")}>+ משימה חדשה</Button>
       </div>
 
       {/* Tabs */}
