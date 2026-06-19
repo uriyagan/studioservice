@@ -218,6 +218,39 @@ export function TasksTable({
     if (editingId && !tasks.some((t) => t.id === editingId)) setEditingId(null);
   }, [tasks, editingId]);
 
+  // Shared action cluster (timer / thread / edit / delete) — used by the
+  // desktop table row and the mobile card.
+  const renderActions = (t: TaskRow) => (
+    <div className="flex items-center gap-1.5">
+      {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} showComplete={false} />}
+      <button
+        onClick={() => openThread(t)}
+        title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
+        className={`relative rounded p-2 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
+      >
+        <MessageSquare className="h-5 w-5" />
+        {isUnread(t) && (
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+        )}
+      </button>
+      <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+        <Pencil className="h-5 w-5" />
+      </button>
+      <form
+        action={delAction}
+        onSubmit={(e) => {
+          if (!confirm(`למחוק את המשימה "${t.title || "ללא שם"}"? הזמן שתועד יימחק לצמיתות.`)) e.preventDefault();
+        }}
+      >
+        <input type="hidden" name="id" value={t.id} />
+        <input type="hidden" name="project_id" value={t.project_id ?? ""} />
+        <button type="submit" title="מחק" className="rounded p-2 text-slate-500 hover:bg-red-50 hover:text-red-600">
+          <Trash2 className="h-5 w-5" />
+        </button>
+      </form>
+    </div>
+  );
+
   const Th = ({ k, label }: { k: ColKey; label: string }) => (
     <th className="cursor-pointer select-none px-3 py-2 text-right font-semibold text-slate-600 hover:text-slate-900" onClick={() => onSort(k)}>
       <span className="inline-flex items-center gap-1">
@@ -310,7 +343,58 @@ export function TasksTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile: stacked cards (the table is desktop-only). */}
+      <div className="divide-y divide-slate-100 md:hidden">
+        {paged.length === 0 && (
+          <p className="px-4 py-6 text-center text-slate-400">אין משימות.</p>
+        )}
+        {paged.map((t) => (
+          <div key={t.id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                onClick={() => setDetailsFor(t)}
+                className="min-w-0 break-words text-right font-semibold text-slate-800 hover:text-primary"
+              >
+                {t.title || <span className="italic text-slate-400">ללא שם</span>}
+              </button>
+              <span className="shrink-0">
+                <StatusBadge status={t.status} />
+              </span>
+            </div>
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+              {t.projects?.name && (
+                <div className="col-span-2 min-w-0">
+                  <dt className="text-xs text-slate-400">אתר</dt>
+                  <dd className="break-words text-slate-700" dir="ltr">{t.projects.name}</dd>
+                </div>
+              )}
+              {t.clientName && (
+                <div className="min-w-0">
+                  <dt className="text-xs text-slate-400">לקוח</dt>
+                  <dd className="truncate text-slate-700">{t.clientName}</dd>
+                </div>
+              )}
+              {t.assigneeName && (
+                <div className="min-w-0">
+                  <dt className="text-xs text-slate-400">אחראי</dt>
+                  <dd className="truncate text-slate-700">{t.assigneeName}</dd>
+                </div>
+              )}
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-400">תאריך בקשה</dt>
+                <dd className="text-slate-600">{formatDate(t.created_at)}</dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs text-slate-400">זמן ביצוע</dt>
+                <dd className="text-slate-700"><LiveTime logs={t.time_logs} /></dd>
+              </div>
+            </dl>
+            <div className="mt-3 border-t border-slate-100 pt-3">{renderActions(t)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[640px] text-sm" dir="rtl">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs">
             <tr>
@@ -356,34 +440,7 @@ export function TasksTable({
                   </td>
                 )}
                 <td className="px-3 py-2">
-                  <div className="flex items-center justify-end gap-1.5">
-                    {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} showComplete={false} />}
-                    <button
-                      onClick={() => openThread(t)}
-                      title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
-                      className={`relative rounded p-2 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
-                    >
-                      <MessageSquare className="h-5 w-5" />
-                      {isUnread(t) && (
-                        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-                      )}
-                    </button>
-                    <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-                      <Pencil className="h-5 w-5" />
-                    </button>
-                    <form
-                      action={delAction}
-                      onSubmit={(e) => {
-                        if (!confirm(`למחוק את המשימה "${t.title || "ללא שם"}"? הזמן שתועד יימחק לצמיתות.`)) e.preventDefault();
-                      }}
-                    >
-                      <input type="hidden" name="id" value={t.id} />
-                      <input type="hidden" name="project_id" value={t.project_id ?? ""} />
-                      <button type="submit" title="מחק" className="rounded p-2 text-slate-500 hover:bg-red-50 hover:text-red-600">
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </form>
-                  </div>
+                  <div className="flex justify-end">{renderActions(t)}</div>
                 </td>
               </tr>
             ))}

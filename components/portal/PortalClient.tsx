@@ -160,41 +160,67 @@ function StatusView({
         {completedTasks.length === 0 ? (
           <p className="text-sm text-slate-400">עדיין אין משימות.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
-            <table className="w-full min-w-[480px] text-start text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-4 py-2.5 text-start font-medium">כותרת משימה</th>
-                  <th className="px-4 py-2.5 text-start font-medium">סטטוס</th>
-                  <th className="px-4 py-2.5 text-start font-medium">זמן ביצוע</th>
-                  <th className="px-4 py-2.5 text-start font-medium">שיחה</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {completedTasks.map((t) => (
-                  <tr
-                    key={t.id}
-                    onClick={() => setOpenTask(t)}
-                    className="cursor-pointer hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3 font-medium text-slate-800">{t.title}</td>
-                    <td className="px-4 py-3">
+          <>
+            {/* Mobile: tap-to-open cards */}
+            <div className="space-y-2 sm:hidden">
+              {completedTasks.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setOpenTask(t)}
+                  className="flex w-full flex-col gap-2 rounded-lg border border-slate-200 p-3 text-start hover:bg-slate-50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 break-words font-medium text-slate-800">{t.title}</span>
+                    <span className="shrink-0">
                       <StatusBadge status={t.status} />
-                    </td>
-                    <td className="px-4 py-3 font-mono tabular-nums text-slate-700">
-                      {formatDurationShort(t.seconds)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-primary hover:underline">
-                        <MessageSquare className="h-4 w-4" />
-                        צפייה בשיחה
-                      </span>
-                    </td>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="font-mono tabular-nums text-slate-600">{formatDurationShort(t.seconds)}</span>
+                    <span className="inline-flex items-center gap-1.5 text-primary">
+                      <MessageSquare className="h-4 w-4" /> צפייה בשיחה
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="hidden overflow-x-auto rounded-lg border border-slate-200 sm:block">
+              <table className="w-full min-w-[480px] text-start text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="px-4 py-2.5 text-start font-medium">כותרת משימה</th>
+                    <th className="px-4 py-2.5 text-start font-medium">סטטוס</th>
+                    <th className="px-4 py-2.5 text-start font-medium">זמן ביצוע</th>
+                    <th className="px-4 py-2.5 text-start font-medium">שיחה</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {completedTasks.map((t) => (
+                    <tr
+                      key={t.id}
+                      onClick={() => setOpenTask(t)}
+                      className="cursor-pointer hover:bg-slate-50"
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-800">{t.title}</td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={t.status} />
+                      </td>
+                      <td className="px-4 py-3 font-mono tabular-nums text-slate-700">
+                        {formatDurationShort(t.seconds)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 text-primary hover:underline">
+                          <MessageSquare className="h-4 w-4" />
+                          צפייה בשיחה
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
 
@@ -320,40 +346,65 @@ function PurchaseView({
         {purchases.length === 0 ? (
           <p className="text-sm text-slate-400">עדיין אין רכישות.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px] text-sm" dir="rtl">
-              <thead className="border-b border-slate-100 text-xs text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 text-right font-semibold">תאריך</th>
-                  <th className="px-3 py-2 text-right font-semibold">חבילה</th>
-                  <th className="px-3 py-2 text-right font-semibold">שעות</th>
-                  <th className="px-3 py-2 text-right font-semibold">סכום</th>
-                  <th className="px-3 py-2 text-left font-semibold">חשבונית</th>
-                </tr>
-              </thead>
-              <tbody>
-                {purchases.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-50">
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-500">{formatDate(p.created_at)}</td>
-                    <td className="px-3 py-2 text-slate-800">{p.package_name || "—"}</td>
-                    <td className="px-3 py-2 text-slate-700">{p.hours ?? "—"}</td>
-                    <td className="px-3 py-2 text-slate-700">
+          <>
+            {/* Mobile: cards */}
+            <div className="space-y-2 sm:hidden">
+              {purchases.map((p) => (
+                <div key={p.id} className="rounded-lg border border-slate-200 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 break-words font-medium text-slate-800">{p.package_name || "—"}</span>
+                    <span className="shrink-0 whitespace-nowrap text-xs text-slate-400">{formatDate(p.created_at)}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
+                    <span>{p.hours != null ? `${p.hours} שעות` : "—"}</span>
+                    <span className="font-medium text-slate-800">
                       {p.amount_ils != null ? `€${Number(p.amount_ils).toLocaleString("he-IL")}` : "—"}
-                    </td>
-                    <td className="px-3 py-2 text-left">
-                      {p.receipt_url ? (
-                        <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                          <Download className="h-3.5 w-3.5" /> הורדה
-                        </a>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
+                    </span>
+                    {p.receipt_url && (
+                      <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="ms-auto inline-flex items-center gap-1 text-primary hover:underline">
+                        <Download className="h-3.5 w-3.5" /> הורדה
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop: table */}
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[480px] text-sm" dir="rtl">
+                <thead className="border-b border-slate-100 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 text-right font-semibold">תאריך</th>
+                    <th className="px-3 py-2 text-right font-semibold">חבילה</th>
+                    <th className="px-3 py-2 text-right font-semibold">שעות</th>
+                    <th className="px-3 py-2 text-right font-semibold">סכום</th>
+                    <th className="px-3 py-2 text-left font-semibold">חשבונית</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {purchases.map((p) => (
+                    <tr key={p.id} className="border-b border-slate-50">
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-500">{formatDate(p.created_at)}</td>
+                      <td className="px-3 py-2 text-slate-800">{p.package_name || "—"}</td>
+                      <td className="px-3 py-2 text-slate-700">{p.hours ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {p.amount_ils != null ? `€${Number(p.amount_ils).toLocaleString("he-IL")}` : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-left">
+                        {p.receipt_url ? (
+                          <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <Download className="h-3.5 w-3.5" /> הורדה
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         </Card>
       </div>

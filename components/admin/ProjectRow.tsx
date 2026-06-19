@@ -52,15 +52,15 @@ export function ProjectRow({
 
   return (
     <Card>
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <Link
           href={`/admin/projects/${project.id}`}
-          className="min-w-0 max-w-[120px] shrink truncate font-semibold text-slate-900 hover:text-primary hover:underline sm:max-w-[200px]"
+          className="min-w-0 break-words font-semibold text-slate-900 hover:text-primary hover:underline sm:max-w-[200px] sm:shrink sm:truncate"
         >
           {project.name}
         </Link>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 sm:flex-1">
           {project.is_retainer ? (
             <span className="inline-block max-w-full truncate rounded-full bg-primary-light px-2.5 py-1 align-middle text-xs font-medium text-primary">
               ריטיינר · שעות בלתי מוגבלות
