@@ -13,17 +13,23 @@ interface ProjectOption {
   name: string;
 }
 
+type Upload = {
+  id: string;
+  file: File;
+  status: "uploading" | "done" | "error";
+  path?: string;
+};
+
 function fmtSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// New-task form. Creates the ticket, then uploads each file
-// directly to Storage via a signed URL (no size/count limit on the
-// server) and records its metadata.
-// Used both in the client portal (mode "client") and the admin area
-// (mode "admin", with a project picker). Same fields either way.
+// New-task form. Files upload to Storage the moment they're chosen (so submit
+// is instant); on submit the ticket is created and the already-uploaded files
+// are linked to it. Used in the client portal (mode "client") and the admin
+// area (mode "admin", with a project picker).
 export function TicketForm({
   projectId,
   projects,
@@ -38,32 +44,63 @@ export function TicketForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputId = useId();
-  const [files, setFiles] = useState<File[]>([]);
+  const [uploads, setUploads] = useState<Upload[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [links, setLinks] = useState<string[]>([""]);
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
-  const [phase, setPhase] = useState<string>("");
-  const [fileStates, setFileStates] = useState<Record<number, "pending" | "up" | "done" | "err">>({});
   const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const setUp = (id: string, patch: Partial<Upload>) =>
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+
+  // Upload one file's bytes immediately to Storage.
+  const uploadOne = async (u: Upload) => {
+    try {
+      const r = await fetch("/api/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: u.file.name }),
+      });
+      if (!r.ok) throw new Error("signed url failed");
+      const { path, token } = await r.json();
+      const supabase = createClient();
+      const { error: upErr } = await supabase.storage
+        .from("attachments")
+        .uploadToSignedUrl(path, token, u.file);
+      if (upErr) throw upErr;
+      setUp(u.id, { status: "done", path });
+    } catch {
+      setUp(u.id, { status: "error" });
+    }
+  };
+
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
+    const fresh: Upload[] = Array.from(list).map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      status: "uploading",
+    }));
+    setUploads((prev) => [...prev, ...fresh]);
+    fresh.forEach(uploadOne);
   };
-  const removeFile = (i: number) => setFiles((prev) => prev.filter((_, idx) => idx !== i));
+  const removeFile = (id: string) => setUploads((prev) => prev.filter((u) => u.id !== id));
+  const retry = (u: Upload) => {
+    setUp(u.id, { status: "uploading" });
+    uploadOne(u);
+  };
+
+  const uploading = uploads.some((u) => u.status === "uploading");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setStatus("saving");
 
-    // Create the ticket once; on a retry (after a partial upload failure) we
-    // reuse it instead of creating a duplicate.
+    // Create the ticket once (reuse on retry to avoid a duplicate).
     let ticketId = createdTicketId;
     if (!ticketId) {
-      setPhase("יוצר משימה...");
-      setFileStates(Object.fromEntries(files.map((_, i) => [i, "pending" as const])));
       const formData = new FormData(e.currentTarget);
       if (projectId) formData.set("project_id", projectId);
       const prev = { ok: false } as { ok: boolean; error?: string };
@@ -74,58 +111,31 @@ export function TicketForm({
       if (!res.ok || !res.ticketId) {
         setError(res.error ?? "שגיאה ביצירת המשימה");
         setStatus("idle");
-        setPhase("");
         return;
       }
       ticketId = res.ticketId;
       setCreatedTicketId(ticketId);
     }
 
-    // Upload attachments one by one (skip ones already uploaded), with feedback.
-    const supabase = createClient();
+    // Link the already-uploaded files to the ticket (no re-upload).
     let failed = 0;
-    for (let i = 0; i < files.length; i++) {
-      if (fileStates[i] === "done") continue;
-      const file = files[i];
-      setPhase(`מעלה קבצים (${i + 1}/${files.length})...`);
-      setFileStates((s) => ({ ...s, [i]: "up" }));
-      try {
-        const r = await fetch("/api/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketId, fileName: file.name }),
-        });
-        if (!r.ok) throw new Error("signed url failed");
-        const { path, token } = await r.json();
-
-        const { error: upErr } = await supabase.storage
-          .from("attachments")
-          .uploadToSignedUrl(path, token, file);
-        if (upErr) throw upErr;
-
-        const rec = await attachFile(ticketId, path, file.name);
-        if (!rec.ok) throw new Error(rec.error || "record failed");
-        setFileStates((s) => ({ ...s, [i]: "done" }));
-      } catch {
+    for (const u of uploads) {
+      if (u.status === "done" && u.path) {
+        const rec = await attachFile(ticketId, u.path, u.file.name);
+        if (!rec.ok) failed++;
+      } else if (u.status === "error") {
         failed++;
-        setFileStates((s) => ({ ...s, [i]: "err" }));
       }
     }
-
     if (failed > 0) {
-      // Task is created; keep the failed files visible so the user can retry
-      // (a re-submit reuses the same ticket and re-uploads only the failed ones).
-      setError(`המשימה נוצרה, אך העלאת ${failed} קבצים נכשלה. אפשר לנסות שוב.`);
+      setError(`המשימה נוצרה, אך ${failed} קבצים לא צורפו. נסה/י שוב או הסר/י אותם.`);
       setStatus("idle");
-      setPhase("");
       router.refresh();
       return;
     }
 
     setStatus("done");
-    setPhase("");
-    setFiles([]);
-    setFileStates({});
+    setUploads([]);
     setLinks([""]);
     setCreatedTicketId(null);
     formRef.current?.reset();
@@ -155,23 +165,17 @@ export function TicketForm({
       )}
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          כותרת
-        </label>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">כותרת</label>
         <input name="title" required className={inputCls} />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          טקסט חופשי
-        </label>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">טקסט חופשי</label>
         <textarea name="description" rows={4} className={inputCls} />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          לינקים רלוונטיים
-        </label>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">לינקים רלוונטיים</label>
         <div className="space-y-2">
           {links.map((val, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -207,9 +211,7 @@ export function TicketForm({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          קבצים מצורפים
-        </label>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">קבצים מצורפים</label>
         <input
           id={fileInputId}
           type="file"
@@ -238,62 +240,51 @@ export function TicketForm({
         >
           <UploadCloud className="h-7 w-7 text-slate-400" />
           <p className="text-sm font-medium text-slate-700">גרור קבצים לכאן או לחץ להעלאה</p>
-          <p className="text-xs text-slate-400">כל סוג קובץ, כל גודל, כמה קבצים שתרצה</p>
+          <p className="text-xs text-slate-400">הקבצים מתחילים לעלות מיד עם הבחירה</p>
         </label>
 
-        {files.length > 0 && (
+        {uploads.length > 0 && (
           <>
-            <p className="mt-3 text-xs font-medium text-slate-500">
-              {files.length} קבצים נבחרו
-            </p>
+            <p className="mt-3 text-xs font-medium text-slate-500">{uploads.length} קבצים</p>
             <ul className="mt-1.5 space-y-1.5">
-              {files.map((f, i) => {
-                const st = fileStates[i];
-                return (
-                  <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <span className="flex min-w-0 items-center gap-2">
-                      {st === "up" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />}
-                      {st === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
-                      {st === "err" && <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />}
-                      <span className="min-w-0 truncate text-slate-700">{f.name}</span>
+              {uploads.map((u) => (
+                <li key={u.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {u.status === "uploading" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />}
+                    {u.status === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+                    {u.status === "error" && <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />}
+                    <span className="min-w-0 truncate text-slate-700">{u.file.name}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-slate-400">
+                      {u.status === "uploading" ? "מעלה…" : u.status === "done" ? "הועלה ✓" : "נכשל"}
                     </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs text-slate-400">
-                        {st === "up" ? "מעלה..." : st === "done" ? "הועלה ✓" : st === "err" ? "נכשל" : fmtSize(f.size)}
-                      </span>
-                      {status !== "saving" && (
-                        <button
-                          type="button"
-                          onClick={() => removeFile(i)}
-                          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                          title="הסר"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
+                    {u.status === "error" && (
+                      <button type="button" onClick={() => retry(u)} className="text-xs text-primary hover:underline">
+                        נסה שוב
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeFile(u.id)}
+                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                      title="הסר"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </span>
+                </li>
+              ))}
             </ul>
           </>
         )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {status === "done" && !error && (
-        <p className="text-sm text-emerald-600">המשימה נוצרה בהצלחה ✓</p>
-      )}
+      {status === "done" && !error && <p className="text-sm text-emerald-600">המשימה נוצרה בהצלחה ✓</p>}
 
-      <Button type="submit" disabled={status === "saving"} className="w-full">
-        {status === "saving" ? (
-          <span className="flex items-center justify-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {phase || "שולח..."}
-          </span>
-        ) : (
-          "יצירת משימה"
-        )}
+      <Button type="submit" disabled={status === "saving" || uploading} className="w-full">
+        {status === "saving" ? "יוצר משימה…" : uploading ? "ממתין לסיום העלאת קבצים…" : "יצירת משימה"}
       </Button>
     </form>
   );

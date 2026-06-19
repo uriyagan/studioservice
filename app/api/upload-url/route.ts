@@ -13,13 +13,14 @@ export async function POST(req: NextRequest) {
   if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
   const { ticketId, fileName } = await req.json();
-  if (!ticketId || !fileName) {
-    return new NextResponse("Missing ticketId or fileName", { status: 400 });
+  if (!fileName) {
+    return new NextResponse("Missing fileName", { status: 400 });
   }
 
-  // Namespace by user + ticket; sanitise the filename.
+  // Namespace by user; files may be uploaded before a ticket/message exists
+  // (the attachment row links them afterwards), so ticketId is optional.
   const safeName = String(fileName).replace(/[^\w.\-]/g, "_");
-  const path = `${user.id}/${ticketId}/${Date.now()}-${safeName}`;
+  const path = `${user.id}/${ticketId || "pending"}/${Date.now()}-${safeName}`;
 
   const { data, error } = await supabase.storage
     .from("attachments")
