@@ -19,6 +19,11 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "t", type: "text", text: "קיבלנו בקשה לאיפוס הסיסמה שלך. לחצו על הכפתור כדי לבחור סיסמה חדשה. אם לא ביקשת זאת, אפשר להתעלם מהמייל.", align: "right", size: "15" },
     { id: "b", type: "button", text: "איפוס סיסמה", href: "{reset_link}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "16" },
   ],
+  ticket_reply: [
+    { id: "ctx", type: "text", text: "<b>בנוגע למשימה:</b> {task_title}", align: "right", size: "14" },
+    { id: "div", type: "divider", color: "#e5e7eb" },
+    { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
+  ],
 };
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
@@ -29,6 +34,7 @@ const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   package_depleted: "החבילה הסתיימה",
   hours_added: "נוספו שעות לחבילה",
   new_task_admin: "פנייה חדשה מלקוח",
+  ticket_reply: "בנוגע למשימה: {task_title}",
 };
 
 type Vars = Record<string, string | number | undefined>;

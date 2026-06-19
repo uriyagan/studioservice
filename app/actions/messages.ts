@@ -2,10 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { renderEmailHtml } from "@/lib/email/render";
-import { sendEmail } from "@/lib/email/send";
+import { dispatchEmail } from "@/lib/email/dispatch";
 import { logMessage, replyAddress } from "@/lib/email/thread";
-import { DEFAULT_BRAND } from "@/lib/email/types";
 
 export interface ThreadMessage {
   id: string;
@@ -73,41 +71,35 @@ export async function sendTicketReply(
       .maybeSingle();
     if (!client?.email) return { ok: false, error: "ללקוח אין אימייל" };
 
-    const { data: s } = await db.from("email_settings").select("*").eq("id", true).maybeSingle();
-    const brand = {
-      fromName: s?.from_name || DEFAULT_BRAND.fromName,
-      fromEmail: s?.from_email || DEFAULT_BRAND.fromEmail,
-      logoUrl: s?.logo_url || DEFAULT_BRAND.logoUrl,
-      brandColor: s?.brand_color || DEFAULT_BRAND.brandColor,
-    };
-
     const taskTitle = ticket?.title || "המשימה שלך";
-    const subject = `Re: ${taskTitle}`;
-    const html = renderEmailHtml({
-      blocks: [
-        { id: "ctx", type: "text", text: `<b>בנוגע למשימה:</b> ${taskTitle}`, align: "right", size: "14" },
-        { id: "div", type: "divider", color: "#e5e7eb" },
-        { id: "m", type: "text", text: message.replace(/\n/g, "<br>"), align: "right", size: "15" },
-      ],
-      brand,
-    });
+    const fullName = (client.name || "").trim();
+    const [firstName, ...rest] = fullName.split(/\s+/);
 
-    await sendEmail({
-      to: client.email,
-      subject,
-      html,
-      from: `${brand.fromName} <${brand.fromEmail}>`,
-      replyTo: replyAddress(ticketId),
-    });
+    // Render via the designable "התכתבות עם לקוח" template; the admin's
+    // typed text is injected (as HTML) through the {message} merge tag.
+    await dispatchEmail(
+      "ticket_reply",
+      client.email,
+      {
+        task_title: taskTitle,
+        project_name: ticket?.projects?.name || "",
+        full_name: fullName,
+        first_name: firstName || fullName,
+        last_name: rest.join(" "),
+        client_name: fullName,
+      },
+      { message: message.replace(/\n/g, "<br>") },
+      { replyTo: replyAddress(ticketId) }
+    );
 
+    // Log the outbound message with the raw text so the admin thread stays readable.
     await logMessage({
       ticketId,
       direction: "out",
-      fromEmail: brand.fromEmail,
+      fromEmail: null,
       toEmail: client.email,
-      subject,
+      subject: `בנוגע למשימה: ${taskTitle}`,
       bodyText: message,
-      bodyHtml: html,
     });
 
     revalidatePath("/admin");
