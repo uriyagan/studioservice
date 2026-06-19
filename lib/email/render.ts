@@ -2,7 +2,7 @@
 // merge tags. Used for both the live "send test" and real automated
 // sends. (In the donkey app this lived in PHP; here it's all in JS.)
 
-import { DEFAULT_BRAND, DEFAULT_DESIGN, fontStack } from "./types";
+import { DEFAULT_DESIGN, fontStack } from "./types";
 import type { BrandSettings, EmailBlock, EmailDesign } from "./types";
 
 function esc(v: unknown): string {
@@ -147,14 +147,10 @@ export function renderEmailHtml(opts: {
   brand?: Partial<BrandSettings>;
 }): string {
   const d: EmailDesign = { ...DEFAULT_DESIGN, ...(opts.design ?? {}) };
-  const brand: BrandSettings = { ...DEFAULT_BRAND, ...(opts.brand ?? {}) };
   const body = (opts.blocks ?? []).map((b) => renderBlock(b, d)).join("");
 
-  const header = brand.logoUrl
-    ? `<div style="text-align:center;margin-bottom:20px;"><img src="${esc(
-        brand.logoUrl
-      )}" alt="${esc(brand.fromName)}" style="height:36px;width:auto;border:0;" /></div>`
-    : "";
+  // No auto-injected header/logo — emails contain only the blocks the
+  // template explicitly defines.
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he"><head><meta charset="utf-8" />
@@ -169,7 +165,6 @@ export function renderEmailHtml(opts: {
 <div dir="rtl" style="padding:${d.innerPadding}px;text-align:${d.contentAlign};font-family:${fontStack(
     d.fontFamily
   )};font-size:${d.fontSize}px;color:${d.textColor};">
-${header}
 ${body}
 </div>
 </div>
