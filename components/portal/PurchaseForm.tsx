@@ -70,36 +70,45 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
     setBusy(true);
     setError(null);
 
-    await saveBillingDetails({
-      company: b.company,
-      company_number: b.company_number,
-      phone: b.phone,
-      address: b.address,
-    });
+    try {
+      await saveBillingDetails({
+        company: b.company,
+        company_number: b.company_number,
+        phone: b.phone,
+        address: b.address,
+      });
 
-    const { error: payErr, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-      confirmParams: {
-        return_url: `${window.location.origin}/portal?purchase=success`,
-        payment_method_data: {
-          billing_details: {
-            name: b.company || undefined,
-            email: b.email || undefined,
-            phone: b.phone || undefined,
+      const { error: payErr, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: `${window.location.origin}/portal?purchase=success`,
+          payment_method_data: {
+            billing_details: {
+              name: b.company || undefined,
+              email: b.email || undefined,
+              phone: b.phone || undefined,
+              address: {
+                line1: b.address || undefined,
+                country: "CY",
+              },
+            },
           },
         },
-      },
-    });
+      });
 
-    setBusy(false);
-    if (payErr) {
-      setError(payErr.message ?? "התשלום נכשל");
-      return;
-    }
-    if (paymentIntent && paymentIntent.status === "succeeded") {
-      setDone(true);
-      router.refresh();
+      if (payErr) {
+        setError(payErr.message ?? "התשלום נכשל");
+      } else if (paymentIntent && paymentIntent.status === "succeeded") {
+        setDone(true);
+        router.refresh();
+      } else if (paymentIntent) {
+        setError("התשלום בעיבוד — נעדכן ברגע שיאושר.");
+      }
+    } catch (err) {
+      setError((err as Error).message || "שגיאה בתשלום");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -120,7 +129,7 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <input value={b.company} onChange={(e) => setB({ ...b, company: e.target.value })} placeholder="שם חברה" className={cls} />
+        <input value={b.company} onChange={(e) => setB({ ...b, company: e.target.value })} placeholder="השם שיופיע על החשבונית" className={cls} />
         <input value={b.company_number} onChange={(e) => setB({ ...b, company_number: e.target.value })} placeholder="מספר חברה" className={cls} />
         <input value={b.email} onChange={(e) => setB({ ...b, email: e.target.value })} placeholder="אימייל" className={cls} dir="ltr" type="email" />
         <input value={b.phone} onChange={(e) => setB({ ...b, phone: e.target.value })} placeholder="טלפון" className={cls} dir="ltr" />
