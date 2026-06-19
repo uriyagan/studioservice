@@ -112,6 +112,37 @@ export async function getMyTicketMessages(ticketId: string): Promise<ThreadMessa
   }
 }
 
+// Admin: the files a client attached when submitting the task itself
+// (message_id is null → not part of the email thread). Returns signed URLs.
+export async function getTaskAttachments(
+  ticketId: string
+): Promise<{ name: string; url: string }[]> {
+  try {
+    await assertAdmin();
+    const adb = createAdminClient() as unknown as {
+      from: (t: string) => any;
+      storage: { from: (b: string) => any };
+    };
+    const { data: atts } = await adb
+      .from("attachments")
+      .select("file_url, file_name")
+      .eq("ticket_id", ticketId)
+      .is("message_id", null)
+      .order("created_at", { ascending: true });
+
+    const out: { name: string; url: string }[] = [];
+    for (const a of (atts ?? []) as { file_url: string; file_name: string }[]) {
+      const { data: signed } = await adb.storage
+        .from("attachments")
+        .createSignedUrl(a.file_url, 3600);
+      out.push({ name: a.file_name, url: signed?.signedUrl ?? "#" });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 // Record an uploaded file against a message. Verifies the caller may
 // access the ticket (admin or owning client), then inserts via service role.
 export async function recordMessageAttachment(input: {

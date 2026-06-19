@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
 import { TaskThread } from "@/components/admin/TaskThread";
+import { TaskDetails } from "@/components/admin/TaskDetails";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TimerControl } from "@/components/TimerControl";
@@ -71,6 +72,7 @@ export function TasksTable({
   const [showCols, setShowCols] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [threadFor, setThreadFor] = useState<TaskRow | null>(null);
+  const [detailsFor, setDetailsFor] = useState<TaskRow | null>(null);
 
   const [editState, editAction] = useActionState(updateTicket, initial);
   const [, delAction] = useActionState(deleteTicket, initial);
@@ -190,7 +192,13 @@ export function TasksTable({
               <tr key={t.id} className="border-b border-slate-50 align-middle hover:bg-slate-50/50">
                 {visible.title && (
                   <td className="px-3 py-2 font-medium text-slate-800">
-                    {t.title || <span className="italic text-slate-400">ללא שם</span>}
+                    <button
+                      onClick={() => setDetailsFor(t)}
+                      title="צפייה בפרטי המשימה"
+                      className="text-right hover:text-primary hover:underline"
+                    >
+                      {t.title || <span className="italic text-slate-400">ללא שם</span>}
+                    </button>
                   </td>
                 )}
                 {visible.client && <td className="px-3 py-2 text-slate-600">{t.clientName || "—"}</td>}
@@ -249,6 +257,15 @@ export function TasksTable({
 
       {threadFor && (
         <TaskThread ticketId={threadFor.id} title={threadFor.title ?? ""} onClose={() => setThreadFor(null)} />
+      )}
+      {detailsFor && (
+        <TaskDetails
+          ticketId={detailsFor.id}
+          title={detailsFor.title ?? ""}
+          description={detailsFor.description}
+          link={detailsFor.link}
+          onClose={() => setDetailsFor(null)}
+        />
       )}
     </div>
   );
