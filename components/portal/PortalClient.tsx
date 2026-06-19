@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { HourPackageRow, Profile, ProjectStats, Purchase } from "@/lib/types";
+import { HourPackageRow, Profile, ProjectStats, Purchase, TicketStatus } from "@/lib/types";
 import { Card, StatCard } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatHours } from "@/lib/format";
 import { TicketForm } from "@/components/portal/TicketForm";
@@ -14,6 +15,7 @@ type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "co
 interface CompletedTask {
   id: string;
   title: string;
+  status: TicketStatus;
   completed_at: string | null;
   seconds: number;
 }
@@ -148,31 +150,25 @@ function StatusView({
       )}
 
       <Card>
-        <h2 className="mb-4 font-semibold text-slate-900">משימות שהושלמו</h2>
+        <h2 className="mb-4 font-semibold text-slate-900">משימות</h2>
         {completedTasks.length === 0 ? (
-          <p className="text-sm text-slate-400">עדיין אין משימות שהושלמו.</p>
+          <p className="text-sm text-slate-400">עדיין אין משימות.</p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full text-start text-sm">
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="px-4 py-2.5 text-start font-medium">משימה</th>
-                  <th className="px-4 py-2.5 text-start font-medium">
-                    תאריך השלמה
-                  </th>
-                  <th className="px-4 py-2.5 text-start font-medium">
-                    זמן כולל
-                  </th>
+                  <th className="px-4 py-2.5 text-start font-medium">כותרת משימה</th>
+                  <th className="px-4 py-2.5 text-start font-medium">סטטוס</th>
+                  <th className="px-4 py-2.5 text-start font-medium">זמן ביצוע</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {completedTasks.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {t.title}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {formatDate(t.completed_at)}
+                    <td className="px-4 py-3 font-medium text-slate-800">{t.title}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={t.status} />
                     </td>
                     <td className="px-4 py-3 font-mono tabular-nums text-slate-700">
                       {formatDuration(t.seconds)}

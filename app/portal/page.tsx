@@ -10,9 +10,10 @@ interface TicketRow extends Ticket {
   time_logs: TimeLog[];
 }
 
-export interface CompletedTask {
+export interface PortalTask {
   id: string;
   title: string;
+  status: Ticket["status"];
   completed_at: string | null;
   seconds: number;
 }
@@ -52,13 +53,13 @@ export default async function PortalPage() {
     .in("project_id", projectIds)
     .order("created_at", { ascending: false });
 
-  const completedByProject: Record<string, CompletedTask[]> = {};
-  for (const id of projectIds) completedByProject[id] = [];
+  const tasksByProject: Record<string, PortalTask[]> = {};
+  for (const id of projectIds) tasksByProject[id] = [];
   for (const t of (tickets ?? []) as (TicketRow & { project_id: string })[]) {
-    if (t.status !== "completed") continue;
-    (completedByProject[t.project_id] ??= []).push({
+    (tasksByProject[t.project_id] ??= []).push({
       id: t.id,
       title: t.title ?? "—",
+      status: t.status,
       completed_at: t.completed_at,
       seconds: sumLoggedSeconds(t.time_logs),
     });
@@ -75,7 +76,7 @@ export default async function PortalPage() {
   return (
     <PortalClient
       projects={projects}
-      completedByProject={completedByProject}
+      completedByProject={tasksByProject}
       packages={packages}
       purchases={purchases}
       profile={{
