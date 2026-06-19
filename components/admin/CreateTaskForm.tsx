@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TicketForm } from "@/components/portal/TicketForm";
+import { PlusCircle } from "@/components/icons";
 
 interface ProjectOption {
   id: string;
@@ -23,8 +24,8 @@ export function CreateTaskForm({
 
   return (
     <>
-      <Button variant="primary" onClick={() => setOpen(true)}>
-        + משימה חדשה
+      <Button variant="primary" onClick={() => setOpen(true)} className="flex items-center gap-1.5">
+        <PlusCircle className="h-4 w-4" /> משימה חדשה
       </Button>
       {open && (
         <Modal title="משימה חדשה" onClose={() => setOpen(false)}>

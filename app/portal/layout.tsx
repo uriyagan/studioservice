@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
+import { LogOut } from "@/components/icons";
 
 export default async function PortalLayout({
   children,
@@ -32,9 +33,9 @@ export default async function PortalLayout({
             <form action={logout}>
               <button
                 type="submit"
-                className="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               >
-                יציאה
+                <LogOut className="h-4 w-4" /> יציאה
               </button>
             </form>
           </div>

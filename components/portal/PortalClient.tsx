@@ -10,7 +10,7 @@ import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
 import { ClientTaskThread } from "@/components/portal/ClientTaskThread";
-import { MessageSquare } from "@/components/icons";
+import { MessageSquare, Download, History, ArrowLeft, PlusCircle } from "@/components/icons";
 
 type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
 
@@ -74,7 +74,9 @@ export function PortalClient({
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
           )}
         </div>
-        <Button onClick={() => setTab("submit")}>+ משימה חדשה</Button>
+        <Button onClick={() => setTab("submit")} className="flex items-center gap-1.5">
+          <PlusCircle className="h-4 w-4" /> משימה חדשה
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -276,8 +278,8 @@ function PurchaseView({
           <Card>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-semibold text-slate-900">תשלום עבור {selected.name}</h3>
-              <button onClick={() => setSelected(null)} className="text-sm text-slate-500 hover:text-slate-700">
-                ← בחירת חבילה אחרת
+              <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+                <ArrowLeft className="h-3.5 w-3.5" /> בחירת חבילה אחרת
               </button>
             </div>
             <PurchaseForm pkg={selected} projectId={projectId} billing={billing} onCancel={() => setSelected(null)} />
@@ -305,7 +307,9 @@ function PurchaseView({
       </div>
 
       <div>
-        <h2 className="mb-3 font-semibold text-slate-900">היסטוריית רכישות</h2>
+        <h2 className="mb-3 flex items-center gap-1.5 font-semibold text-slate-900">
+          <History className="h-4 w-4 text-slate-500" /> היסטוריית רכישות
+        </h2>
         <Card>
         {purchases.length === 0 ? (
           <p className="text-sm text-slate-400">עדיין אין רכישות.</p>
@@ -332,8 +336,8 @@ function PurchaseView({
                     </td>
                     <td className="px-3 py-2 text-left">
                       {p.receipt_url ? (
-                        <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          הורדה ↗
+                        <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                          <Download className="h-3.5 w-3.5" /> הורדה
                         </a>
                       ) : (
                         <span className="text-slate-400">—</span>

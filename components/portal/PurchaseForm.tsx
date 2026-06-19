@@ -6,6 +6,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { getStripe } from "@/lib/stripe-client";
 import { createInvoicePayment } from "@/app/actions/stripe";
 import { Button } from "@/components/ui/Button";
+import { ArrowLeft } from "@/components/icons";
 import { HourPackageRow } from "@/lib/types";
 
 const cls =
@@ -176,8 +177,8 @@ function PayStep({
         <Button type="submit" disabled={busy || !stripe} className="flex-1">
           {busy ? "מעבד…" : `תשלום €${Number(pkg.price_ils).toLocaleString("he-IL")}`}
         </Button>
-        <Button type="button" variant="ghost" onClick={onBack}>
-          ← חזרה לפרטים
+        <Button type="button" variant="ghost" onClick={onBack} className="flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" /> חזרה לפרטים
         </Button>
       </div>
     </form>
