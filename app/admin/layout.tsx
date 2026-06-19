@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin/clients", label: "לקוחות" },
   { href: "/admin/users", label: "משתמשים" },
   { href: "/admin/emails", label: "מיילים" },
+  { href: "/admin/billing", label: "תשלומים" },
 ];
 
 export default async function AdminLayout({

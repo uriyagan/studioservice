@@ -65,6 +65,26 @@ export interface Attachment {
   created_at: string;
 }
 
+export interface HourPackageRow {
+  id: string;
+  name: string;
+  hours: number;
+  price_ils: number;
+  active: boolean;
+  sort: number;
+}
+
+export interface Purchase {
+  id: string;
+  package_name: string | null;
+  hours: number | null;
+  amount_ils: number | null;
+  currency: string | null;
+  receipt_url: string | null;
+  status: string | null;
+  created_at: string;
+}
+
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   pending: "ממתין",
   in_progress: "בטיפול",

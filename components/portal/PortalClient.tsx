@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Profile, ProjectStats } from "@/lib/types";
+import { HourPackageRow, Profile, ProjectStats, Purchase } from "@/lib/types";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatHours } from "@/lib/format";
-import { HOUR_PACKAGES } from "@/lib/packages";
 import { buyHourPackage } from "@/app/actions/stripe";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
@@ -32,10 +31,14 @@ export function PortalClient({
   project,
   completedTasks,
   profile,
+  packages,
+  purchases,
 }: {
   project: ProjectStats;
   completedTasks: CompletedTask[];
   profile: MyProfile;
+  packages: HourPackageRow[];
+  purchases: Purchase[];
 }) {
   const [tab, setTab] = useState<Tab>("status");
 
@@ -75,7 +78,9 @@ export function PortalClient({
           <TicketForm projectId={project.id} />
         </Card>
       )}
-      {tab === "purchase" && <PurchaseView projectId={project.id} />}
+      {tab === "purchase" && (
+        <PurchaseView projectId={project.id} packages={packages} purchases={purchases} />
+      )}
       {tab === "details" && (
         <Card>
           <h2 className="mb-4 font-semibold text-slate-900">הפרטים שלי</h2>
@@ -157,25 +162,83 @@ function StatusView({
   );
 }
 
-function PurchaseView({ projectId }: { projectId: string }) {
+function PurchaseView({
+  projectId,
+  packages,
+  purchases,
+}: {
+  projectId: string;
+  packages: HourPackageRow[];
+  purchases: Purchase[];
+}) {
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      {HOUR_PACKAGES.map((pkg) => (
-        <Card key={pkg.id} className="flex flex-col">
-          <h3 className="font-semibold text-slate-900">{pkg.label}</h3>
-          <p className="mt-2 text-3xl font-bold text-slate-900">
-            ₪{pkg.priceIls.toLocaleString("he-IL")}
-          </p>
-          <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
-          <form action={buyHourPackage} className="mt-4">
-            <input type="hidden" name="project_id" value={projectId} />
-            <input type="hidden" name="package_id" value={pkg.id} />
-            <Button type="submit" className="w-full">
-              רכישה
-            </Button>
-          </form>
+    <div className="space-y-8">
+      {packages.length === 0 ? (
+        <Card>
+          <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
         </Card>
-      ))}
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {packages.map((pkg) => (
+            <Card key={pkg.id} className="flex flex-col">
+              <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
+              <p className="mt-2 text-3xl font-bold text-slate-900">
+                ₪{Number(pkg.price_ils).toLocaleString("he-IL")}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
+              <form action={buyHourPackage} className="mt-4">
+                <input type="hidden" name="project_id" value={projectId} />
+                <input type="hidden" name="package_id" value={pkg.id} />
+                <Button type="submit" className="w-full">
+                  רכישה
+                </Button>
+              </form>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Card>
+        <h2 className="mb-4 font-semibold text-slate-900">היסטוריית רכישות</h2>
+        {purchases.length === 0 ? (
+          <p className="text-sm text-slate-400">עדיין אין רכישות.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" dir="rtl">
+              <thead className="border-b border-slate-100 text-xs text-slate-500">
+                <tr>
+                  <th className="px-3 py-2 text-right font-semibold">תאריך</th>
+                  <th className="px-3 py-2 text-right font-semibold">חבילה</th>
+                  <th className="px-3 py-2 text-right font-semibold">שעות</th>
+                  <th className="px-3 py-2 text-right font-semibold">סכום</th>
+                  <th className="px-3 py-2 text-left font-semibold">חשבונית</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map((p) => (
+                  <tr key={p.id} className="border-b border-slate-50">
+                    <td className="px-3 py-2 whitespace-nowrap text-slate-500">{formatDate(p.created_at)}</td>
+                    <td className="px-3 py-2 text-slate-800">{p.package_name || "—"}</td>
+                    <td className="px-3 py-2 text-slate-700">{p.hours ?? "—"}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {p.amount_ils != null ? `₪${Number(p.amount_ils).toLocaleString("he-IL")}` : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-left">
+                      {p.receipt_url ? (
+                        <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          הורדה ↗
+                        </a>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

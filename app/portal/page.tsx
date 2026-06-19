@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { PortalClient } from "@/components/portal/PortalClient";
-import { ProjectStats, Ticket, TimeLog } from "@/lib/types";
+import { HourPackageRow, ProjectStats, Purchase, Ticket, TimeLog } from "@/lib/types";
 import { sumLoggedSeconds } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -58,10 +58,20 @@ export default async function PortalPage() {
       seconds: sumLoggedSeconds(t.time_logs),
     }));
 
+  const db = supabase as unknown as { from: (t: string) => any };
+  const [{ data: pkgs }, { data: purchaseRows }] = await Promise.all([
+    db.from("hour_packages").select("*").eq("active", true).order("sort"),
+    db.from("purchases").select("*").eq("client_id", user!.id).order("created_at", { ascending: false }),
+  ]);
+  const packages = (pkgs ?? []) as HourPackageRow[];
+  const purchases = (purchaseRows ?? []) as Purchase[];
+
   return (
     <PortalClient
       project={proj}
       completedTasks={completed}
+      packages={packages}
+      purchases={purchases}
       profile={{
         id: user!.id,
         first_name: myProfile?.first_name ?? null,
