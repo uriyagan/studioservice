@@ -38,21 +38,20 @@ export default async function AdminDashboard() {
     ((profiles ?? []) as Pick<Profile, "id" | "name">[]).map((p) => [p.id, p.name ?? ""])
   );
 
-  // Mark tasks whose latest message is from the client (awaiting our reply).
+  // Latest inbound (client) message time per ticket — the client compares it
+  // against a locally-stored "read at" so the dot clears once it's opened.
   const ticketIds = ((tickets ?? []) as RawTicket[]).map((t) => t.id);
-  const awaitingReply = new Set<string>();
+  const lastInbound: Record<string, string> = {};
   if (ticketIds.length) {
     const db = supabase as unknown as { from: (t: string) => any };
     const { data: msgs } = await db
       .from("messages")
-      .select("ticket_id, direction, created_at")
+      .select("ticket_id, created_at")
       .in("ticket_id", ticketIds)
+      .eq("direction", "in")
       .order("created_at", { ascending: false });
-    const seen = new Set<string>();
-    for (const m of (msgs ?? []) as { ticket_id: string; direction: string }[]) {
-      if (seen.has(m.ticket_id)) continue; // first row per ticket = latest
-      seen.add(m.ticket_id);
-      if (m.direction === "in") awaitingReply.add(m.ticket_id);
+    for (const m of (msgs ?? []) as { ticket_id: string; created_at: string }[]) {
+      if (!(m.ticket_id in lastInbound)) lastInbound[m.ticket_id] = m.created_at;
     }
   }
 
@@ -60,7 +59,7 @@ export default async function AdminDashboard() {
     ...t,
     projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
     clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
-    unread: awaitingReply.has(t.id),
+    lastInboundAt: lastInbound[t.id] ?? null,
   }));
 
   return (

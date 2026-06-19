@@ -21,8 +21,10 @@ export interface TaskRow extends Ticket {
   projects: { name: string; is_retainer: boolean } | null;
   time_logs: TimeLog[];
   clientName: string;
-  unread?: boolean;
+  lastInboundAt?: string | null;
 }
+
+const READS_KEY = "studio.threadReads";
 
 type ColKey = "title" | "client" | "status" | "created" | "exec";
 const COLUMNS: { key: ColKey; label: string }[] = [
@@ -74,6 +76,31 @@ export function TasksTable({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [threadFor, setThreadFor] = useState<TaskRow | null>(null);
   const [detailsFor, setDetailsFor] = useState<TaskRow | null>(null);
+  const [reads, setReads] = useState<Record<string, number>>({});
+
+  // Per-browser "read at" per thread — the unread dot clears on open.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(READS_KEY);
+      if (raw) setReads(JSON.parse(raw));
+    } catch {
+      /* noop */
+    }
+  }, []);
+  const isUnread = (t: TaskRow) =>
+    !!t.lastInboundAt && new Date(t.lastInboundAt).getTime() > (reads[t.id] ?? 0);
+  const openThread = (t: TaskRow) => {
+    setThreadFor(t);
+    setReads((prev) => {
+      const nv = { ...prev, [t.id]: Date.now() };
+      try {
+        localStorage.setItem(READS_KEY, JSON.stringify(nv));
+      } catch {
+        /* noop */
+      }
+      return nv;
+    });
+  };
 
   const [editState, editAction] = useActionState(updateTicket, initial);
   const [, delAction] = useActionState(deleteTicket, initial);
@@ -218,12 +245,12 @@ export function TasksTable({
                   <div className="flex items-center justify-end gap-2">
                     {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} />}
                     <button
-                      onClick={() => setThreadFor(t)}
-                      title={t.unread ? "הודעה חדשה מהלקוח" : "שיחה"}
-                      className={`relative rounded p-1 hover:bg-slate-100 ${t.unread ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
+                      onClick={() => openThread(t)}
+                      title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
+                      className={`relative rounded p-1 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
                     >
                       <MessageSquare className="h-4 w-4" />
-                      {t.unread && (
+                      {isUnread(t) && (
                         <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
                       )}
                     </button>
