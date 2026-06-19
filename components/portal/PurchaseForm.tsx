@@ -88,10 +88,6 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
               name: b.company || undefined,
               email: b.email || undefined,
               phone: b.phone || undefined,
-              address: {
-                line1: b.address || undefined,
-                country: "CY",
-              },
             },
           },
         },
@@ -137,7 +133,7 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
       </div>
 
       <div className="rounded-lg border border-slate-200 p-3">
-        <PaymentElement options={{ fields: { billingDetails: { name: "never", email: "never", phone: "never", address: "never" } } }} />
+        <PaymentElement options={{ fields: { billingDetails: { name: "never", email: "never", phone: "never" } } }} />
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
