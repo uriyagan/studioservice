@@ -81,9 +81,14 @@ export async function sendTicketReply(
       brandColor: s?.brand_color || DEFAULT_BRAND.brandColor,
     };
 
-    const subject = `Re: ${ticket?.title || "המשימה שלך"}`;
+    const taskTitle = ticket?.title || "המשימה שלך";
+    const subject = `Re: ${taskTitle}`;
     const html = renderEmailHtml({
-      blocks: [{ id: "m", type: "text", text: message.replace(/\n/g, "<br>"), align: "right", size: "15" }],
+      blocks: [
+        { id: "ctx", type: "text", text: `<b>בנוגע למשימה:</b> ${taskTitle}`, align: "right", size: "14" },
+        { id: "div", type: "divider", color: "#e5e7eb" },
+        { id: "m", type: "text", text: message.replace(/\n/g, "<br>"), align: "right", size: "15" },
+      ],
       brand,
     });
 

@@ -148,12 +148,16 @@ export async function notifyAdminsNewTask(ticketId: string) {
 
     let projectName = "";
     let clientName = "";
+    let firstName = "";
+    let lastName = "";
     if (ticket.project_id) {
       const { data: proj } = await d.from("projects").select("name, client_id").eq("id", ticket.project_id).maybeSingle();
       projectName = proj?.name ?? "";
       if (proj?.client_id) {
-        const { data: c } = await d.from("profiles").select("name").eq("id", proj.client_id).maybeSingle();
+        const { data: c } = await d.from("profiles").select("name, first_name, last_name").eq("id", proj.client_id).maybeSingle();
         clientName = c?.name ?? "";
+        firstName = c?.first_name ?? "";
+        lastName = c?.last_name ?? "";
       }
     }
 
@@ -166,6 +170,9 @@ export async function notifyAdminsNewTask(ticketId: string) {
       emails,
       {
         client_name: clientName,
+        full_name: clientName,
+        first_name: firstName,
+        last_name: lastName,
         project_name: projectName,
         task_title: ticket.title ?? "",
         task_description: ticket.description ?? "",

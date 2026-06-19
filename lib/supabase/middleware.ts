@@ -72,5 +72,19 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  // Admins don't use the client portal — send them to the admin area.
+  if (user && path.startsWith("/portal")) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    if (profile?.role === "admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return response;
 }
