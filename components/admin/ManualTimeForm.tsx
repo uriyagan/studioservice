@@ -6,6 +6,7 @@ import { useActionState } from "react";
 import { addManualTime } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { History } from "@/components/icons";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -48,8 +49,8 @@ export function ManualTimeForm({
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        ⏱ הזנת זמן ידנית
+      <Button variant="secondary" onClick={() => setOpen(true)} className="flex items-center gap-1.5">
+        <History className="h-4 w-4" /> הזנת זמן ידנית
       </Button>
       {open && (
         <Modal title="הזנת זמן ידנית" onClose={() => setOpen(false)}>

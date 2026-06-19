@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Profile, ProjectStats } from "@/lib/types";
 import { formatHours } from "@/lib/format";
+import { Pencil, Trash2, X, Loader2 } from "@/components/icons";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -27,8 +28,8 @@ function SaveBtn() {
 function DeleteBtn() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant="ghost" disabled={pending} className="text-red-600 hover:bg-red-50">
-      {pending ? "מוחק..." : "מחק"}
+    <Button type="submit" variant="ghost" disabled={pending} title="מחק" className="p-2 text-red-600 hover:bg-red-50">
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
     </Button>
   );
 }
@@ -77,12 +78,14 @@ export function ProjectRow({
         <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
+            title={editing ? "ביטול" : "עריכה"}
+            className="p-2"
             onClick={() => {
               setIsRetainer(project.is_retainer);
               setEditing((v) => !v);
             }}
           >
-            {editing ? "ביטול" : "עריכה"}
+            {editing ? <X className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           </Button>
           <form
             action={delAction}
