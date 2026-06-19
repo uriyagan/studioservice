@@ -183,7 +183,7 @@ function PurchaseView({
             <Card key={pkg.id} className="flex flex-col">
               <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
               <p className="mt-2 text-3xl font-bold text-slate-900">
-                ₪{Number(pkg.price_ils).toLocaleString("he-IL")}
+€{Number(pkg.price_ils).toLocaleString("he-IL")}
               </p>
               <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
               <form action={buyHourPackage} className="mt-4">
@@ -221,7 +221,7 @@ function PurchaseView({
                     <td className="px-3 py-2 text-slate-800">{p.package_name || "—"}</td>
                     <td className="px-3 py-2 text-slate-700">{p.hours ?? "—"}</td>
                     <td className="px-3 py-2 text-slate-700">
-                      {p.amount_ils != null ? `₪${Number(p.amount_ils).toLocaleString("he-IL")}` : "—"}
+                      {p.amount_ils != null ? `€${Number(p.amount_ils).toLocaleString("he-IL")}` : "—"}
                     </td>
                     <td className="px-3 py-2 text-left">
                       {p.receipt_url ? (

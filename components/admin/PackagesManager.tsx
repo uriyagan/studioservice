@@ -35,7 +35,7 @@ function PackageForm({ pkg }: { pkg?: HourPackageRow }) {
         <input name="hours" type="number" step="0.5" min="0" defaultValue={pkg?.hours ?? ""} className={cls} required />
       </div>
       <div>
-        <label className="mb-1 block text-xs text-slate-500">מחיר (₪)</label>
+        <label className="mb-1 block text-xs text-slate-500">מחיר (€)</label>
         <input name="price_ils" type="number" step="1" min="0" defaultValue={pkg?.price_ils ?? ""} className={cls} required />
       </div>
       <div>

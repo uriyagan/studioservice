@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
         package_name: packageName ?? null,
         hours,
         amount_ils: session.amount_total ? Number(session.amount_total) / 100 : null,
-        currency: session.currency ?? "ils",
+        currency: session.currency ?? "eur",
         stripe_session_id: session.id,
         stripe_payment_intent: session.payment_intent ? String(session.payment_intent) : null,
         receipt_url: receiptUrl,

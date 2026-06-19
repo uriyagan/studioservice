@@ -43,8 +43,8 @@ export async function buyHourPackage(formData: FormData) {
       {
         quantity: 1,
         price_data: {
-          currency: "ils",
-          unit_amount: Math.round(Number(pkg.price_ils) * 100), // agorot
+          currency: "eur",
+          unit_amount: Math.round(Number(pkg.price_ils) * 100), // cents (EUR)
           product_data: { name: pkg.name },
         },
       },
