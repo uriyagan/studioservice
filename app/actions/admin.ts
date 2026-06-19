@@ -185,25 +185,31 @@ export async function deleteClientUser(
 export async function createAdminTicket(
   _prev: ActionResult,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult & { ticketId?: string }> {
   try {
     const supabase = await assertAdmin();
     const projectId = String(formData.get("project_id") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
+    const link =
+      formData
+        .getAll("link")
+        .map((l) => String(l).trim())
+        .filter(Boolean)
+        .join("\n") || null;
 
     if (!projectId) return { ok: false, error: "יש לבחור פרויקט" };
     if (!title) return { ok: false, error: "כותרת נדרשת" };
 
-    const { error } = await supabase.from("tickets").insert({
-      project_id: projectId,
-      title,
-      description: description || null,
-    });
+    const { data, error } = await supabase
+      .from("tickets")
+      .insert({ project_id: projectId, title, description: description || null, link })
+      .select("id")
+      .single();
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin");
-    return { ok: true };
+    return { ok: true, ticketId: data.id };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

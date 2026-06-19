@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { UploadCloud, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTicket, attachFile } from "@/app/actions/tickets";
+import { createAdminTicket } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
+
+interface ProjectOption {
+  id: string;
+  name: string;
+}
 
 function fmtSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -16,7 +22,19 @@ function fmtSize(bytes: number): string {
 // New-task form. Creates the ticket, then uploads each file
 // directly to Storage via a signed URL (no size/count limit on the
 // server) and records its metadata.
-export function TicketForm({ projectId }: { projectId: string }) {
+// Used both in the client portal (mode "client") and the admin area
+// (mode "admin", with a project picker). Same fields either way.
+export function TicketForm({
+  projectId,
+  projects,
+  mode = "client",
+  onDone,
+}: {
+  projectId?: string;
+  projects?: ProjectOption[];
+  mode?: "client" | "admin";
+  onDone?: () => void;
+}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,12 +56,13 @@ export function TicketForm({ projectId }: { projectId: string }) {
     setStatus("saving");
 
     const formData = new FormData(e.currentTarget);
-    formData.set("project_id", projectId);
+    if (projectId) formData.set("project_id", projectId);
 
-    const res = await createTicket(
-      { ok: false } as { ok: boolean; error?: string },
-      formData
-    );
+    const prev = { ok: false } as { ok: boolean; error?: string };
+    const res =
+      mode === "admin"
+        ? await createAdminTicket(prev, formData)
+        : await createTicket(prev, formData);
     if (!res.ok || !res.ticketId) {
       setError(res.error ?? "שגיאה ביצירת המשימה");
       setStatus("idle");
@@ -79,6 +98,7 @@ export function TicketForm({ projectId }: { projectId: string }) {
     setLinks([""]);
     formRef.current?.reset();
     router.refresh();
+    onDone?.();
   }
 
   const inputCls =
@@ -86,6 +106,22 @@ export function TicketForm({ projectId }: { projectId: string }) {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+      {mode === "admin" && projects && !projectId && (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">פרויקט</label>
+          <select name="project_id" required className={inputCls} defaultValue="">
+            <option value="" disabled>
+              בחר פרויקט...
+            </option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">
           כותרת

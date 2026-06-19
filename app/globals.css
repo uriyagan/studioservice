@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scale the whole UI by 125% — Tailwind sizing is rem-based, so a
+   larger root font-size enlarges fonts, spacing and icons together. */
+html {
+  font-size: 125%;
+}
+
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
