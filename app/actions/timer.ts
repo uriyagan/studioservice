@@ -96,8 +96,11 @@ export async function completeTask(ticketId: string) {
     .eq("id", ticketId);
   if (error) throw new Error(error.message);
 
-  const { notifyTaskCompleted } = await import("@/lib/email/notifications");
-  await notifyTaskCompleted(ticketId);
+  const { runAfter } = await import("@/lib/after");
+  await runAfter(async () => {
+    const { notifyTaskCompleted } = await import("@/lib/email/notifications");
+    await notifyTaskCompleted(ticketId);
+  });
 
   revalidatePath("/admin");
 }

@@ -45,8 +45,11 @@ export async function createTicket(
       .single();
     if (error) return { ok: false, error: error.message };
 
-    const { notifyAdminsNewTask } = await import("@/lib/email/notifications");
-    await notifyAdminsNewTask(data.id);
+    const { runAfter } = await import("@/lib/after");
+    await runAfter(async () => {
+      const { notifyAdminsNewTask } = await import("@/lib/email/notifications");
+      await notifyAdminsNewTask(data.id);
+    });
 
     revalidatePath("/portal");
     revalidatePath("/admin");

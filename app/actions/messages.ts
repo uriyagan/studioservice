@@ -258,19 +258,22 @@ export async function sendClientReply(
         ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
         : "";
       const messageHtml = (message ? message.replace(/\n/g, "<br>") : "") + linksHtml;
-      await dispatchEmail(
-        "client_reply_admin",
-        emails,
-        {
-          task_title: taskTitle,
-          project_name: ticket.projects?.name || "",
-          client_name: clientName,
-          full_name: clientName,
-          task_url: "https://service.uriyaganor.com/admin",
-          site_url: "https://service.uriyaganor.com",
-        },
-        { message: messageHtml },
-        { replyTo: replyAddress(ticketId) }
+      const { runAfter } = await import("@/lib/after");
+      await runAfter(() =>
+        dispatchEmail(
+          "client_reply_admin",
+          emails,
+          {
+            task_title: taskTitle,
+            project_name: ticket.projects?.name || "",
+            client_name: clientName,
+            full_name: clientName,
+            task_url: "https://service.uriyaganor.com/admin",
+            site_url: "https://service.uriyaganor.com",
+          },
+          { message: messageHtml },
+          { replyTo: replyAddress(ticketId) }
+        )
       );
     }
 
@@ -328,19 +331,24 @@ export async function sendTicketReply(
 
     // Render via the designable "התכתבות עם לקוח" template; the admin's
     // typed text is injected (as HTML) through the {message} merge tag.
-    await dispatchEmail(
-      "ticket_reply",
-      client.email,
-      {
-        task_title: taskTitle,
-        project_name: ticket?.projects?.name || "",
-        full_name: fullName,
-        first_name: firstName || fullName,
-        last_name: rest.join(" "),
-        client_name: fullName,
-      },
-      { message: messageHtml },
-      { replyTo: replyAddress(ticketId) }
+    // Sent in the background so the reply UI returns immediately.
+    const clientEmail = client.email;
+    const { runAfter } = await import("@/lib/after");
+    await runAfter(() =>
+      dispatchEmail(
+        "ticket_reply",
+        clientEmail,
+        {
+          task_title: taskTitle,
+          project_name: ticket?.projects?.name || "",
+          full_name: fullName,
+          first_name: firstName || fullName,
+          last_name: rest.join(" "),
+          client_name: fullName,
+        },
+        { message: messageHtml },
+        { replyTo: replyAddress(ticketId) }
+      )
     );
 
     // Log the outbound message with the raw text so the admin thread stays readable.
