@@ -35,7 +35,7 @@ export function CreateClientForm() {
 
   return (
     <form ref={ref} action={action} className="space-y-3">
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <input name="first_name" placeholder="שם פרטי" className={cls} />
         <input name="last_name" placeholder="שם משפחה" className={cls} />
       </div>
@@ -45,7 +45,7 @@ export function CreateClientForm() {
         השאר ריק — הלקוח יקבל מייל עם קישור ליצירת סיסמה בעצמו.
       </p>
       <input name="phone" placeholder="טלפון" className={cls} dir="ltr" />
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <input name="company" placeholder="חברה / עסק" className={cls} />
         <input name="company_number" placeholder="מספר חברה" className={cls} />
       </div>

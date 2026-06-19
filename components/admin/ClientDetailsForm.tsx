@@ -37,12 +37,12 @@ export function ClientDetailsForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       {mode === "admin" && <input type="hidden" name="id" value={profile.id} />}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <input name="first_name" defaultValue={profile.first_name ?? ""} placeholder="שם פרטי" className={cls} />
         <input name="last_name" defaultValue={profile.last_name ?? ""} placeholder="שם משפחה" className={cls} />
       </div>
       <input name="phone" defaultValue={profile.phone ?? ""} placeholder="טלפון" className={cls} dir="ltr" />
-      <div className="flex gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <input name="company" defaultValue={profile.company ?? ""} placeholder="חברה / עסק" className={cls} />
         <input name="company_number" defaultValue={profile.company_number ?? ""} placeholder="מספר חברה" className={cls} />
       </div>
