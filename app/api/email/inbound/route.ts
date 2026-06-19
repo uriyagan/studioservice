@@ -44,8 +44,42 @@ export async function POST(req: NextRequest) {
 
   const fromEmail = extractEmail(Array.isArray(data.from) ? data.from[0] : data.from);
   const subject = data.subject ?? null;
-  const text = data.text ?? data.plain ?? null;
-  const html = data.html ?? null;
+
+  // The email.received webhook carries metadata only — the body must be
+  // fetched from the API with the inbound email's id.
+  let text: string | null = data.text ?? data.plain ?? null;
+  let html: string | null = data.html ?? null;
+  const emailId = data.email_id ?? data.id ?? null;
+  if (emailId && !text && !html) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+        signal: ctrl.signal,
+      }).finally(() => clearTimeout(timer));
+      if (r.ok) {
+        const full = await r.json();
+        text = full.text ?? text;
+        html = full.html ?? html;
+      } else {
+        console.error("fetch inbound email failed:", r.status, await r.text().catch(() => ""));
+      }
+    } catch (e) {
+      console.error("fetch inbound email error:", (e as Error).message);
+    }
+  }
+
+  // Fall back to a stripped-HTML plain text so the thread/notification has
+  // readable content even when the client sent HTML only.
+  if (!text && html) {
+    text = html
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() || null;
+  }
 
   try {
     await logMessage({
