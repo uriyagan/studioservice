@@ -25,7 +25,7 @@ export function CreateTaskForm({
   return (
     <>
       <Button variant="primary" onClick={() => setOpen(true)} className="flex items-center gap-1.5">
-        <PlusCircle className="h-4 w-4" /> משימה חדשה
+        <PlusCircle className="h-4 w-4 text-white" /> משימה חדשה
       </Button>
       {open && (
         <Modal title="משימה חדשה" onClose={() => setOpen(false)}>

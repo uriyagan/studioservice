@@ -7,13 +7,20 @@ import React from "react";
 // Spinner stays the lucide animated one (per request).
 export { Loader2 } from "lucide-react";
 
+// Intent colors that should be respected (status / accents / on-dark).
+// Anything else (slate, inherited gray, or no color) is forced to black.
+const KEEP_COLOR =
+  /text-(white|black|emerald|red|amber|primary|green|blue|yellow|rose|orange|indigo|sky|purple|pink|teal|cyan|fuchsia|lime)\b/;
+
 function mk(viewBox: string, inner: string) {
   function Icon({ className }: { className?: string }) {
+    const keep = !!className && KEEP_COLOR.test(className);
     return (
       <svg
         className={className}
         viewBox={viewBox}
         fill="currentColor"
+        style={keep ? undefined : { color: "#000000" }}
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
         dangerouslySetInnerHTML={{ __html: inner }}

@@ -75,7 +75,7 @@ export function PortalClient({
           )}
         </div>
         <Button onClick={() => setTab("submit")} className="flex items-center gap-1.5">
-          <PlusCircle className="h-4 w-4" /> משימה חדשה
+          <PlusCircle className="h-4 w-4 text-white" /> משימה חדשה
         </Button>
       </div>
 

@@ -105,7 +105,7 @@ export function TaskDetails({
                   onClick={downloadAll}
                   className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
                 >
-                  <Download className="h-4 w-4" /> הורדת כל הקבצים ({files.length})
+                  <Download className="h-4 w-4 text-white" /> הורדת כל הקבצים ({files.length})
                 </button>
               )}
               {files.map((f, i) => (
