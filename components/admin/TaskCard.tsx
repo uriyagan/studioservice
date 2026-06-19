@@ -168,7 +168,7 @@ export function TaskCard({
       {editing && (
         <form
           action={editAction}
-          className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2"
+          className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-2"
         >
           <input type="hidden" name="id" value={ticket.id} />
           <input

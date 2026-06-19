@@ -22,7 +22,7 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettings }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs text-slate-500">שם השולח</label>
           <input value={v.fromName} onChange={(e) => setV({ ...v, fromName: e.target.value })} className={inputCls} />

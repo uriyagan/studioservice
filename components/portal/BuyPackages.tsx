@@ -40,7 +40,7 @@ export function BuyPackages({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {packages.map((pkg) => (
         <Card key={pkg.id} className="flex flex-col">
           <h3 className="font-semibold text-slate-900">{pkg.name}</h3>

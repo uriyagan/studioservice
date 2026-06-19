@@ -20,7 +20,7 @@ export default async function ClientsPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">לקוחות</h1>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <Card>
             <h2 className="mb-4 font-semibold text-slate-900">לקוח חדש</h2>

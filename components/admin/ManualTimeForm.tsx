@@ -54,7 +54,7 @@ export function ManualTimeForm({
       </Button>
       {open && (
         <Modal title="הזנת זמן ידנית" onClose={() => setOpen(false)}>
-          <form ref={formRef} action={action} className="grid gap-3 sm:grid-cols-2">
+          <form ref={formRef} action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {fixedProjectId ? (
         <input type="hidden" name="project_id" value={fixedProjectId} />
       ) : (

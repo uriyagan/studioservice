@@ -25,7 +25,7 @@ export default async function UsersPage() {
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">צוות הסטודיו</h1>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="md:col-span-1">
           <Card>
             <h2 className="mb-4 font-semibold text-slate-900">חבר צוות חדש</h2>

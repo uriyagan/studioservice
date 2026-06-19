@@ -24,7 +24,7 @@ function SaveBtn({ label }: { label: string }) {
 function PackageForm({ pkg }: { pkg?: HourPackageRow }) {
   const [state, action] = useActionState(savePackage, initial);
   return (
-    <form action={action} className="grid items-end gap-3 sm:grid-cols-5">
+    <form action={action} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-5">
       {pkg && <input type="hidden" name="id" value={pkg.id} />}
       <div className="sm:col-span-2">
         <label className="mb-1 block text-xs text-slate-500">שם החבילה</label>

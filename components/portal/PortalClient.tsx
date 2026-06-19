@@ -141,7 +141,7 @@ function StatusView({
           accent
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
             label="סך שעות שנרכשו"
             value={formatHours(project.total_hours_allocated)}
@@ -321,7 +321,7 @@ function PurchaseView({
             <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {packages.map((pkg) => (
               <Card key={pkg.id} className="flex flex-col">
                 <h3 className="font-semibold text-slate-900">{pkg.name}</h3>

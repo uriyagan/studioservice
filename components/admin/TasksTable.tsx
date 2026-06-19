@@ -526,7 +526,7 @@ function EditForm({
   onCancel: () => void;
 }) {
   return (
-    <form action={action} className="grid gap-3 sm:grid-cols-2">
+    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={task.id} />
       <div className="sm:col-span-2">
         <label className="mb-1 block text-sm font-medium text-slate-700">שם המשימה</label>
