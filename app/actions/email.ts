@@ -132,18 +132,22 @@ export async function saveBrandSettings(input: BrandSettings): Promise<Result> {
   try {
     const supabase = await assertAdmin();
     const db = supabase as unknown as { from: (t: string) => any };
-    const { error } = await db.from("email_settings").upsert(
-      {
-        id: true,
-        from_name: input.fromName,
-        from_email: input.fromEmail,
-        reply_to: input.replyTo,
-        logo_url: input.logoUrl,
-        brand_color: input.brandColor,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
+    const base = {
+      id: true,
+      from_name: input.fromName,
+      from_email: input.fromEmail,
+      logo_url: input.logoUrl,
+      brand_color: input.brandColor,
+      updated_at: new Date().toISOString(),
+    };
+    // Include reply_to; retry without it if the column hasn't been added yet
+    // (migration not run) so the rest of the settings still save.
+    let { error } = await db
+      .from("email_settings")
+      .upsert({ ...base, reply_to: input.replyTo }, { onConflict: "id" });
+    if (error) {
+      ({ error } = await db.from("email_settings").upsert(base, { onConflict: "id" }));
+    }
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/emails");
     return { ok: true };
