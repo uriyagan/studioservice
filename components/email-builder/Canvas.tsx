@@ -163,7 +163,16 @@ export function CanvasBlock({
         <div style={{ textAlign: align }}>
           {s.src ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={s.src} alt={s.alt} style={{ width: `${s.width || 100}%`, maxWidth: "100%" }} />
+            <img
+              src={s.src}
+              alt={s.alt}
+              style={{
+                width: `${s.width || 100}%`,
+                maxWidth: "100%",
+                display: "block",
+                margin: align === "center" ? "0 auto" : align === "left" ? "0 auto 0 0" : "0 0 0 auto",
+              }}
+            />
           ) : (
             <div style={{ background: "#eee", color: "#999", padding: 24, fontSize: 12, borderRadius: 4 }}>
               [הזן כתובת תמונה בהגדרות הבלוק]
