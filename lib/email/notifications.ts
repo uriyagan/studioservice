@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "./dispatch";
 import { renderTasksSummary } from "./render";
 import { replyAddress } from "./thread";
+import { formatDuration, formatHoursClock, sumLoggedSeconds } from "@/lib/format";
 
 const SITE = "https://service.uriyaganor.com";
 
@@ -19,10 +20,12 @@ export async function notifyTaskCompleted(ticketId: string) {
     const d = db();
     const { data: ticket } = await d
       .from("tickets")
-      .select("title, description, project_id")
+      .select("title, description, project_id, time_logs(start_time, end_time, duration_seconds)")
       .eq("id", ticketId)
       .maybeSingle();
     if (!ticket?.project_id) return;
+
+    const taskSeconds = sumLoggedSeconds(ticket.time_logs ?? []);
 
     const { data: stats } = await d
       .from("project_stats")
@@ -48,9 +51,10 @@ export async function notifyTaskCompleted(ticketId: string) {
             project_name: stats.name ?? "",
             task_title: ticket.title ?? "",
             task_description: ticket.description ?? "",
-            hours_used: stats.hours_used ?? "",
-            hours_remaining: stats.hours_remaining ?? "",
-            total_hours: stats.total_hours_allocated ?? "",
+            task_time: formatDuration(taskSeconds),
+            hours_used: formatHoursClock(stats.hours_used),
+            hours_remaining: formatHoursClock(stats.hours_remaining),
+            total_hours: formatHoursClock(stats.total_hours_allocated),
             portal_url: `${SITE}/portal`,
             site_url: SITE,
           },
@@ -101,9 +105,9 @@ export async function checkUsageThresholds(projectId: string) {
       full_name: client.name ?? "",
       client_name: client.name ?? "",
       project_name: stats?.name ?? proj.name ?? "",
-      hours_used: used,
-      hours_remaining: remaining,
-      total_hours: total,
+      hours_used: formatHoursClock(used),
+      hours_remaining: formatHoursClock(remaining),
+      total_hours: formatHoursClock(total),
       buy_url: `${SITE}/portal`,
       portal_url: `${SITE}/portal`,
       site_url: SITE,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, stripeWebhookCrypto } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { formatHoursClock } from "@/lib/format";
 
 const SITE = "https://service.uriyaganor.com";
 
@@ -81,9 +82,9 @@ async function processSuccess(opts: {
         full_name: client.name ?? "",
         client_name: client.name ?? "",
         project_name: stats?.name ?? "",
-        hours_added: hours,
-        hours_remaining: stats?.hours_remaining ?? "",
-        total_hours: stats?.total_hours_allocated ?? "",
+        hours_added: formatHoursClock(hours),
+        hours_remaining: formatHoursClock(stats?.hours_remaining ?? 0),
+        total_hours: formatHoursClock(stats?.total_hours_allocated ?? 0),
         portal_url: `${SITE}/portal`,
         site_url: SITE,
       });

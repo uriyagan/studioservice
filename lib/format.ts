@@ -15,6 +15,15 @@ export function formatHours(hours: number): string {
   })} שעות`;
 }
 
+// Decimal hours (e.g. 5.5) → "HH:MM" clock string ("05:30").
+export function formatHoursClock(hours: number): string {
+  const totalMinutes = Math.max(0, Math.round(Number(hours || 0) * 60));
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(h)}:${pad(m)}`;
+}
+
 // Format an ISO timestamp as a Hebrew date.
 export function formatDate(iso: string | null): string {
   if (!iso) return "—";
