@@ -1,43 +1,51 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-// Route-level error boundary. A common cause here is a *stale chunk* after a
-// deploy: a tab opened on the previous build requests a JS chunk that no
-// longer exists → "client-side exception". We auto-reload once to fetch the
-// new build; for other errors we show a friendly retry.
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-  const isChunkError = /ChunkLoadError|Loading chunk|dynamically imported module|importing a module script failed|Failed to fetch/i.test(
-    error?.message || ""
-  );
+// Route-level error boundary. The dominant cause in this app is a *stale
+// chunk* after a deploy: a tab opened on a previous build requests JS that no
+// longer exists, and the error wording varies by browser. So we auto-recover
+// from ANY error by reloading once (fetches the fresh build). A time-guard
+// prevents loops — if the same error recurs immediately, it's a genuine bug
+// and we show the manual recovery UI instead.
+const KEY = "studio_err_reload_at";
+
+export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const [recovering, setRecovering] = useState(true);
 
   useEffect(() => {
-    if (!isChunkError) return;
-    // Reload at most once per 15s to avoid a loop if it's not actually stale.
-    const KEY = "studio_chunk_reload_at";
-    const last = Number(sessionStorage.getItem(KEY) || 0);
-    if (Date.now() - last > 15000) {
-      sessionStorage.setItem(KEY, String(Date.now()));
-      window.location.reload();
+    let last = 0;
+    try {
+      last = Number(sessionStorage.getItem(KEY) || 0);
+    } catch {
+      /* noop */
     }
-  }, [isChunkError]);
+    if (Date.now() - last > 20000) {
+      try {
+        sessionStorage.setItem(KEY, String(Date.now()));
+      } catch {
+        /* noop */
+      }
+      window.location.reload();
+    } else {
+      // Recently reloaded and it errored again → real problem, show the UI.
+      setRecovering(false);
+    }
+  }, []);
+
+  if (recovering) {
+    return (
+      <div dir="rtl" className="flex min-h-[60vh] flex-col items-center justify-center gap-2 p-8 text-center">
+        <h2 className="text-lg font-semibold text-slate-900">טוען מחדש…</h2>
+        <p className="text-sm text-slate-500">רק רגע, טוענים את הגרסה העדכנית.</p>
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-8 text-center">
-      <h2 className="text-lg font-semibold text-slate-900">
-        {isChunkError ? "מעדכן לגרסה החדשה…" : "משהו השתבש"}
-      </h2>
-      <p className="max-w-md text-sm text-slate-500">
-        {isChunkError
-          ? "העמוד נטען מחדש כדי לטעון את הגרסה העדכנית."
-          : "אירעה תקלה זמנית. אפשר לנסות שוב."}
-      </p>
+      <h2 className="text-lg font-semibold text-slate-900">משהו השתבש</h2>
+      <p className="max-w-md text-sm text-slate-500">אירעה תקלה זמנית. אפשר לנסות שוב.</p>
       <div className="flex gap-2">
         <button
           onClick={() => reset()}
