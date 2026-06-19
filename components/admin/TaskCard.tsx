@@ -111,7 +111,7 @@ export function TaskCard({
                   target="_blank"
                   rel="noopener noreferrer"
                   dir="ltr"
-                  className="inline-block text-sm text-primary hover:underline"
+                  className="block break-all text-sm text-primary hover:underline"
                 >
                   {url} ↗
                 </a>

@@ -80,7 +80,7 @@ export default async function ProjectPage({
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-start gap-2">
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start [&_button]:w-full sm:[&_button]:w-auto">
             <ManualTimeForm fixedProjectId={id} />
             <CreateTaskForm fixedProjectId={id} />
           </div>

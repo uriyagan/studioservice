@@ -26,3 +26,20 @@ select,
 textarea {
   transition: all 0.15s ease;
 }
+
+/* Form controls have a browser-default intrinsic width (~20 chars). Inside a
+   flex/grid container that default stops them shrinking, so the row overflows
+   on narrow screens. Let them shrink to their container instead. */
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+/* Media should never force horizontal overflow on mobile. */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}

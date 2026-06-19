@@ -192,7 +192,7 @@ export function TicketForm({
                 <button
                   type="button"
                   onClick={() => setLinks((prev) => prev.filter((_, idx) => idx !== i))}
-                  className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                  className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
                   title="הסר"
                 >
                   <X className="h-4 w-4" />

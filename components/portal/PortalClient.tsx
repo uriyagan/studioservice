@@ -282,9 +282,9 @@ function PurchaseView({
         <h2 className="mb-3 font-semibold text-slate-900">רכישת חבילה חדשה</h2>
         {selected ? (
           <Card>
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-900">תשלום עבור {selected.name}</h3>
-              <button onClick={() => setSelected(null)} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="min-w-0 truncate font-semibold text-slate-900">תשלום עבור {selected.name}</h3>
+              <button onClick={() => setSelected(null)} className="flex shrink-0 items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
                 <ArrowLeft className="h-3.5 w-3.5" /> בחירת חבילה אחרת
               </button>
             </div>
@@ -321,7 +321,7 @@ function PurchaseView({
           <p className="text-sm text-slate-400">עדיין אין רכישות.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" dir="rtl">
+            <table className="w-full min-w-[480px] text-sm" dir="rtl">
               <thead className="border-b border-slate-100 text-xs text-slate-500">
                 <tr>
                   <th className="px-3 py-2 text-right font-semibold">תאריך</th>

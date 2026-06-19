@@ -21,8 +21,8 @@ export function QuickStartButton() {
     });
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button variant="success" disabled={isPending} onClick={go}>
+    <div className="flex w-full flex-col items-stretch gap-1 sm:w-auto sm:items-end">
+      <Button variant="success" disabled={isPending} onClick={go} className="w-full sm:w-auto">
         {isPending ? "מתחיל..." : "▶ התחל טיימר מיידי"}
       </Button>
       {error && <p className="text-sm text-red-600">{error}</p>}

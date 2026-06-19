@@ -62,7 +62,7 @@ export function ProjectRow({
 
         <div className="min-w-0 flex-1">
           {project.is_retainer ? (
-            <span className="inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
+            <span className="inline-block max-w-full truncate rounded-full bg-primary-light px-2.5 py-1 align-middle text-xs font-medium text-primary">
               ריטיינר · שעות בלתי מוגבלות
             </span>
           ) : (

@@ -83,11 +83,13 @@ export function PackagesManager({ packages }: { packages: HourPackageRow[] }) {
     <div className="space-y-4">
       {packages.map((p) => (
         <Card key={p.id}>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-medium text-slate-800">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate font-medium text-slate-800">
               {p.name} {!p.active && <span className="text-xs text-slate-400">(כבויה)</span>}
             </span>
-            <DeleteForm id={p.id} />
+            <span className="shrink-0">
+              <DeleteForm id={p.id} />
+            </span>
           </div>
           <PackageForm pkg={p} />
         </Card>
