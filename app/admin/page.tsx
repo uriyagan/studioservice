@@ -97,7 +97,7 @@ export default async function AdminDashboard() {
           <h1 className="text-2xl font-bold text-slate-900">מעקב משימות</h1>
           <p className="mt-1 text-sm text-slate-500">כל המשימות מכל הפרויקטים.</p>
         </div>
-        <div className="flex flex-wrap items-start gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start [&>button]:w-full sm:[&>button]:w-auto">
           <QuickStartButton />
           {projects.length > 0 ? (
             <>

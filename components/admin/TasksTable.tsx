@@ -247,23 +247,23 @@ export function TasksTable({
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-3">
-        <div className="flex items-center gap-1 rounded-lg bg-slate-50 p-1">
+      <div className="flex flex-col gap-3 border-b border-slate-100 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1 self-start rounded-lg bg-slate-50 p-1">
           {tabBtn("open", "פתוחות")}
           {tabBtn("completed", "הושלמו")}
           {tabBtn("all", "הכל")}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="חיפוש לפי כותרת…"
-            className="w-44 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+            className="col-span-2 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 sm:w-44"
           />
           <select
             value={projectFilter}
             onChange={(e) => setProjectFilter(e.target.value)}
-            className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary"
+            className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary sm:w-auto"
             dir="rtl"
           >
             <option value="">כל האתרים</option>
@@ -277,7 +277,7 @@ export function TasksTable({
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary"
+              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary sm:w-auto"
               dir="rtl"
             >
               <option value="">כל האחראים</option>
@@ -289,8 +289,8 @@ export function TasksTable({
               ))}
             </select>
           )}
-          <div className="relative">
-            <button onClick={() => setShowCols((v) => !v)} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
+          <div className="relative col-span-2 sm:col-span-1">
+            <button onClick={() => setShowCols((v) => !v)} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 sm:w-auto">
               <SlidersHorizontal className="h-4 w-4" /> עמודות
             </button>
             {showCols && (
@@ -311,7 +311,7 @@ export function TasksTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm" dir="rtl">
+        <table className="w-full min-w-[640px] text-sm" dir="rtl">
           <thead className="border-b border-slate-100 bg-slate-50/60 text-xs">
             <tr>
               {cols.map((c) => (

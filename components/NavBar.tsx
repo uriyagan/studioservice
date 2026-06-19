@@ -41,12 +41,22 @@ export function NavBar({
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        {/* Start side (right in RTL): hamburger on mobile, logo + nav on desktop */}
         <div className="flex min-w-0 items-center gap-6">
+          {/* Mobile menu toggle — always on the right */}
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label="תפריט"
+            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 md:hidden"
+          >
+            {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+          </button>
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoSrc} alt={title} className="h-8 w-auto shrink-0" />
+            <img src={logoSrc} alt={title} className="hidden h-8 w-auto shrink-0 md:block" />
           ) : (
-            <span className="font-bold text-slate-900">{title}</span>
+            <span className="hidden font-bold text-slate-900 md:block">{title}</span>
           )}
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex">
@@ -66,7 +76,14 @@ export function NavBar({
           </nav>
         </div>
 
+        {/* End side (left in RTL): logo on mobile, user + logout on desktop */}
         <div className="flex items-center gap-2">
+          {logoSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoSrc} alt={title} className="h-7 w-auto shrink-0 md:hidden" />
+          ) : (
+            <span className="font-bold text-slate-900 md:hidden">{title}</span>
+          )}
           <span className="hidden max-w-[140px] truncate text-sm text-slate-500 sm:block">
             {userName}
           </span>
@@ -78,15 +95,6 @@ export function NavBar({
               <LogOut className="h-4 w-4" /> יציאה
             </button>
           </form>
-          {/* Mobile menu toggle */}
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="תפריט"
-            className="rounded-lg p-2 text-slate-700 hover:bg-slate-100 md:hidden"
-          >
-            {open ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
-          </button>
         </div>
       </div>
 
