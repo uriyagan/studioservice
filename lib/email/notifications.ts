@@ -4,6 +4,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "./dispatch";
 import { renderTasksSummary } from "./render";
+import { replyAddress } from "./thread";
 
 const SITE = "https://service.uriyaganor.com";
 
@@ -36,20 +37,26 @@ export async function notifyTaskCompleted(ticketId: string) {
         .eq("id", stats.client_id)
         .maybeSingle();
       if (client?.email) {
-        await dispatchEmail("task_completed", client.email, {
-          first_name: client.first_name ?? "",
-          last_name: client.last_name ?? "",
-          full_name: client.name ?? "",
-          client_name: client.name ?? "",
-          project_name: stats.name ?? "",
-          task_title: ticket.title ?? "",
-          task_description: ticket.description ?? "",
-          hours_used: stats.hours_used ?? "",
-          hours_remaining: stats.hours_remaining ?? "",
-          total_hours: stats.total_hours_allocated ?? "",
-          portal_url: `${SITE}/portal`,
-          site_url: SITE,
-        });
+        await dispatchEmail(
+          "task_completed",
+          client.email,
+          {
+            first_name: client.first_name ?? "",
+            last_name: client.last_name ?? "",
+            full_name: client.name ?? "",
+            client_name: client.name ?? "",
+            project_name: stats.name ?? "",
+            task_title: ticket.title ?? "",
+            task_description: ticket.description ?? "",
+            hours_used: stats.hours_used ?? "",
+            hours_remaining: stats.hours_remaining ?? "",
+            total_hours: stats.total_hours_allocated ?? "",
+            portal_url: `${SITE}/portal`,
+            site_url: SITE,
+          },
+          {},
+          { replyTo: replyAddress(ticketId), ticketId }
+        );
       }
     }
 
@@ -154,15 +161,21 @@ export async function notifyAdminsNewTask(ticketId: string) {
     const emails = ((admins ?? []) as { email: string | null }[]).map((a) => a.email).filter(Boolean) as string[];
     if (!emails.length) return;
 
-    await dispatchEmail("new_task_admin", emails, {
-      client_name: clientName,
-      project_name: projectName,
-      task_title: ticket.title ?? "",
-      task_description: ticket.description ?? "",
-      task_url: `${SITE}/admin`,
-      site_url: SITE,
-      portal_url: `${SITE}/portal`,
-    });
+    await dispatchEmail(
+      "new_task_admin",
+      emails,
+      {
+        client_name: clientName,
+        project_name: projectName,
+        task_title: ticket.title ?? "",
+        task_description: ticket.description ?? "",
+        task_url: `${SITE}/admin`,
+        site_url: SITE,
+        portal_url: `${SITE}/portal`,
+      },
+      {},
+      { replyTo: replyAddress(ticketId) }
+    );
   } catch (e) {
     console.error("notifyAdminsNewTask failed:", (e as Error).message);
   }

@@ -37,7 +37,8 @@ export async function dispatchEmail(
   key: EmailKey,
   to: string | string[],
   vars: Vars,
-  rawVars: Record<string, string | undefined> = {}
+  rawVars: Record<string, string | undefined> = {},
+  opts: { replyTo?: string; ticketId?: string } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
   try {
     const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
@@ -85,8 +86,20 @@ export async function dispatchEmail(
       subject,
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
-      replyTo: brand.replyTo || undefined,
+      replyTo: opts.replyTo || brand.replyTo || undefined,
     });
+
+    if (opts.ticketId) {
+      const { logMessage } = await import("./thread");
+      await logMessage({
+        ticketId: opts.ticketId,
+        direction: "out",
+        fromEmail: brand.fromEmail,
+        toEmail: recipients.join(", "),
+        subject,
+        bodyHtml: html,
+      });
+    }
     return { sent: true };
   } catch (e) {
     console.error(`dispatchEmail(${key}) failed:`, (e as Error).message);

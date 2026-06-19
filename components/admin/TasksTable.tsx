@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
-import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
+import { TaskThread } from "@/components/admin/TaskThread";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TimerControl } from "@/components/TimerControl";
@@ -69,6 +70,7 @@ export function TasksTable({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [showCols, setShowCols] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [threadFor, setThreadFor] = useState<TaskRow | null>(null);
 
   const [editState, editAction] = useActionState(updateTicket, initial);
   const [, delAction] = useActionState(deleteTicket, initial);
@@ -206,6 +208,9 @@ export function TasksTable({
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-end gap-2">
                     {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} />}
+                    <button onClick={() => setThreadFor(t)} title="שיחה" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                      <MessageSquare className="h-4 w-4" />
+                    </button>
                     <button onClick={() => setEditingId((id) => (id === t.id ? null : t.id))} title="עריכה" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -241,6 +246,10 @@ export function TasksTable({
           </tbody>
         </table>
       </div>
+
+      {threadFor && (
+        <TaskThread ticketId={threadFor.id} title={threadFor.title ?? ""} onClose={() => setThreadFor(null)} />
+      )}
     </div>
   );
 }
