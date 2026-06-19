@@ -14,6 +14,11 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "t", type: "text", text: "נוצר עבורך חשבון בפורטל השירות. לחצו על הכפתור כדי לבחור סיסמה ולהתחבר.", align: "right", size: "15" },
     { id: "b", type: "button", text: "יצירת סיסמה", href: "{set_password_link}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "16" },
   ],
+  password_reset: [
+    { id: "h", type: "heading", text: "איפוס סיסמה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "קיבלנו בקשה לאיפוס הסיסמה שלך. לחצו על הכפתור כדי לבחור סיסמה חדשה. אם לא ביקשת זאת, אפשר להתעלם מהמייל.", align: "right", size: "15" },
+    { id: "b", type: "button", text: "איפוס סיסמה", href: "{reset_link}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "16" },
+  ],
 };
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
@@ -31,7 +36,8 @@ type Vars = Record<string, string | number | undefined>;
 export async function dispatchEmail(
   key: EmailKey,
   to: string | string[],
-  vars: Vars
+  vars: Vars,
+  rawVars: Record<string, string | undefined> = {}
 ): Promise<{ sent: boolean; reason?: string }> {
   try {
     const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
@@ -68,7 +74,8 @@ export async function dispatchEmail(
     const subject = substituteTags(subjectTemplate, vars);
     const html = substituteTags(
       renderEmailHtml({ blocks, design: tpl?.design ?? undefined, brand }),
-      vars
+      vars,
+      rawVars
     );
 
     const { sendEmail } = await import("./send");

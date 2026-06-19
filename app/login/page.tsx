@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { requestPasswordReset } from "@/app/actions/auth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -12,6 +13,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resetting, startReset] = useTransition();
+
+  const sendReset = () => {
+    if (!email) {
+      setError("הזן אימייל ואז לחץ על איפוס סיסמה");
+      return;
+    }
+    setError(null);
+    startReset(async () => {
+      const fd = new FormData();
+      fd.set("email", email);
+      await requestPasswordReset({ ok: false }, fd);
+      setForgotSent(true);
+    });
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,6 +108,31 @@ export default function LoginPage() {
             >
               {loading ? "מתחבר..." : "כניסה"}
             </Button>
+
+            <div className="text-center">
+              {forgotSent ? (
+                <p className="text-sm text-emerald-600">
+                  אם קיים חשבון עם אימייל זה, נשלח אליו קישור לאיפוס סיסמה.
+                </p>
+              ) : forgot ? (
+                <button
+                  type="button"
+                  onClick={sendReset}
+                  disabled={resetting}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
+                  {resetting ? "שולח..." : "שלח קישור לאיפוס לאימייל שמולא למעלה"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setForgot(true)}
+                  className="text-sm text-slate-500 hover:text-slate-700 hover:underline"
+                >
+                  שכחת סיסמה?
+                </button>
+              )}
+            </div>
           </form>
         </Card>
       </div>

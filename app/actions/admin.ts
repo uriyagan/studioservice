@@ -254,6 +254,9 @@ export async function addManualTime(
     });
     if (logError) return { ok: false, error: logError.message };
 
+    const { checkUsageThresholds } = await import("@/lib/email/notifications");
+    await checkUsageThresholds(projectId);
+
     revalidatePath("/admin");
     revalidatePath("/admin/projects");
     revalidatePath(`/admin/projects/${projectId}`);
