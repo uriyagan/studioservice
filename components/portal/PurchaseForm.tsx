@@ -111,6 +111,7 @@ function PayStep({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [pending, setPending] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +139,8 @@ function PayStep({
         setDone(true);
         router.refresh();
       } else if (paymentIntent) {
-        setError("התשלום בעיבוד — נעדכן ברגע שיאושר.");
+        setPending(true);
+        router.refresh();
       }
     } catch (err) {
       setError((err as Error).message || "שגיאה בתשלום");
@@ -147,12 +149,16 @@ function PayStep({
     }
   };
 
-  if (done) {
+  if (done || pending) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium text-emerald-600">התשלום בוצע בהצלחה ✓</p>
+        <p className="text-sm font-medium text-emerald-600">
+          {done ? "התשלום בוצע בהצלחה ✓" : "התשלום בעיבוד ⏳"}
+        </p>
         <p className="text-sm text-slate-500">
-          השעות יתווספו לחבילה תוך מספר שניות, והחשבונית תופיע בהיסטוריית הרכישות.
+          {done
+            ? "השעות יתווספו לחבילה תוך מספר שניות, והחשבונית תופיע בהיסטוריית הרכישות."
+            : "התשלום אושר וממתין לאישור סופי. השעות יתווספו אוטומטית ברגע שהתשלום יסתיים."}
         </p>
         <Button onClick={() => router.refresh()}>רענון</Button>
       </div>

@@ -329,6 +329,19 @@ export async function sendTicketReply(
       : "";
     const messageHtml = message.replace(/\n/g, "<br>") + linksHtml;
 
+    // Log the outbound message FIRST so the returned messageId is reliable
+    // (file attachments depend on it) and a logging failure doesn't happen
+    // after the email already left.
+    const messageId = await logMessage({
+      ticketId,
+      direction: "out",
+      fromEmail: null,
+      toEmail: client.email,
+      subject: `בנוגע למשימה: ${taskTitle}`,
+      bodyText: message,
+      links: links.join("\n") || null,
+    });
+
     // Render via the designable "התכתבות עם לקוח" template; the admin's
     // typed text is injected (as HTML) through the {message} merge tag.
     // Sent in the background so the reply UI returns immediately.
@@ -350,17 +363,6 @@ export async function sendTicketReply(
         { replyTo: replyAddress(ticketId) }
       )
     );
-
-    // Log the outbound message with the raw text so the admin thread stays readable.
-    const messageId = await logMessage({
-      ticketId,
-      direction: "out",
-      fromEmail: null,
-      toEmail: client.email,
-      subject: `בנוגע למשימה: ${taskTitle}`,
-      bodyText: message,
-      links: links.join("\n") || null,
-    });
 
     revalidatePath("/admin");
     return { ok: true, messageId: messageId ?? undefined };

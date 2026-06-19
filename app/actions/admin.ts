@@ -262,8 +262,9 @@ export async function addManualTime(
 
     const { runAfter } = await import("@/lib/after");
     await runAfter(async () => {
-      const { checkUsageThresholds } = await import("@/lib/email/notifications");
-      await checkUsageThresholds(projectId);
+      // notifyTaskCompleted emails the client AND runs the threshold checks.
+      const { notifyTaskCompleted } = await import("@/lib/email/notifications");
+      await notifyTaskCompleted(ticket.id);
     });
 
     revalidatePath("/admin");

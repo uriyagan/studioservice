@@ -103,7 +103,7 @@ export function TasksTable({
   };
 
   const [editState, editAction] = useActionState(updateTicket, initial);
-  const [, delAction] = useActionState(deleteTicket, initial);
+  const [delState, delAction] = useActionState(deleteTicket, initial);
 
   // Persist column choice.
   useEffect(() => {
@@ -165,6 +165,13 @@ export function TasksTable({
   const cols = COLUMNS.filter((c) => visible[c.key]);
   const colspan = cols.length + 1;
 
+  // Guard the inline edit row: if the task vanishes (deleted elsewhere before
+  // the 45s refresh) clear the editor instead of crashing the table.
+  const editingTask = editingId ? sorted.find((t) => t.id === editingId) ?? null : null;
+  useEffect(() => {
+    if (editingId && !sorted.some((t) => t.id === editingId)) setEditingId(null);
+  }, [sorted, editingId]);
+
   const Th = ({ k, label }: { k: ColKey; label: string }) => (
     <th className="cursor-pointer select-none px-3 py-2 text-right font-semibold text-slate-600 hover:text-slate-900" onClick={() => onSort(k)}>
       <span className="inline-flex items-center gap-1">
@@ -176,6 +183,11 @@ export function TasksTable({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
+      {delState.error && (
+        <p className="border-b border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+          מחיקת המשימה נכשלה: {delState.error}
+        </p>
+      )}
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 p-3">
         <span className="text-sm font-semibold text-slate-700">משימות ({tasks.length})</span>
         <div className="relative">
@@ -273,11 +285,11 @@ export function TasksTable({
                 </td>
               </tr>
             ))}
-            {editingId && (
+            {editingTask && (
               <tr>
                 <td colSpan={colspan} className="bg-slate-50 px-3 py-3">
                   <EditForm
-                    task={sorted.find((t) => t.id === editingId)!}
+                    task={editingTask}
                     projects={projects}
                     action={editAction}
                     error={editState.error}

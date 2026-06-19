@@ -111,7 +111,7 @@ export function UserRow({
             className={inputCls}
           />
           <select
-            name="role"
+            name={isSelf ? undefined : "role"}
             defaultValue={client.role}
             disabled={isSelf}
             className={`${inputCls} disabled:opacity-60`}
@@ -119,6 +119,9 @@ export function UserRow({
             <option value="client">לקוח</option>
             <option value="admin">מנהל (אדמין)</option>
           </select>
+          {/* Disabled controls don't submit — keep the role so a self-edit
+              (name/email/password) doesn't trip the self-lockout guard. */}
+          {isSelf && <input type="hidden" name="role" value={client.role} />}
           {isSelf && (
             <p className="text-xs text-slate-400">לא ניתן לשנות לעצמך הרשאה.</p>
           )}

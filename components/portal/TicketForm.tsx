@@ -44,6 +44,7 @@ export function TicketForm({
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [phase, setPhase] = useState<string>("");
   const [fileStates, setFileStates] = useState<Record<number, "pending" | "up" | "done" | "err">>({});
+  const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const addFiles = (list: FileList | null) => {
@@ -56,28 +57,35 @@ export function TicketForm({
     e.preventDefault();
     setError(null);
     setStatus("saving");
-    setPhase("יוצר משימה...");
-    setFileStates(Object.fromEntries(files.map((_, i) => [i, "pending" as const])));
 
-    const formData = new FormData(e.currentTarget);
-    if (projectId) formData.set("project_id", projectId);
-
-    const prev = { ok: false } as { ok: boolean; error?: string };
-    const res =
-      mode === "admin"
-        ? await createAdminTicket(prev, formData)
-        : await createTicket(prev, formData);
-    if (!res.ok || !res.ticketId) {
-      setError(res.error ?? "שגיאה ביצירת המשימה");
-      setStatus("idle");
-      setPhase("");
-      return;
+    // Create the ticket once; on a retry (after a partial upload failure) we
+    // reuse it instead of creating a duplicate.
+    let ticketId = createdTicketId;
+    if (!ticketId) {
+      setPhase("יוצר משימה...");
+      setFileStates(Object.fromEntries(files.map((_, i) => [i, "pending" as const])));
+      const formData = new FormData(e.currentTarget);
+      if (projectId) formData.set("project_id", projectId);
+      const prev = { ok: false } as { ok: boolean; error?: string };
+      const res =
+        mode === "admin"
+          ? await createAdminTicket(prev, formData)
+          : await createTicket(prev, formData);
+      if (!res.ok || !res.ticketId) {
+        setError(res.error ?? "שגיאה ביצירת המשימה");
+        setStatus("idle");
+        setPhase("");
+        return;
+      }
+      ticketId = res.ticketId;
+      setCreatedTicketId(ticketId);
     }
 
-    // Upload attachments one by one, with per-file status feedback.
+    // Upload attachments one by one (skip ones already uploaded), with feedback.
     const supabase = createClient();
     let failed = 0;
     for (let i = 0; i < files.length; i++) {
+      if (fileStates[i] === "done") continue;
       const file = files[i];
       setPhase(`מעלה קבצים (${i + 1}/${files.length})...`);
       setFileStates((s) => ({ ...s, [i]: "up" }));
@@ -85,7 +93,7 @@ export function TicketForm({
         const r = await fetch("/api/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticketId: res.ticketId, fileName: file.name }),
+          body: JSON.stringify({ ticketId, fileName: file.name }),
         });
         if (!r.ok) throw new Error("signed url failed");
         const { path, token } = await r.json();
@@ -95,20 +103,31 @@ export function TicketForm({
           .uploadToSignedUrl(path, token, file);
         if (upErr) throw upErr;
 
-        await attachFile(res.ticketId, path, file.name);
+        const rec = await attachFile(ticketId, path, file.name);
+        if (!rec.ok) throw new Error(rec.error || "record failed");
         setFileStates((s) => ({ ...s, [i]: "done" }));
       } catch {
         failed++;
         setFileStates((s) => ({ ...s, [i]: "err" }));
       }
     }
-    if (failed > 0) setError(`המשימה נוצרה, אך העלאת ${failed} קבצים נכשלה.`);
+
+    if (failed > 0) {
+      // Task is created; keep the failed files visible so the user can retry
+      // (a re-submit reuses the same ticket and re-uploads only the failed ones).
+      setError(`המשימה נוצרה, אך העלאת ${failed} קבצים נכשלה. אפשר לנסות שוב.`);
+      setStatus("idle");
+      setPhase("");
+      router.refresh();
+      return;
+    }
 
     setStatus("done");
     setPhase("");
     setFiles([]);
     setFileStates({});
     setLinks([""]);
+    setCreatedTicketId(null);
     formRef.current?.reset();
     router.refresh();
     onDone?.();

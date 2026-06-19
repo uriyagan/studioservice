@@ -74,8 +74,17 @@ export function ConversationThread({
     fd.set("file_count", String(files.length));
 
     const res = await send({ ok: false }, fd);
-    if (!res.ok || !res.messageId) {
+    // The message itself succeeded if ok is true — even if messageId is
+    // missing (a logging hiccup), the email still went out, so don't report
+    // a failure that tempts a duplicate resend.
+    if (!res.ok) {
       setError(res.error ?? "שליחה נכשלה");
+      setBusy(false);
+      setPhase("");
+      return;
+    }
+    if (files.length && !res.messageId) {
+      setError("ההודעה נשלחה, אך לא ניתן לצרף כעת את הקבצים. נסה/י לשלוח אותם בהודעה נפרדת.");
       setBusy(false);
       setPhase("");
       return;
@@ -100,7 +109,8 @@ export function ConversationThread({
           .from("attachments")
           .uploadToSignedUrl(path, token, file);
         if (upErr) throw upErr;
-        await recordMessageAttachment({ messageId: res.messageId, ticketId, path, fileName: file.name });
+        const rec = await recordMessageAttachment({ messageId: res.messageId!, ticketId, path, fileName: file.name });
+        if (!rec.ok) throw new Error(rec.error || "record failed");
         setFileStates((s) => ({ ...s, [i]: "done" }));
       } catch {
         failed++;

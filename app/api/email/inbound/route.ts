@@ -71,18 +71,37 @@ export async function POST(req: NextRequest) {
   }
 
   // Fall back to a stripped-HTML plain text so the thread/notification has
-  // readable content even when the client sent HTML only.
+  // readable content even when the client sent HTML only. Drop quoted-history
+  // containers and convert block tags to newlines so cleanInboundReply can
+  // still find the quote/footer boundaries (line-anchored).
   if (!text && html) {
-    text = html
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/\s+/g, " ")
-      .trim() || null;
+    text =
+      html
+        .replace(/<style[\s\S]*?<\/style>/gi, "")
+        .replace(/<script[\s\S]*?<\/script>/gi, "")
+        .replace(/<blockquote[\s\S]*?<\/blockquote>/gi, "")
+        .replace(/<div[^>]*class=["'][^"']*gmail_quote[^"']*["'][\s\S]*?<\/div>/gi, "")
+        .replace(/<div[^>]*id=["'][^"']*(?:divRplyFwdMsg|appendonsend)[^"']*["'][\s\S]*$/gi, "")
+        .replace(/<\/(?:p|div|tr|li|h[1-6]|blockquote)>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<[^>]+>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/[ \t]+/g, " ")
+        .split("\n")
+        .map((l) => l.trim())
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim() || null;
   }
 
   // Strip quoted original, app footers, and signature — keep just the reply.
   if (text) text = cleanInboundReply(text);
+  // A genuine inbound reply whose body couldn't be recovered: store a clear
+  // placeholder so it never renders as the outbound "designed message" label.
+  if (!text) text = "(תגובת לקוח — לא ניתן לטעון את תוכן ההודעה)";
 
   try {
     await logMessage({
@@ -114,7 +133,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (emails.length) {
-      const messageHtml = text ? String(text).replace(/\n/g, "<br>") : "(ללא טקסט)";
+      // Escape the client's text before turning newlines into <br> — it goes
+      // into the email via the raw (unescaped) merge channel.
+      const esc = (s: string) =>
+        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      const messageHtml = esc(text).replace(/\n/g, "<br>");
       await dispatchEmail(
         "client_reply_admin",
         emails,

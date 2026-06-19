@@ -31,6 +31,33 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
     { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
   ],
+  task_completed: [
+    { id: "h", type: "heading", text: "המשימה הושלמה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, המשימה <b>{task_title}</b> הושלמה.", align: "right", size: "15" },
+    { id: "t2", type: "text", text: "זמן ביצוע: {task_time}<br>זמן שנותר בחבילה: {hours_remaining} שעות", align: "right", size: "15" },
+  ],
+  hours_added: [
+    { id: "h", type: "heading", text: "נוספו שעות לחבילה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, נוספו {hours_added} שעות לחבילת השירות שלך.", align: "right", size: "15" },
+    { id: "t2", type: "text", text: "זמן שנותר בחבילה: {hours_remaining} מתוך {total_hours} שעות.", align: "right", size: "15" },
+  ],
+  package_half: [
+    { id: "h", type: "heading", text: "ניצלת 50% מהחבילה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, ניצלת מחצית מחבילת השירות. נותרו {hours_remaining} מתוך {total_hours} שעות.", align: "right", size: "15" },
+    { id: "b", type: "button", text: "רכישת שעות נוספות", href: "{buy_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
+  package_depleted: [
+    { id: "h", type: "heading", text: "החבילה הסתיימה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, ניצלת את כל השעות בחבילת השירות. להמשך עבודה יש לרכוש חבילה נוספת.", align: "right", size: "15" },
+    { id: "s", type: "text", text: "{tasks_summary}", align: "right", size: "14" },
+    { id: "b", type: "button", text: "רכישת חבילה", href: "{buy_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
+  new_task_admin: [
+    { id: "h", type: "heading", text: "פנייה חדשה מלקוח", level: "h3", align: "right" },
+    { id: "t", type: "text", text: "<b>{client_name}</b> פתח/ה משימה חדשה בפרויקט {project_name}:", align: "right", size: "15" },
+    { id: "ctx", type: "text", text: "<b>{task_title}</b><br>{task_description}", align: "right", size: "14" },
+    { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
 };
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
