@@ -1,35 +1,54 @@
 import { createClient } from "@/lib/supabase/server";
-import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
+import { TasksTable, TaskRow } from "@/components/admin/TasksTable";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
+import { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+interface RawTicket {
+  id: string;
+  title: string | null;
+  description: string | null;
+  link: string | null;
+  status: TaskRow["status"];
+  project_id: string | null;
+  created_at: string;
+  completed_at: string | null;
+  projects: { name: string; is_retainer: boolean; client_id: string | null } | null;
+  time_logs: TaskRow["time_logs"];
+}
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
-  const [{ data: tickets }, { data: projectList }] = await Promise.all([
+  const [{ data: tickets }, { data: projectList }, { data: profiles }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, projects(name, is_retainer), time_logs(*)")
+      .select("*, projects(name, is_retainer, client_id), time_logs(*)")
       .order("created_at", { ascending: false }),
     supabase.from("projects").select("id, name").order("name"),
+    supabase.from("profiles").select("id, name"),
   ]);
 
-  const rows = (tickets ?? []) as TaskCardTicket[];
   const projects = (projectList ?? []) as { id: string; name: string }[];
-  const open = rows.filter((t) => t.status !== "completed");
-  const done = rows.filter((t) => t.status === "completed");
+  const nameById = new Map<string, string>(
+    ((profiles ?? []) as Pick<Profile, "id" | "name">[]).map((p) => [p.id, p.name ?? ""])
+  );
+
+  const rows: TaskRow[] = ((tickets ?? []) as RawTicket[]).map((t) => ({
+    ...t,
+    projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
+    clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
+  }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">דשבורד פניות</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            כל הפניות מכל הפרויקטים. הפעל טיימר לכל משימה.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">דשבורד משימות</h1>
+          <p className="mt-1 text-sm text-slate-500">כל המשימות מכל הפרויקטים.</p>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <QuickStartButton />
@@ -39,35 +58,12 @@ export default async function AdminDashboard() {
               <CreateTaskForm projects={projects} />
             </>
           ) : (
-            <p className="text-sm text-amber-600">
-              צור פרויקט תחילה כדי להוסיף משימות.
-            </p>
+            <p className="text-sm text-amber-600">צור פרויקט תחילה כדי להוסיף משימות.</p>
           )}
         </div>
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-          פעילות ({open.length})
-        </h2>
-        {open.length === 0 && (
-          <p className="text-sm text-slate-400">אין פניות פעילות.</p>
-        )}
-        {open.map((ticket) => (
-          <TaskCard key={ticket.id} ticket={ticket} projects={projects} />
-        ))}
-      </section>
-
-      {done.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-            הושלמו ({done.length})
-          </h2>
-          {done.map((ticket) => (
-            <TaskCard key={ticket.id} ticket={ticket} projects={projects} />
-          ))}
-        </section>
-      )}
+      <TasksTable tasks={rows} projects={projects} />
     </div>
   );
 }
