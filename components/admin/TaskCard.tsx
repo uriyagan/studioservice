@@ -11,7 +11,7 @@ import { updateTicket, deleteTicket } from "@/app/actions/admin";
 import { getTaskAttachments } from "@/app/actions/messages";
 import { Ticket, TimeLog } from "@/lib/types";
 import { formatDate } from "@/lib/format";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons";
 
 const initial = { ok: false, error: undefined as string | undefined };
 

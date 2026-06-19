@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
-import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "lucide-react";
+import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "@/components/icons";
 import { TaskThread } from "@/components/admin/TaskThread";
 import { TaskDetails } from "@/components/admin/TaskDetails";
 import { StatusBadge } from "@/components/ui/Badge";

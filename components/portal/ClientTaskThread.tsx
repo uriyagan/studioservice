@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link2, FileText } from "lucide-react";
+import { Link2, FileText } from "@/components/icons";
 import { ConversationThread } from "@/components/portal/ConversationThread";
 import { getMyTicketMessages, sendClientReply, getMyTaskAttachments } from "@/app/actions/messages";
 

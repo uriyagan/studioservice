@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useId } from "react";
-import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";

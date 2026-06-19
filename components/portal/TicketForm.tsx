@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { UploadCloud, X, Loader2, CheckCircle2, AlertCircle } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { createTicket, attachFile } from "@/app/actions/tickets";
 import { createAdminTicket } from "@/app/actions/admin";

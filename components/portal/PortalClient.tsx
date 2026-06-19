@@ -10,7 +10,7 @@ import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
 import { ClientTaskThread } from "@/components/portal/ClientTaskThread";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare } from "@/components/icons";
 
 type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
 

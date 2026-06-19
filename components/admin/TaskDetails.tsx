@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link2, FileText } from "lucide-react";
+import { Link2, FileText } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
 import { getTaskAttachments } from "@/app/actions/messages";
 
