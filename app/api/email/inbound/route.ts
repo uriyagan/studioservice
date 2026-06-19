@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logMessage, replyAddress, ticketIdFromAddress } from "@/lib/email/thread";
-import { sendEmail } from "@/lib/email/send";
-import { DEFAULT_BRAND } from "@/lib/email/types";
+import { dispatchEmail } from "@/lib/email/dispatch";
 
 // Receives parsed inbound emails (Resend Inbound webhook). Matches the
 // reply+<ticketId>@... recipient back to a task, stores the message,
@@ -58,22 +57,40 @@ export async function POST(req: NextRequest) {
       bodyHtml: html,
     });
 
-    // Notify admins there's a new reply.
+    // Notify admins there's a new reply, via the designable template.
     const db = createAdminClient() as unknown as { from: (t: string) => any };
     const { data: admins } = await db.from("profiles").select("email").eq("role", "admin");
     const emails = ((admins ?? []) as { email: string | null }[]).map((a) => a.email).filter(Boolean) as string[];
+
+    // Task context for the merge tags.
+    const { data: ticket } = await db
+      .from("tickets")
+      .select("title, projects(name, client_id)")
+      .eq("id", ticketId)
+      .maybeSingle();
+    const taskTitle = ticket?.title || subject || "המשימה";
+    let clientName = fromEmail;
+    if (ticket?.projects?.client_id) {
+      const { data: c } = await db.from("profiles").select("name").eq("id", ticket.projects.client_id).maybeSingle();
+      clientName = c?.name || fromEmail;
+    }
+
     if (emails.length) {
-      await sendEmail({
-        to: emails,
-        subject: `תגובה חדשה מלקוח${subject ? `: ${subject}` : ""}`,
-        from: `${DEFAULT_BRAND.fromName} <${DEFAULT_BRAND.fromEmail}>`,
-        replyTo: replyAddress(ticketId),
-        html: `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;">
-          <p>התקבלה תגובה חדשה מלקוח.</p>
-          ${text ? `<blockquote style="border-right:3px solid #ddd;padding-right:10px;color:#555;">${String(text).replace(/</g, "&lt;").replace(/\n/g, "<br>")}</blockquote>` : ""}
-          <p><a href="https://service.uriyaganor.com/admin">פתח/י במערכת ←</a></p>
-        </div>`,
-      });
+      const messageHtml = text ? String(text).replace(/\n/g, "<br>") : "(ללא טקסט)";
+      await dispatchEmail(
+        "client_reply_admin",
+        emails,
+        {
+          task_title: taskTitle,
+          project_name: ticket?.projects?.name || "",
+          client_name: clientName,
+          full_name: clientName,
+          task_url: "https://service.uriyaganor.com/admin",
+          site_url: "https://service.uriyaganor.com",
+        },
+        { message: messageHtml },
+        { replyTo: replyAddress(ticketId) }
+      );
     }
   } catch (e) {
     console.error("inbound processing failed:", (e as Error).message);

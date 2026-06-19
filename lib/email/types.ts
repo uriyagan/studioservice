@@ -80,6 +80,7 @@ export const EMAIL_DEFS = [
   { key: "hours_added", title: "שעות נוספו לחבילה", to: "client" },
   { key: "new_task_admin", title: "משימה חדשה מלקוח (למנהלים)", to: "admin" },
   { key: "ticket_reply", title: "התכתבות עם לקוח", to: "client" },
+  { key: "client_reply_admin", title: "תגובה מלקוח (למנהלים)", to: "admin" },
 ] as const;
 
 export type EmailKey = (typeof EMAIL_DEFS)[number]["key"];
@@ -109,7 +110,7 @@ export const MERGE_TAGS: {
 }[] = [
   {
     group: "כללי",
-    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin", "ticket_reply"],
+    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{first_name}", label: "שם פרטי" },
       { token: "{last_name}", label: "שם משפחה" },
@@ -136,7 +137,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "משימה",
-    emails: ["task_completed", "new_task_admin", "ticket_reply"],
+    emails: ["task_completed", "new_task_admin", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
@@ -146,8 +147,8 @@ export const MERGE_TAGS: {
   },
   {
     group: "התכתבות",
-    emails: ["ticket_reply"],
-    tags: [{ token: "{message}", label: "תוכן ההודעה שכתבת ללקוח" }],
+    emails: ["ticket_reply", "client_reply_admin"],
+    tags: [{ token: "{message}", label: "תוכן ההודעה" }],
   },
   {
     group: "שעות חבילה",

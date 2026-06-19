@@ -24,6 +24,13 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "div", type: "divider", color: "#e5e7eb" },
     { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
   ],
+  client_reply_admin: [
+    { id: "h", type: "heading", text: "תגובה חדשה מלקוח", level: "h3", align: "right" },
+    { id: "ctx", type: "text", text: "<b>בנוגע למשימה:</b> {task_title}", align: "right", size: "14" },
+    { id: "div", type: "divider", color: "#e5e7eb" },
+    { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
+    { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
 };
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
@@ -35,6 +42,7 @@ const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   hours_added: "נוספו שעות לחבילה",
   new_task_admin: "פנייה חדשה מלקוח",
   ticket_reply: "בנוגע למשימה: {task_title}",
+  client_reply_admin: "תגובה חדשה מלקוח: {task_title}",
 };
 
 type Vars = Record<string, string | number | undefined>;

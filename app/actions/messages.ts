@@ -4,9 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
-import { sendEmail } from "@/lib/email/send";
 import { logMessage, replyAddress } from "@/lib/email/thread";
-import { DEFAULT_BRAND } from "@/lib/email/types";
 
 export interface ThreadMessage {
   id: string;
@@ -237,28 +235,33 @@ export async function sendClientReply(
       links: links.join("\n") || null,
     });
 
-    // Notify admins by email.
+    // Notify admins via the designable "תגובה מלקוח (למנהלים)" template.
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
     const { data: admins } = await adb.from("profiles").select("email").eq("role", "admin");
     const emails = ((admins ?? []) as { email: string | null }[])
       .map((a) => a.email)
       .filter(Boolean) as string[];
     if (emails.length) {
+      const { data: me } = await adb.from("profiles").select("name").eq("id", user.id).maybeSingle();
+      const clientName = (me?.name as string) || user.email || "";
       const linksHtml = links.length
-        ? `<p>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}</p>`
+        ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
         : "";
-      await sendEmail({
-        to: emails,
-        subject: `תגובה חדשה מלקוח: ${taskTitle}`,
-        from: `${DEFAULT_BRAND.fromName} <${DEFAULT_BRAND.fromEmail}>`,
-        replyTo: replyAddress(ticketId),
-        html: `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;">
-          <p><b>בנוגע למשימה:</b> ${taskTitle.replace(/</g, "&lt;")}</p>
-          ${message ? `<blockquote style="border-right:3px solid #ddd;padding-right:10px;color:#555;">${message.replace(/</g, "&lt;").replace(/\n/g, "<br>")}</blockquote>` : ""}
-          ${linksHtml}
-          <p><a href="https://service.uriyaganor.com/admin">פתח/י במערכת ←</a></p>
-        </div>`,
-      });
+      const messageHtml = (message ? message.replace(/\n/g, "<br>") : "") + linksHtml;
+      await dispatchEmail(
+        "client_reply_admin",
+        emails,
+        {
+          task_title: taskTitle,
+          project_name: ticket.projects?.name || "",
+          client_name: clientName,
+          full_name: clientName,
+          task_url: "https://service.uriyaganor.com/admin",
+          site_url: "https://service.uriyaganor.com",
+        },
+        { message: messageHtml },
+        { replyTo: replyAddress(ticketId) }
+      );
     }
 
     revalidatePath("/admin");
