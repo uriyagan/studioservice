@@ -24,19 +24,27 @@ export async function logMessage(msg: {
   subject?: string | null;
   bodyText?: string | null;
   bodyHtml?: string | null;
-}): Promise<void> {
+  links?: string | null;
+}): Promise<string | null> {
   try {
     const db = createAdminClient() as unknown as { from: (t: string) => any };
-    await db.from("messages").insert({
-      ticket_id: msg.ticketId,
-      direction: msg.direction,
-      from_email: msg.fromEmail ?? null,
-      to_email: msg.toEmail ?? null,
-      subject: msg.subject ?? null,
-      body_text: msg.bodyText ?? null,
-      body_html: msg.bodyHtml ?? null,
-    });
+    const { data } = await db
+      .from("messages")
+      .insert({
+        ticket_id: msg.ticketId,
+        direction: msg.direction,
+        from_email: msg.fromEmail ?? null,
+        to_email: msg.toEmail ?? null,
+        subject: msg.subject ?? null,
+        body_text: msg.bodyText ?? null,
+        body_html: msg.bodyHtml ?? null,
+        links: msg.links ?? null,
+      })
+      .select("id")
+      .single();
+    return data?.id ?? null;
   } catch (e) {
     console.error("logMessage failed:", (e as Error).message);
+    return null;
   }
 }

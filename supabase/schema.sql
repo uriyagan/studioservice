@@ -72,11 +72,13 @@ create unique index if not exists time_logs_one_active_per_ticket
 create table if not exists public.attachments (
   id         uuid primary key default gen_random_uuid(),
   ticket_id  uuid not null references public.tickets(id) on delete cascade,
+  message_id uuid references public.messages(id) on delete cascade,
   file_url   text not null,
   file_name  text not null,
   created_at timestamptz not null default now()
 );
 create index if not exists attachments_ticket_id_idx on public.attachments(ticket_id);
+create index if not exists attachments_message_id_idx on public.attachments(message_id);
 
 -- ─────────────────────────────────────────────────────────
 --  6. PROJECT STATS VIEW
