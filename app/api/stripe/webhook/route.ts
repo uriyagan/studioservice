@@ -116,9 +116,18 @@ export async function POST(req: NextRequest) {
       const md = pi.metadata ?? {};
       let receiptUrl: string | null = null;
       try {
-        const full = await stripe.paymentIntents.retrieve(pi.id, { expand: ["latest_charge"] });
+        const full = await stripe.paymentIntents.retrieve(pi.id, {
+          expand: ["latest_charge", "invoice"],
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        receiptUrl = (full.latest_charge as any)?.receipt_url ?? null;
+        const inv = full.invoice as any;
+        // Prefer the invoice PDF; fall back to the charge receipt.
+        receiptUrl =
+          inv?.invoice_pdf ??
+          inv?.hosted_invoice_url ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (full.latest_charge as any)?.receipt_url ??
+          null;
       } catch {
         /* non-fatal */
       }

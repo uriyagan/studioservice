@@ -4,13 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 
-// Create a PaymentIntent for an hour-package purchase. Card details are
-// collected in-page via the Stripe Payment Element; this returns the
-// client secret to confirm against. project/hours/client travel in
-// metadata so the webhook can add the hours after payment.
-export async function createPaymentIntent(input: {
+// Create a Stripe INVOICE for the purchase and return the client secret
+// of its PaymentIntent, so the card can be paid in-page (deferred flow).
+// The client gets a real invoice (number + PDF), not just a receipt.
+export async function createInvoicePayment(input: {
   packageId: string;
   projectId: string;
+  invoiceName: string;
+  companyNumber: string;
+  email: string;
+  phone: string;
+  address: string;
 }): Promise<{ ok: boolean; clientSecret?: string; amount?: number; error?: string }> {
   try {
     const supabase = await createClient();
@@ -35,11 +39,80 @@ export async function createPaymentIntent(input: {
       .single();
     if (!project) return { ok: false, error: "פרויקט לא נמצא" };
 
-    const pi = await stripe.paymentIntents.create({
-      amount: Math.round(Number(pkg.price_ils) * 100),
+    // Reuse/create the Stripe customer for this client.
+    const admin = createAdminClient() as unknown as { from: (t: string) => any };
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const customerData = {
+      name: input.invoiceName || undefined,
+      email: input.email || user.email || undefined,
+      phone: input.phone || undefined,
+      address: input.address ? { line1: input.address } : undefined,
+    };
+
+    let customerId: string | undefined = profile?.stripe_customer_id ?? undefined;
+    if (customerId) {
+      await stripe.customers.update(customerId, customerData);
+    } else {
+      const customer = await stripe.customers.create({
+        ...customerData,
+        metadata: { client_id: user.id },
+      });
+      customerId = customer.id;
+      await admin.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
+    }
+
+    // Persist the billing details back to the profile (remembered).
+    await admin
+      .from("profiles")
+      .update({
+        company: input.invoiceName || null,
+        company_number: input.companyNumber || null,
+        phone: input.phone || null,
+        address: input.address || null,
+      })
+      .eq("id", user.id);
+
+    const amountAgorot = Math.round(Number(pkg.price_ils) * 100);
+
+    await stripe.invoiceItems.create({
+      customer: customerId,
+      amount: amountAgorot,
       currency: "eur",
-      receipt_email: user.email ?? undefined,
-      automatic_payment_methods: { enabled: true },
+      description: pkg.name,
+    });
+
+    const invoice = await stripe.invoices.create({
+      customer: customerId,
+      collection_method: "charge_automatically",
+      auto_advance: false,
+      currency: "eur",
+      pending_invoice_items_behavior: "include",
+      custom_fields: input.companyNumber
+        ? [{ name: "מספר חברה", value: input.companyNumber.slice(0, 30) }]
+        : undefined,
+      metadata: {
+        project_id: input.projectId,
+        hours: String(pkg.hours),
+        package_name: pkg.name,
+        client_id: user.id,
+      },
+    });
+
+    const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
+    const piId =
+      typeof finalized.payment_intent === "string"
+        ? finalized.payment_intent
+        : finalized.payment_intent?.id;
+    if (!piId) return { ok: false, error: "יצירת תשלום נכשלה" };
+
+    // Mirror metadata onto the PaymentIntent so the existing
+    // payment_intent.succeeded webhook can process it.
+    const pi = await stripe.paymentIntents.update(piId, {
       metadata: {
         project_id: input.projectId,
         hours: String(pkg.hours),
@@ -49,38 +122,6 @@ export async function createPaymentIntent(input: {
     });
 
     return { ok: true, clientSecret: pi.client_secret ?? undefined, amount: Number(pkg.price_ils) };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
-
-// Save the billing details the client entered back onto their profile
-// (so they're pre-filled next time). Scoped to the caller's own row.
-export async function saveBillingDetails(input: {
-  company: string;
-  company_number: string;
-  phone: string;
-  address: string;
-}): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "לא מחובר" };
-
-    const admin = createAdminClient() as unknown as { from: (t: string) => any };
-    const { error } = await admin
-      .from("profiles")
-      .update({
-        company: input.company || null,
-        company_number: input.company_number || null,
-        phone: input.phone || null,
-        address: input.address || null,
-      })
-      .eq("id", user.id);
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

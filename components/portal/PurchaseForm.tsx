@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { getStripe } from "@/lib/stripe-client";
-import { createPaymentIntent, saveBillingDetails } from "@/app/actions/stripe";
+import { createInvoicePayment } from "@/app/actions/stripe";
 import { Button } from "@/components/ui/Button";
 import { HourPackageRow } from "@/lib/types";
 
@@ -30,32 +30,34 @@ export function PurchaseForm({
   billing: BillingInfo;
   onCancel: () => void;
 }) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    createPaymentIntent({ packageId: pkg.id, projectId }).then((r) => {
-      if (cancelled) return;
-      if (r.ok && r.clientSecret) setClientSecret(r.clientSecret);
-      else setError(r.error ?? "שגיאה ביצירת התשלום");
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [pkg.id, projectId]);
-
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (!clientSecret) return <p className="text-sm text-slate-500">טוען תשלום…</p>;
-
+  // Deferred flow: render the Payment Element with amount only; the
+  // invoice + PaymentIntent are created on submit (after billing entry).
   return (
-    <Elements stripe={getStripe()} options={{ clientSecret, locale: "he" }}>
-      <Inner pkg={pkg} billing={billing} onCancel={onCancel} />
+    <Elements
+      stripe={getStripe()}
+      options={{
+        mode: "payment",
+        amount: Math.round(Number(pkg.price_ils) * 100),
+        currency: "eur",
+        locale: "he",
+      }}
+    >
+      <Inner pkg={pkg} projectId={projectId} billing={billing} onCancel={onCancel} />
     </Elements>
   );
 }
 
-function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: BillingInfo; onCancel: () => void }) {
+function Inner({
+  pkg,
+  projectId,
+  billing,
+  onCancel,
+}: {
+  pkg: HourPackageRow;
+  projectId: string;
+  billing: BillingInfo;
+  onCancel: () => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -71,15 +73,29 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
     setError(null);
 
     try {
-      await saveBillingDetails({
-        company: b.company,
-        company_number: b.company_number,
+      const { error: submitErr } = await elements.submit();
+      if (submitErr) {
+        setError(submitErr.message ?? "בדוק את פרטי הכרטיס");
+        return;
+      }
+
+      const r = await createInvoicePayment({
+        packageId: pkg.id,
+        projectId,
+        invoiceName: b.company,
+        companyNumber: b.company_number,
+        email: b.email,
         phone: b.phone,
         address: b.address,
       });
+      if (!r.ok || !r.clientSecret) {
+        setError(r.error ?? "שגיאה ביצירת החשבונית");
+        return;
+      }
 
       const { error: payErr, paymentIntent } = await stripe.confirmPayment({
         elements,
+        clientSecret: r.clientSecret,
         redirect: "if_required",
         confirmParams: {
           return_url: `${window.location.origin}/portal?purchase=success`,
@@ -112,7 +128,9 @@ function Inner({ pkg, billing, onCancel }: { pkg: HourPackageRow; billing: Billi
     return (
       <div className="space-y-2">
         <p className="text-sm font-medium text-emerald-600">התשלום בוצע בהצלחה ✓</p>
-        <p className="text-sm text-slate-500">השעות יתווספו לחבילה תוך מספר שניות. ניתן לראות את הקבלה בהיסטוריית הרכישות.</p>
+        <p className="text-sm text-slate-500">
+          השעות יתווספו לחבילה תוך מספר שניות, והחשבונית תופיע בהיסטוריית הרכישות.
+        </p>
         <Button onClick={() => router.refresh()}>רענון</Button>
       </div>
     );
