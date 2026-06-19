@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadCloud, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -37,6 +37,7 @@ export function TicketForm({
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputId = useId();
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [links, setLinks] = useState<string[]>([""]);
@@ -190,7 +191,18 @@ export function TicketForm({
         <label className="mb-1.5 block text-sm font-medium text-slate-700">
           קבצים מצורפים
         </label>
+        <input
+          id={fileInputId}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <label
+          htmlFor={fileInputId}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -205,15 +217,6 @@ export function TicketForm({
             dragOver ? "border-primary bg-primary-light/40" : "border-slate-300 hover:border-primary hover:bg-slate-50"
           }`}
         >
-          <input
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              addFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
           <UploadCloud className="h-7 w-7 text-slate-400" />
           <p className="text-sm font-medium text-slate-700">גרור קבצים לכאן או לחץ להעלאה</p>
           <p className="text-xs text-slate-400">כל סוג קובץ, כל גודל, כמה קבצים שתרצה</p>
