@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UploadCloud, X } from "lucide-react";
+import { UploadCloud, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTicket, attachFile } from "@/app/actions/tickets";
 import { createAdminTicket } from "@/app/actions/admin";
@@ -41,6 +41,8 @@ export function TicketForm({
   const [dragOver, setDragOver] = useState(false);
   const [links, setLinks] = useState<string[]>([""]);
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
+  const [phase, setPhase] = useState<string>("");
+  const [fileStates, setFileStates] = useState<Record<number, "pending" | "up" | "done" | "err">>({});
   const [error, setError] = useState<string | null>(null);
 
   const addFiles = (list: FileList | null) => {
@@ -53,6 +55,8 @@ export function TicketForm({
     e.preventDefault();
     setError(null);
     setStatus("saving");
+    setPhase("יוצר משימה...");
+    setFileStates(Object.fromEntries(files.map((_, i) => [i, "pending" as const])));
 
     const formData = new FormData(e.currentTarget);
     if (projectId) formData.set("project_id", projectId);
@@ -65,12 +69,17 @@ export function TicketForm({
     if (!res.ok || !res.ticketId) {
       setError(res.error ?? "שגיאה ביצירת המשימה");
       setStatus("idle");
+      setPhase("");
       return;
     }
 
-    // Upload attachments one by one.
+    // Upload attachments one by one, with per-file status feedback.
     const supabase = createClient();
-    for (const file of files) {
+    let failed = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setPhase(`מעלה קבצים (${i + 1}/${files.length})...`);
+      setFileStates((s) => ({ ...s, [i]: "up" }));
       try {
         const r = await fetch("/api/upload-url", {
           method: "POST",
@@ -86,14 +95,18 @@ export function TicketForm({
         if (upErr) throw upErr;
 
         await attachFile(res.ticketId, path, file.name);
+        setFileStates((s) => ({ ...s, [i]: "done" }));
       } catch {
-        // Non-fatal: the ticket is already created. Surface a note.
-        setError("המשימה נוצרה, אך העלאת חלק מהקבצים נכשלה.");
+        failed++;
+        setFileStates((s) => ({ ...s, [i]: "err" }));
       }
     }
+    if (failed > 0) setError(`המשימה נוצרה, אך העלאת ${failed} קבצים נכשלה.`);
 
     setStatus("done");
+    setPhase("");
     setFiles([]);
+    setFileStates({});
     setLinks([""]);
     formRef.current?.reset();
     router.refresh();
@@ -207,24 +220,41 @@ export function TicketForm({
         </label>
 
         {files.length > 0 && (
-          <ul className="mt-3 space-y-1.5">
-            {files.map((f, i) => (
-              <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
-                <span className="min-w-0 truncate text-slate-700">{f.name}</span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs text-slate-400">{fmtSize(f.size)}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                    title="הסר"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="mt-3 text-xs font-medium text-slate-500">
+              {files.length} קבצים נבחרו
+            </p>
+            <ul className="mt-1.5 space-y-1.5">
+              {files.map((f, i) => {
+                const st = fileStates[i];
+                return (
+                  <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                      {st === "up" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />}
+                      {st === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+                      {st === "err" && <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />}
+                      <span className="min-w-0 truncate text-slate-700">{f.name}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-slate-400">
+                        {st === "up" ? "מעלה..." : st === "done" ? "הועלה ✓" : st === "err" ? "נכשל" : fmtSize(f.size)}
+                      </span>
+                      {status !== "saving" && (
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                          title="הסר"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
@@ -234,7 +264,14 @@ export function TicketForm({
       )}
 
       <Button type="submit" disabled={status === "saving"} className="w-full">
-        {status === "saving" ? "יוצר..." : "יצירת משימה"}
+        {status === "saving" ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {phase || "שולח..."}
+          </span>
+        ) : (
+          "יצירת משימה"
+        )}
       </Button>
     </form>
   );
