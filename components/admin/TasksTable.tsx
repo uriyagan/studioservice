@@ -23,15 +23,20 @@ export interface TaskRow extends Ticket {
   time_logs: TimeLog[];
   clientName: string;
   lastInboundAt?: string | null;
+  assignee_id?: string | null;
+  assigneeName?: string;
 }
+
+type Admin = { id: string; name: string };
 
 const READS_KEY = "studio.threadReads";
 
-type ColKey = "title" | "project" | "client" | "status" | "created" | "exec";
+type ColKey = "title" | "project" | "client" | "assignee" | "status" | "created" | "exec";
 const COLUMNS: { key: ColKey; label: string }[] = [
   { key: "title", label: "כותרת" },
   { key: "project", label: "אתר" },
   { key: "client", label: "לקוח" },
+  { key: "assignee", label: "אחראי" },
   { key: "status", label: "סטטוס" },
   { key: "created", label: "תאריך בקשה" },
   { key: "exec", label: "זמן ביצוע" },
@@ -62,14 +67,19 @@ function LiveTime({ logs }: { logs: TimeLog[] }) {
 export function TasksTable({
   tasks,
   projects,
+  admins = [],
+  currentUserId,
 }: {
   tasks: TaskRow[];
   projects: { id: string; name: string }[];
+  admins?: Admin[];
+  currentUserId?: string;
 }) {
   const [visible, setVisible] = useState<Record<ColKey, boolean>>({
     title: true,
     project: true,
     client: true,
+    assignee: true,
     status: true,
     created: true,
     exec: true,
@@ -85,6 +95,7 @@ export function TasksTable({
   // Filters
   const [statusFilter, setStatusFilter] = useState<"open" | "completed" | "all">("open");
   const [projectFilter, setProjectFilter] = useState<string>("");
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(""); // "", "__me__", or admin id
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPage] = useState(1);
@@ -132,7 +143,7 @@ export function TasksTable({
   // Reset to page 1 whenever the filters/sort change.
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, projectFilter, query, sortKey, sortDir, pageSize]);
+  }, [statusFilter, projectFilter, assigneeFilter, query, sortKey, sortDir, pageSize]);
 
   const toggleCol = (k: ColKey) =>
     setVisible((v) => {
@@ -158,10 +169,12 @@ export function TasksTable({
     if (statusFilter === "open") arr = arr.filter((t) => t.status !== "completed");
     else if (statusFilter === "completed") arr = arr.filter((t) => t.status === "completed");
     if (projectFilter) arr = arr.filter((t) => t.project_id === projectFilter);
+    if (assigneeFilter === "__me__") arr = arr.filter((t) => t.assignee_id === currentUserId);
+    else if (assigneeFilter) arr = arr.filter((t) => t.assignee_id === assigneeFilter);
     const q = query.trim().toLowerCase();
     if (q) arr = arr.filter((t) => (t.title || "").toLowerCase().includes(q));
     return arr;
-  }, [tasks, statusFilter, projectFilter, query]);
+  }, [tasks, statusFilter, projectFilter, assigneeFilter, query, currentUserId]);
 
   const sorted = useMemo(() => {
     const val = (t: TaskRow): string | number => {
@@ -172,6 +185,8 @@ export function TasksTable({
           return (t.projects?.name || "").toLowerCase();
         case "client":
           return (t.clientName || "").toLowerCase();
+        case "assignee":
+          return (t.assigneeName || "").toLowerCase();
         case "status":
           return STATUS_RANK[t.status] ?? 9;
         case "created":
@@ -258,6 +273,22 @@ export function TasksTable({
               </option>
             ))}
           </select>
+          {admins.length > 0 && (
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary"
+              dir="rtl"
+            >
+              <option value="">כל האחראים</option>
+              {currentUserId && <option value="__me__">המשימות שלי</option>}
+              {admins.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="relative">
             <button onClick={() => setShowCols((v) => !v)} className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
               <SlidersHorizontal className="h-4 w-4" /> עמודות
@@ -312,6 +343,7 @@ export function TasksTable({
                 )}
                 {visible.project && <td className="px-3 py-2 text-slate-600">{t.projects?.name || "—"}</td>}
                 {visible.client && <td className="px-3 py-2 text-slate-600">{t.clientName || "—"}</td>}
+                {visible.assignee && <td className="px-3 py-2 text-slate-600">{t.assigneeName || "—"}</td>}
                 {visible.status && (
                   <td className="px-3 py-2">
                     <StatusBadge status={t.status} />
@@ -410,6 +442,7 @@ export function TasksTable({
           <EditForm
             task={editingTask}
             projects={projects}
+            admins={admins}
             action={editAction}
             error={editState.error}
             onCancel={() => setEditingId(null)}
@@ -423,12 +456,14 @@ export function TasksTable({
 function EditForm({
   task,
   projects,
+  admins,
   action,
   error,
   onCancel,
 }: {
   task: TaskRow;
   projects: { id: string; name: string }[];
+  admins: Admin[];
   action: (formData: FormData) => void;
   error?: string;
   onCancel: () => void;
@@ -447,6 +482,17 @@ function EditForm({
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label className="mb-1 block text-sm font-medium text-slate-700">אחראי</label>
+        <select name="assignee_id" defaultValue={task.assignee_id ?? ""} className={inputCls}>
+          <option value="">ללא אחראי</option>
+          {admins.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
             </option>
           ))}
         </select>

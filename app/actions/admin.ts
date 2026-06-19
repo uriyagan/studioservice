@@ -288,17 +288,19 @@ export async function updateTicket(
     const title = String(formData.get("title") ?? "").trim();
     const projectId = String(formData.get("project_id") ?? "") || null;
     const description = String(formData.get("description") ?? "").trim();
+    const assigneeId = String(formData.get("assignee_id") ?? "") || null;
 
     if (!id) return { ok: false, error: "מזהה משימה חסר" };
 
-    const { error } = await supabase
+    const base = { title: title || null, project_id: projectId, description: description || null };
+    // Include assignee_id; retry without it if the column isn't there yet.
+    let { error } = await supabase
       .from("tickets")
-      .update({
-        title: title || null,
-        project_id: projectId,
-        description: description || null,
-      })
+      .update({ ...base, assignee_id: assigneeId })
       .eq("id", id);
+    if (error) {
+      ({ error } = await supabase.from("tickets").update(base).eq("id", id));
+    }
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin");

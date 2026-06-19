@@ -19,12 +19,16 @@ interface RawTicket {
   project_id: string | null;
   created_at: string;
   completed_at: string | null;
+  assignee_id?: string | null;
   projects: { name: string; is_retainer: boolean; client_id: string | null } | null;
   time_logs: TaskRow["time_logs"];
 }
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const [{ data: tickets }, { data: projectList }, { data: profiles }, { data: statsRows }] = await Promise.all([
     supabase
@@ -32,14 +36,16 @@ export default async function AdminDashboard() {
       .select("*, projects(name, is_retainer, client_id), time_logs(*)")
       .order("created_at", { ascending: false }),
     supabase.from("projects").select("id, name").order("name"),
-    supabase.from("profiles").select("id, name"),
+    supabase.from("profiles").select("id, name, role"),
     supabase.from("project_stats").select("client_id, is_retainer, hours_remaining"),
   ]);
 
   const projects = (projectList ?? []) as { id: string; name: string }[];
-  const nameById = new Map<string, string>(
-    ((profiles ?? []) as Pick<Profile, "id" | "name">[]).map((p) => [p.id, p.name ?? ""])
-  );
+  const profileList = (profiles ?? []) as (Pick<Profile, "id" | "name"> & { role: string })[];
+  const nameById = new Map<string, string>(profileList.map((p) => [p.id, p.name ?? ""]));
+  const admins = profileList
+    .filter((p) => p.role === "admin")
+    .map((p) => ({ id: p.id, name: p.name || "" }));
 
   // Latest inbound (client) message time per ticket — the client compares it
   // against a locally-stored "read at" so the dot clears once it's opened.
@@ -63,6 +69,8 @@ export default async function AdminDashboard() {
     projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
     clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
     lastInboundAt: lastInbound[t.id] ?? null,
+    assignee_id: t.assignee_id ?? null,
+    assigneeName: t.assignee_id ? nameById.get(t.assignee_id) ?? "" : "",
   }));
 
   // ── Top-line stats ─────────────────────────────────────────
@@ -108,7 +116,7 @@ export default async function AdminDashboard() {
         <StatCard label="שעות שעבדנו החודש" value={formatDurationShort(monthSeconds)} />
       </div>
 
-      <TasksTable tasks={rows} projects={projects} />
+      <TasksTable tasks={rows} projects={projects} admins={admins} currentUserId={user?.id} />
       <AutoRefresh seconds={45} />
     </div>
   );
