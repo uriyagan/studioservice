@@ -20,12 +20,14 @@ async function processSuccess(opts: {
   sessionId: string | null;
   receiptUrl: string | null;
 }) {
-  const { projectId, clientId, hours } = opts;
-  if (!projectId || !(hours > 0)) return;
+  let { projectId } = opts;
+  const { clientId, hours } = opts;
+  if (!(hours > 0)) return;
 
   const db = createAdminClient() as unknown as DB;
 
-  // Idempotency: skip if this payment was already recorded.
+  // Idempotency: skip if this payment was already recorded (before creating a
+  // project, so retries don't spawn duplicate projects).
   if (opts.paymentIntentId) {
     const { data: existing } = await db
       .from("purchases")
@@ -34,6 +36,23 @@ async function processSuccess(opts: {
       .maybeSingle();
     if (existing) return;
   }
+
+  // No project (first-time client) → create one for them and credit it.
+  if (!projectId && clientId) {
+    const { data: prof } = await db.from("profiles").select("name").eq("id", clientId).maybeSingle();
+    const { data: np } = await db
+      .from("projects")
+      .insert({
+        name: prof?.name ? `${prof.name} — חבילת שירות` : "חבילת שירות",
+        client_id: clientId,
+        is_retainer: false,
+        total_hours_allocated: 0,
+      })
+      .select("id")
+      .single();
+    projectId = np?.id;
+  }
+  if (!projectId) return;
 
   const { data: project } = await db
     .from("projects")

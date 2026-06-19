@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/Card";
 import { PortalClient } from "@/components/portal/PortalClient";
+import { BuyPackages } from "@/components/portal/BuyPackages";
 import { HourPackageRow, ProjectStats, Purchase, Ticket, TimeLog } from "@/lib/types";
 import { sumLoggedSeconds } from "@/lib/format";
 
@@ -39,11 +39,32 @@ export default async function PortalPage() {
     .order("name");
   const projects = (projectRows ?? []) as ProjectStats[];
 
+  // No project yet → show the service packages so the client can buy one
+  // (the purchase creates a project for them automatically).
   if (projects.length === 0) {
+    const { data: pkgs } = await supabase
+      .from("hour_packages")
+      .select("*")
+      .eq("active", true)
+      .order("sort");
+    const packages = (pkgs ?? []) as HourPackageRow[];
     return (
-      <Card>
-        <p className="text-slate-600">עדיין לא שויך אליך פרויקט. אנא פנה אלינו.</p>
-      </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">ברוכים הבאים</h1>
+          <p className="mt-1 text-sm text-slate-500">בחרו חבילת שירות כדי להתחיל לעבוד איתנו.</p>
+        </div>
+        <BuyPackages
+          packages={packages}
+          billing={{
+            company: myProfile?.company ?? "",
+            company_number: myProfile?.company_number ?? "",
+            email: user!.email ?? "",
+            phone: myProfile?.phone ?? "",
+            address: myProfile?.address ?? "",
+          }}
+        />
+      </div>
     );
   }
 

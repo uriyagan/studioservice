@@ -32,15 +32,18 @@ export async function createInvoicePayment(input: {
       .maybeSingle();
     if (!pkg) return { ok: false, error: "חבילה לא נמצאה" };
 
-    // Verify the caller owns this project (defense-in-depth beyond RLS;
-    // the webhook later credits hours by project_id with the service role).
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("id", input.projectId)
-      .eq("client_id", user.id)
-      .single();
-    if (!project) return { ok: false, error: "פרויקט לא נמצא" };
+    // A projectId may be empty for a first-time client with no project yet —
+    // the webhook creates a project for them on success. When provided, verify
+    // the caller owns it (defense-in-depth beyond RLS).
+    if (input.projectId) {
+      const { data: project } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("id", input.projectId)
+        .eq("client_id", user.id)
+        .single();
+      if (!project) return { ok: false, error: "פרויקט לא נמצא" };
+    }
 
     // Reuse/create the Stripe customer for this client.
     const admin = createAdminClient() as unknown as { from: (t: string) => any };
