@@ -37,16 +37,18 @@ export default async function ClientsPage() {
                 <Link
                   key={c.id}
                   href={`/admin/clients/${c.id}`}
-                  className="flex items-center justify-between gap-3 py-3 hover:bg-slate-50"
+                  className="group flex items-center justify-between gap-3 py-3 hover:bg-slate-50"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-800">{c.name || "—"}</p>
+                    <p className="truncate font-bold text-slate-900">{c.name || "—"}</p>
                     <p className="truncate text-sm text-slate-500">
                       {c.company ? `${c.company} · ` : ""}
                       {c.email}
                     </p>
                   </div>
-                  <span className="text-sm text-primary">כרטיס ←</span>
+                  <span className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition group-hover:border-slate-400">
+                    פרטי לקוח
+                  </span>
                 </Link>
               ))}
             </div>

@@ -6,6 +6,7 @@ import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { ProjectStats } from "@/lib/types";
+import { ArrowRight } from "@/components/icons";
 import { formatHours } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +43,9 @@ export default async function ProjectPage({
       <div>
         <Link
           href="/admin/projects"
-          className="text-sm text-slate-500 hover:text-slate-700"
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
         >
-          ← חזרה לפרויקטים
+          <ArrowRight className="h-4 w-4" /> חזרה לפרויקטים
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>

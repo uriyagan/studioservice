@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { ClientProjects, ProjectOpt } from "@/components/admin/ClientProjects";
-import { SendClientEmail } from "@/components/admin/SendClientEmail";
+import { ArrowRight } from "@/components/icons";
 import { Profile, ProjectStats } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -42,8 +42,8 @@ export default async function ClientCardPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/clients" className="text-sm text-slate-500 hover:text-slate-700">
-          ← חזרה ללקוחות
+        <Link href="/admin/clients" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+          <ArrowRight className="h-4 w-4" /> חזרה ללקוחות
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">{c.name || c.email}</h1>
         <p className="text-sm text-slate-500">{c.email}</p>
@@ -60,11 +60,6 @@ export default async function ClientCardPage({
           <ClientProjects clientId={c.id} projects={projectOpts} />
         </Card>
       </div>
-
-      <Card>
-        <h2 className="mb-4 font-semibold text-slate-900">תקשורת</h2>
-        <SendClientEmail clientId={c.id} />
-      </Card>
     </div>
   );
 }

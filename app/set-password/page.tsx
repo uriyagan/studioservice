@@ -61,7 +61,7 @@ export default function SetPasswordPage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4" dir="rtl">
+    <main className="flex min-h-screen items-center justify-center bg-[#f5f5f5] p-4" dir="rtl">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}

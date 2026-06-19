@@ -32,7 +32,7 @@ export default async function AdminLayout({
   if (profile?.role !== "admin") redirect("/portal");
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f5f5f5]">
       <NavBar
         title="Uriya Ganor Studio"
         logoSrc="/studio-logo.svg"

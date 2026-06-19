@@ -59,7 +59,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-[#f5f5f5] p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}

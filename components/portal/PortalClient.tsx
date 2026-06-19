@@ -249,21 +249,27 @@ function PurchaseView({
               const low = pct <= 20;
               return (
                 <div key={p.id}>
-                  <div className="mb-1.5 flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-800">{p.name}</span>
-                    <span className="text-sm font-medium text-slate-700">
-                      נותרו {formatHours(remaining)} מתוך {formatHours(total)}
-                    </span>
-                  </div>
+                  <div className="mb-2 font-semibold text-slate-800">{p.name}</div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className={`h-full rounded-full transition-all ${low ? "bg-red-500" : "bg-primary"}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">
-                    נוצלו {formatHours(used)} · נותרו {formatHours(remaining)}
-                  </p>
+                  <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-500">
+                    <span>
+                      נרכשו: <b className="font-medium text-slate-800">{formatHours(total)}</b>
+                    </span>
+                    <span>
+                      נוצלו: <b className="font-medium text-slate-800">{formatHours(used)}</b>
+                    </span>
+                    <span>
+                      נותרו:{" "}
+                      <b className={`font-medium ${low ? "text-red-600" : "text-slate-800"}`}>
+                        {formatHours(remaining)}
+                      </b>
+                    </span>
+                  </div>
                 </div>
               );
             })}
