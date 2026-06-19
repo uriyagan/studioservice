@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
 import { addManualTime } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -45,21 +46,15 @@ export function ManualTimeForm({
   const inputCls =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
-  if (!open) {
-    return (
+  return (
+    <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
         ⏱ הזנת זמן ידנית
       </Button>
-    );
-  }
-
-  return (
-    <form
-      ref={formRef}
-      action={action}
-      className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:grid-cols-2"
-    >
-      {fixedProjectId ? (
+      {open && (
+        <Modal title="הזנת זמן ידנית" onClose={() => setOpen(false)}>
+          <form ref={formRef} action={action} className="grid gap-3 sm:grid-cols-2">
+            {fixedProjectId ? (
         <input type="hidden" name="project_id" value={fixedProjectId} />
       ) : (
         <select
@@ -123,12 +118,15 @@ export function ManualTimeForm({
         <p className="text-sm text-red-600 sm:col-span-2">{state.error}</p>
       )}
 
-      <div className="flex gap-2 sm:col-span-2">
-        <Submit />
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-          ביטול
-        </Button>
-      </div>
-    </form>
+            <div className="flex gap-2 sm:col-span-2">
+              <Submit />
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                ביטול
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }

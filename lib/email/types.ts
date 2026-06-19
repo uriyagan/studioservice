@@ -63,7 +63,7 @@ export type BrandSettings = {
 
 export const DEFAULT_BRAND: BrandSettings = {
   fromName: "Uriya Ganor Studio",
-  fromEmail: "info@uriyaganor.com",
+  fromEmail: "info@service.uriyaganor.com",
   logoUrl: "https://service.uriyaganor.com/studio-logo.svg",
   brandColor: "#111111",
 };

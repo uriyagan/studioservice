@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
 import { createAdminTicket } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -43,21 +44,15 @@ export function CreateTaskForm({
   const inputCls =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
-  if (!open) {
-    return (
+  return (
+    <>
       <Button variant="primary" onClick={() => setOpen(true)}>
         + משימה חדשה
       </Button>
-    );
-  }
-
-  return (
-    <form
-      ref={formRef}
-      action={action}
-      className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-card sm:grid-cols-2"
-    >
-      {fixedProjectId ? (
+      {open && (
+        <Modal title="משימה חדשה" onClose={() => setOpen(false)}>
+          <form ref={formRef} action={action} className="grid gap-3 sm:grid-cols-2">
+            {fixedProjectId ? (
         <input type="hidden" name="project_id" value={fixedProjectId} />
       ) : (
         <select name="project_id" required className={inputCls} defaultValue="">
@@ -99,7 +94,10 @@ export function CreateTaskForm({
         >
           ביטול
         </Button>
-      </div>
-    </form>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }
