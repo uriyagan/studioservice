@@ -3,6 +3,7 @@ import { TasksTable, TaskRow } from "@/components/admin/TasksTable";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
+import { AutoRefresh } from "@/components/admin/AutoRefresh";
 import { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,29 @@ export default async function AdminDashboard() {
     ((profiles ?? []) as Pick<Profile, "id" | "name">[]).map((p) => [p.id, p.name ?? ""])
   );
 
+  // Mark tasks whose latest message is from the client (awaiting our reply).
+  const ticketIds = ((tickets ?? []) as RawTicket[]).map((t) => t.id);
+  const awaitingReply = new Set<string>();
+  if (ticketIds.length) {
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data: msgs } = await db
+      .from("messages")
+      .select("ticket_id, direction, created_at")
+      .in("ticket_id", ticketIds)
+      .order("created_at", { ascending: false });
+    const seen = new Set<string>();
+    for (const m of (msgs ?? []) as { ticket_id: string; direction: string }[]) {
+      if (seen.has(m.ticket_id)) continue; // first row per ticket = latest
+      seen.add(m.ticket_id);
+      if (m.direction === "in") awaitingReply.add(m.ticket_id);
+    }
+  }
+
   const rows: TaskRow[] = ((tickets ?? []) as RawTicket[]).map((t) => ({
     ...t,
     projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
     clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
+    unread: awaitingReply.has(t.id),
   }));
 
   return (
@@ -64,6 +84,7 @@ export default async function AdminDashboard() {
       </div>
 
       <TasksTable tasks={rows} projects={projects} />
+      <AutoRefresh seconds={45} />
     </div>
   );
 }

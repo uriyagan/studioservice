@@ -21,6 +21,7 @@ export interface TaskRow extends Ticket {
   projects: { name: string; is_retainer: boolean } | null;
   time_logs: TimeLog[];
   clientName: string;
+  unread?: boolean;
 }
 
 type ColKey = "title" | "client" | "status" | "created" | "exec";
@@ -216,8 +217,15 @@ export function TasksTable({
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-end gap-2">
                     {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} />}
-                    <button onClick={() => setThreadFor(t)} title="שיחה" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                    <button
+                      onClick={() => setThreadFor(t)}
+                      title={t.unread ? "הודעה חדשה מהלקוח" : "שיחה"}
+                      className={`relative rounded p-1 hover:bg-slate-100 ${t.unread ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
+                    >
                       <MessageSquare className="h-4 w-4" />
+                      {t.unread && (
+                        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                      )}
                     </button>
                     <button onClick={() => setEditingId((id) => (id === t.id ? null : t.id))} title="עריכה" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                       <Pencil className="h-4 w-4" />
