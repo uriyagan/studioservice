@@ -64,6 +64,7 @@ export async function dispatchEmail(
     const brand = {
       fromName: settingsRow?.from_name || DEFAULT_BRAND.fromName,
       fromEmail: settingsRow?.from_email || DEFAULT_BRAND.fromEmail,
+      replyTo: settingsRow?.reply_to || DEFAULT_BRAND.replyTo,
       logoUrl: settingsRow?.logo_url || DEFAULT_BRAND.logoUrl,
       brandColor: settingsRow?.brand_color || DEFAULT_BRAND.brandColor,
     };
@@ -84,6 +85,7 @@ export async function dispatchEmail(
       subject,
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
+      replyTo: brand.replyTo || undefined,
     });
     return { sent: true };
   } catch (e) {

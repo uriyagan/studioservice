@@ -28,8 +28,13 @@ export function BrandSettingsForm({ initial }: { initial: BrandSettings }) {
           <input value={v.fromName} onChange={(e) => setV({ ...v, fromName: e.target.value })} className={inputCls} />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-slate-500">כתובת השולח</label>
+          <label className="mb-1 block text-xs text-slate-500">כתובת השולח (דומיין מאומת)</label>
           <input value={v.fromEmail} onChange={(e) => setV({ ...v, fromEmail: e.target.value })} className={inputCls} dir="ltr" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs text-slate-500">כתובת לתשובות (Reply-To)</label>
+          <input value={v.replyTo} onChange={(e) => setV({ ...v, replyTo: e.target.value })} className={inputCls} dir="ltr" placeholder="info@uriyaganor.com" />
+          <p className="mt-1 text-[11px] text-slate-400">לכאן יגיעו תשובות של לקוחות (תיבת דואר אמיתית).</p>
         </div>
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs text-slate-500">כתובת לוגו (URL)</label>

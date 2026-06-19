@@ -208,6 +208,7 @@ export async function sendClientEmail(
     const brand = {
       fromName: s?.from_name || DEFAULT_BRAND.fromName,
       fromEmail: s?.from_email || DEFAULT_BRAND.fromEmail,
+      replyTo: s?.reply_to || DEFAULT_BRAND.replyTo,
       logoUrl: s?.logo_url || DEFAULT_BRAND.logoUrl,
       brandColor: s?.brand_color || DEFAULT_BRAND.brandColor,
     };
@@ -231,6 +232,7 @@ export async function sendClientEmail(
       subject: substituteTags(subject, vars),
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
+      replyTo: brand.replyTo || undefined,
     });
     return { ok: true };
   } catch (e) {

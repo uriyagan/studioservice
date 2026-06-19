@@ -109,6 +109,7 @@ export async function saveBrandSettings(input: BrandSettings): Promise<Result> {
         id: true,
         from_name: input.fromName,
         from_email: input.fromEmail,
+        reply_to: input.replyTo,
         logo_url: input.logoUrl,
         brand_color: input.brandColor,
         updated_at: new Date().toISOString(),
@@ -147,6 +148,7 @@ export async function sendTestEmail(input: {
     const brand: BrandSettings = {
       fromName: s?.from_name || DEFAULT_BRAND.fromName,
       fromEmail: s?.from_email || DEFAULT_BRAND.fromEmail,
+      replyTo: s?.reply_to || DEFAULT_BRAND.replyTo,
       logoUrl: s?.logo_url || DEFAULT_BRAND.logoUrl,
       brandColor: s?.brand_color || DEFAULT_BRAND.brandColor,
     };
@@ -170,6 +172,7 @@ export async function sendTestEmail(input: {
       subject: `[בדיקה] ${subject}`,
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
+      replyTo: brand.replyTo || undefined,
     });
     return { ok: true };
   } catch (e) {

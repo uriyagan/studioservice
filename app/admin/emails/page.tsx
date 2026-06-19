@@ -22,6 +22,7 @@ export default async function EmailsPage() {
   const brand = {
     fromName: settings?.from_name || DEFAULT_BRAND.fromName,
     fromEmail: settings?.from_email || DEFAULT_BRAND.fromEmail,
+    replyTo: settings?.reply_to || DEFAULT_BRAND.replyTo,
     logoUrl: settings?.logo_url || DEFAULT_BRAND.logoUrl,
     brandColor: settings?.brand_color || DEFAULT_BRAND.brandColor,
   };
