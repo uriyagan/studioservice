@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { NavBar } from "@/components/NavBar";
+import { VersionWatcher } from "@/components/VersionWatcher";
 
 const LINKS = [
   { href: "/admin", label: "מעקב משימות" },
@@ -39,6 +40,7 @@ export default async function AdminLayout({
         userName={profile?.name || user.email || ""}
       />
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+      <VersionWatcher />
     </div>
   );
 }

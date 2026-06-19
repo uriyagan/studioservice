@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
 import { LogOut } from "@/components/icons";
+import { VersionWatcher } from "@/components/VersionWatcher";
 
 export default async function PortalLayout({
   children,
@@ -42,6 +43,7 @@ export default async function PortalLayout({
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-8">{children}</main>
+      <VersionWatcher />
     </div>
   );
 }
