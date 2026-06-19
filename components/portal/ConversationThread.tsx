@@ -27,6 +27,7 @@ export function ConversationThread({
   otherLabel,
   placeholder,
   closeOnSend = false,
+  header,
 }: {
   ticketId: string;
   title: string;
@@ -38,6 +39,7 @@ export function ConversationThread({
   otherLabel: string;
   placeholder: string;
   closeOnSend?: boolean;
+  header?: React.ReactNode;
 }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [text, setText] = useState("");
@@ -139,6 +141,7 @@ export function ConversationThread({
 
   return (
     <Modal title={`שיחה — ${title || "ללא שם"}`} onClose={onClose}>
+      {header}
       <div className="mb-4 max-h-[42vh] space-y-3 overflow-y-auto">
         {messages === null && <p className="text-sm text-slate-400">טוען…</p>}
         {messages?.length === 0 && (

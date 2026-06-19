@@ -16,6 +16,8 @@ export interface PortalTask {
   status: Ticket["status"];
   completed_at: string | null;
   seconds: number;
+  description: string | null;
+  link: string | null;
 }
 
 export default async function PortalPage() {
@@ -62,6 +64,8 @@ export default async function PortalPage() {
       status: t.status,
       completed_at: t.completed_at,
       seconds: sumLoggedSeconds(t.time_logs),
+      description: t.description ?? null,
+      link: t.link ?? null,
     });
   }
 

@@ -151,6 +151,50 @@ export async function getTaskAttachments(
   }
 }
 
+// Client: the files I attached when creating one of MY tasks. Ownership is
+// verified before signing (RLS-scoped read of the ticket).
+export async function getMyTaskAttachments(
+  ticketId: string
+): Promise<{ name: string; url: string }[]> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data: t } = await db
+      .from("tickets")
+      .select("projects(client_id)")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (!t || t.projects?.client_id !== user.id) return [];
+
+    const adb = createAdminClient() as unknown as {
+      from: (t: string) => any;
+      storage: { from: (b: string) => any };
+    };
+    const { data: atts } = await adb
+      .from("attachments")
+      .select("file_url, file_name")
+      .eq("ticket_id", ticketId)
+      .is("message_id", null)
+      .order("created_at", { ascending: true });
+    const attRows = (atts ?? []) as { file_url: string; file_name: string }[];
+    if (!attRows.length) return [];
+    const { data: signed } = await adb.storage
+      .from("attachments")
+      .createSignedUrls(attRows.map((a) => a.file_url), 3600);
+    const urlByPath: Record<string, string> = {};
+    for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
+      if (s.path) urlByPath[s.path] = s.signedUrl;
+    }
+    return attRows.map((a) => ({ name: a.file_name, url: urlByPath[a.file_url] ?? "#" }));
+  } catch {
+    return [];
+  }
+}
+
 // Record an uploaded file against a message. Verifies the caller may
 // access the ticket (admin or owning client), then inserts via service role.
 export async function recordMessageAttachment(input: {
@@ -327,7 +371,12 @@ export async function sendTicketReply(
     const linksHtml = links.length
       ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
       : "";
-    const messageHtml = message.replace(/\n/g, "<br>") + linksHtml;
+    // Files are uploaded to the portal (not as email attachments) — tell the
+    // client they're there so the emailed reply reflects what was sent.
+    const filesHtml = fileCount
+      ? `<br><br>📎 צורפו ${fileCount} קבצים — זמינים לצפייה והורדה בפורטל השירות.`
+      : "";
+    const messageHtml = message.replace(/\n/g, "<br>") + linksHtml + filesHtml;
 
     // Log the outbound message FIRST so the returned messageId is reliable
     // (file attachments depend on it) and a logging failure doesn't happen

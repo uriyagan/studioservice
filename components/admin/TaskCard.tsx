@@ -8,8 +8,10 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { TimerControl } from "@/components/TimerControl";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
+import { getTaskAttachments } from "@/app/actions/messages";
 import { Ticket, TimeLog } from "@/lib/types";
 import { formatDate } from "@/lib/format";
+import { FileText } from "lucide-react";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -56,7 +58,12 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const [editState, editAction] = useActionState(updateTicket, initial);
   const [delState, delAction] = useActionState(deleteTicket, initial);
+  const [attachments, setAttachments] = useState<{ name: string; url: string }[]>([]);
   const done = ticket.status === "completed";
+
+  useEffect(() => {
+    getTaskAttachments(ticket.id).then(setAttachments);
+  }, [ticket.id]);
 
   useEffect(() => {
     if (editState.ok) setEditing(false);
@@ -107,6 +114,23 @@ export function TaskCard({
                   className="inline-block text-sm text-primary hover:underline"
                 >
                   {url} ↗
+                </a>
+              ))}
+            </div>
+          )}
+          {attachments.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1">
+              {attachments.map((a, i) => (
+                <a
+                  key={i}
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-700 hover:text-primary"
+                >
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <span className="truncate">{a.name}</span>
+                  <span className="text-xs text-primary">הורדה ↗</span>
                 </a>
               ))}
             </div>

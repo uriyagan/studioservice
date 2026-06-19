@@ -119,6 +119,8 @@ export const MERGE_TAGS: {
       { token: "{project_name}", label: "שם הפרויקט" },
       { token: "{portal_url}", label: "קישור לפורטל" },
       { token: "{site_url}", label: "כתובת האתר" },
+      { token: "{logo_url}", label: "כתובת הלוגו (להוספה בבלוק תמונה)" },
+      { token: "{brand_color}", label: "צבע המותג" },
     ],
   },
   {

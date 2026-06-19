@@ -20,6 +20,8 @@ interface CompletedTask {
   status: TicketStatus;
   completed_at: string | null;
   seconds: number;
+  description: string | null;
+  link: string | null;
 }
 
 type Tab = "status" | "submit" | "purchase" | "details";
@@ -199,6 +201,8 @@ function StatusView({
         <ClientTaskThread
           ticketId={openTask.id}
           title={openTask.title}
+          description={openTask.description}
+          link={openTask.link}
           onClose={() => setOpenTask(null)}
         />
       )}

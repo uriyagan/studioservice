@@ -82,6 +82,33 @@ export async function createInvoicePayment(input: {
 
     const amountAgorot = Math.round(Number(pkg.price_ils) * 100);
 
+    // Reuse an existing open invoice for this customer + package instead of
+    // creating a duplicate when the user goes back and resubmits.
+    try {
+      const open = await stripe.invoices.list({ customer: customerId, status: "open", limit: 20 });
+      const match = open.data.find(
+        (inv) => inv.metadata?.project_id === input.projectId && inv.metadata?.package_name === pkg.name
+      );
+      const matchPiId = match
+        ? typeof match.payment_intent === "string"
+          ? match.payment_intent
+          : match.payment_intent?.id
+        : undefined;
+      if (matchPiId) {
+        const existingPi = await stripe.paymentIntents.retrieve(matchPiId);
+        const reusable =
+          existingPi.client_secret &&
+          ["requires_payment_method", "requires_confirmation", "requires_action", "processing"].includes(
+            existingPi.status
+          );
+        if (reusable) {
+          return { ok: true, clientSecret: existingPi.client_secret ?? undefined, amount: Number(pkg.price_ils) };
+        }
+      }
+    } catch {
+      /* fall through to creating a fresh invoice */
+    }
+
     await stripe.invoiceItems.create({
       customer: customerId,
       amount: amountAgorot,

@@ -113,11 +113,13 @@ export async function dispatchEmail(
 
     const blocks =
       Array.isArray(tpl?.blocks) && tpl.blocks.length ? tpl.blocks : DEFAULT_BLOCKS[key] ?? [];
+    // Brand fields are usable from any template via {logo_url}/{brand_color}.
+    const allVars = { ...vars, logo_url: brand.logoUrl, brand_color: brand.brandColor };
     const subjectTemplate = tpl?.subject || FALLBACK_SUBJECT[key];
-    const subject = substituteTags(subjectTemplate, vars);
+    const subject = substituteTags(subjectTemplate, allVars);
     const html = substituteTags(
       renderEmailHtml({ blocks, design: tpl?.design ?? undefined, brand }),
-      vars,
+      allVars,
       rawVars
     );
 

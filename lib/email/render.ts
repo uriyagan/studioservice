@@ -72,7 +72,7 @@ function renderBlock(b: EmailBlock, d: EmailDesign): string {
           b.bg || "#111111"
         )};color:${esc(
           b.color || "#ffffff"
-        )};padding:12px 26px;border-radius:${radius}px;font-weight:600;font-size:${fontSize}px;text-decoration:none;">${richOrText(
+        )};padding:10px 22px;border-radius:${radius}px;font-weight:600;font-size:${fontSize}px;text-decoration:none;">${richOrText(
           b.text
         )}</a></div>`
       );
@@ -101,14 +101,29 @@ function renderBlock(b: EmailBlock, d: EmailDesign): string {
     case "social": {
       const align = alignOf(b.align, "center");
       const gap = Number(b.gap) || 8;
+      const color = esc(b.color || d.linkColor);
+      // Email clients can't reliably render inline SVG icons, so social
+      // networks render as labeled text links with the right href scheme.
+      const LABELS: Record<string, string> = {
+        facebook: "Facebook", instagram: "Instagram", whatsapp: "WhatsApp",
+        tiktok: "TikTok", youtube: "YouTube", x: "X",
+        website: "אתר", email: "אימייל", phone: "טלפון",
+      };
+      const hrefFor = (type: string, url: string): string => {
+        const u = String(url || "").trim();
+        if (!u) return "";
+        if (type === "email") return u.startsWith("mailto:") ? u : `mailto:${u}`;
+        if (type === "phone") return u.startsWith("tel:") ? u : `tel:${u.replace(/[^\d+]/g, "")}`;
+        return u;
+      };
       const networks: { type?: string; url?: string }[] = Array.isArray(b.networks) ? b.networks : [];
       const links = networks
         .filter((n) => n.url)
         .map(
           (n) =>
-            `<a href="${esc(n.url)}" target="_blank" style="display:inline-block;margin:0 ${gap / 2}px;color:${esc(
-              b.color || d.linkColor
-            )};text-decoration:none;font-weight:600;">${esc(n.type || "link")}</a>`
+            `<a href="${esc(hrefFor(n.type || "", n.url || ""))}" target="_blank" style="display:inline-block;margin:0 ${gap / 2}px;color:${color};text-decoration:none;font-weight:600;">${esc(
+              LABELS[n.type || ""] || n.type || "link"
+            )}</a>`
         )
         .join("");
       return wrap(`<div style="text-align:${align};">${links}</div>`);
