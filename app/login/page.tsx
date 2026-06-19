@@ -11,6 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [forgot, setForgot] = useState(false);
@@ -35,6 +36,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // Persist the "remember me" preference so the middleware knows whether to
+    // keep the auth cookies persistent or make them session-only.
+    document.cookie = `remember=${remember ? "1" : "0"}; path=/; max-age=${60 * 60 * 24 * 400}; samesite=lax`;
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -94,6 +99,16 @@ export default function LoginPage() {
                 placeholder="••••••••"
               />
             </div>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-primary"
+              />
+              זכור אותי
+            </label>
 
             {error && (
               <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">

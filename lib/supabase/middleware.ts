@@ -16,13 +16,22 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: CookieToSet[]) {
+          // "remember me" = 0 → keep auth cookies session-only (cleared on
+          // browser close); otherwise leave them persistent (the default).
+          const sessionOnly = request.cookies.get("remember")?.value === "0";
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
           response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            let opts = options;
+            if (sessionOnly && name.startsWith("sb-")) {
+              opts = { ...options };
+              delete opts.maxAge;
+              delete opts.expires;
+            }
+            response.cookies.set(name, value, opts);
+          });
         },
       },
     }
