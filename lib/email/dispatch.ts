@@ -32,6 +32,7 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
   ],
   task_completed: [
+    { id: "badge", type: "html", html: `<div style="text-align:center;margin-bottom:12px;"><span style="display:inline-block;width:56px;height:56px;line-height:56px;border-radius:50%;background:#10b981;color:#ffffff;font-size:30px;font-weight:bold;text-align:center;">&#10003;</span></div>` },
     { id: "h", type: "heading", text: "המשימה הושלמה", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, המשימה <b>{task_title}</b> הושלמה.", align: "right", size: "15" },
     { id: "t2", type: "text", text: "זמן ביצוע: {task_time}<br>זמן שנותר בחבילה: {hours_remaining} שעות", align: "right", size: "15" },
@@ -63,7 +64,7 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   welcome: "ברוכים הבאים",
   password_reset: "איפוס סיסמה",
-  task_completed: "המשימה הושלמה",
+  task_completed: "✓ המשימה הושלמה",
   package_half: "ניצלת 50% מהחבילה",
   package_depleted: "החבילה הסתיימה",
   hours_added: "נוספו שעות לחבילה",

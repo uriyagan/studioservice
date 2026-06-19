@@ -5,7 +5,7 @@ import { HourPackageRow, Profile, ProjectStats, Purchase, TicketStatus } from "@
 import { Card, StatCard } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { formatDuration, formatDate, formatHours, formatHoursClock } from "@/lib/format";
+import { formatDurationShort, formatDate, formatHours, formatHoursClock } from "@/lib/format";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
@@ -182,7 +182,7 @@ function StatusView({
                       <StatusBadge status={t.status} />
                     </td>
                     <td className="px-4 py-3 font-mono tabular-nums text-slate-700">
-                      {formatDuration(t.seconds)}
+                      {formatDurationShort(t.seconds)}
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 text-primary hover:underline">

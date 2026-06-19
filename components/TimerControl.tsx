@@ -13,9 +13,11 @@ import { startTimer, pauseTimer, completeTask } from "@/app/actions/timer";
 export function TimerControl({
   ticket,
   logs,
+  showComplete = true,
 }: {
   ticket: Ticket;
   logs: TimeLog[];
+  showComplete?: boolean;
 }) {
   const hasActive = logs.some((l) => l.end_time === null);
   const [elapsed, setElapsed] = useState(() => sumLoggedSeconds(logs));
@@ -83,7 +85,7 @@ export function TimerControl({
             </Button>
           )}
 
-          {ticket.status !== "pending" && (
+          {showComplete && ticket.status !== "pending" && (
             <Button
               variant="success"
               disabled={isPending}

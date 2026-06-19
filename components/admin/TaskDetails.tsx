@@ -1,25 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Link2, FileText, Download } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { getTaskAttachments } from "@/app/actions/messages";
+import { completeTask } from "@/app/actions/timer";
+import { formatDuration } from "@/lib/format";
 
-// Read-only view of what a client submitted: description, links, files.
+// Read view of what a client submitted + the (irreversible) "complete task"
+// action, gated behind a confirmation that shows the total logged time.
 export function TaskDetails({
   ticketId,
   title,
   description,
   link,
+  status,
+  seconds,
   onClose,
 }: {
   ticketId: string;
   title: string;
   description: string | null;
   link: string | null;
+  status: string;
+  seconds: number;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [files, setFiles] = useState<{ name: string; url: string }[] | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [completing, startComplete] = useTransition();
   const links = (link ?? "")
     .split("\n")
     .map((l) => l.trim())
@@ -29,7 +41,6 @@ export function TaskDetails({
     getTaskAttachments(ticketId).then(setFiles);
   }, [ticketId]);
 
-  // Trigger a download for each file (staggered so the browser doesn't block).
   const downloadAll = () => {
     (files ?? []).forEach((f, i) => {
       setTimeout(() => {
@@ -116,6 +127,46 @@ export function TaskDetails({
             <p className="text-sm text-slate-400">אין קבצים.</p>
           )}
         </Section>
+
+        {/* Complete the task (irreversible) — with confirmation + total time. */}
+        {status === "completed" ? (
+          <p className="border-t border-slate-100 pt-4 text-sm font-medium text-emerald-600">
+            המשימה הושלמה ✓ · זמן כולל {formatDuration(seconds)}
+          </p>
+        ) : (
+          <div className="border-t border-slate-100 pt-4">
+            {!confirming ? (
+              <Button variant="success" onClick={() => setConfirming(true)}>
+                ✓ סיום המשימה ועדכון הלקוח
+              </Button>
+            ) : (
+              <div className="space-y-3 rounded-lg bg-emerald-50 p-3">
+                <p className="text-sm text-slate-800">
+                  לסיים את המשימה ולעדכן את הלקוח במייל? זמן המשימה הכולל:{" "}
+                  <b className="font-mono tabular-nums">{formatDuration(seconds)}</b>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="success"
+                    disabled={completing}
+                    onClick={() =>
+                      startComplete(async () => {
+                        await completeTask(ticketId);
+                        router.refresh();
+                        onClose();
+                      })
+                    }
+                  >
+                    {completing ? "מסיים…" : "סיים ועדכן לקוח"}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirming(false)}>
+                    ביטול
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

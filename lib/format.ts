@@ -15,6 +15,15 @@ export function formatHours(hours: number): string {
   })} שעות`;
 }
 
+// Seconds → HH:MM (no seconds) — for client-facing displays.
+export function formatDurationShort(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(h)}:${pad(m)}`;
+}
+
 // Decimal hours (e.g. 5.5) → "HH:MM" clock string ("05:30").
 export function formatHoursClock(hours: number): string {
   const totalMinutes = Math.max(0, Math.round(Number(hours || 0) * 60));

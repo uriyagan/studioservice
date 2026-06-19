@@ -325,7 +325,7 @@ export function TasksTable({
                 )}
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-end gap-2">
-                    {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} />}
+                    {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} showComplete={false} />}
                     <button
                       onClick={() => openThread(t)}
                       title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
@@ -400,6 +400,8 @@ export function TasksTable({
           title={detailsFor.title ?? ""}
           description={detailsFor.description}
           link={detailsFor.link}
+          status={detailsFor.status}
+          seconds={sumLoggedSeconds(detailsFor.time_logs)}
           onClose={() => setDetailsFor(null)}
         />
       )}
