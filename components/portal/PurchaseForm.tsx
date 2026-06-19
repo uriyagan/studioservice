@@ -76,7 +76,7 @@ export function PurchaseForm({
           <input value={b.address} onChange={(e) => setB({ ...b, address: e.target.value })} placeholder="כתובת" className={`${cls} sm:col-span-2`} />
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" disabled={busy} className="flex-1">
             {busy ? "מכין תשלום…" : "המשך לתשלום"}
           </Button>
@@ -173,11 +173,11 @@ function PayStep({
         <PaymentElement options={{ fields: { billingDetails: { name: "never", email: "never", phone: "never" } } }} />
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" disabled={busy || !stripe} className="flex-1">
           {busy ? "מעבד…" : `תשלום €${Number(pkg.price_ils).toLocaleString("he-IL")}`}
         </Button>
-        <Button type="button" variant="ghost" onClick={onBack} className="flex items-center gap-1">
+        <Button type="button" variant="ghost" onClick={onBack} className="flex items-center justify-center gap-1">
           <ArrowRight className="h-4 w-4" /> חזרה לפרטים
         </Button>
       </div>

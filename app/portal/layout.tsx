@@ -27,8 +27,8 @@ export default async function PortalLayout({
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/studio-logo.svg" alt="Uriya Ganor Studio" className="h-8 w-auto" />
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="truncate text-sm text-slate-500">
               {profile?.name || user.email}
             </span>
             <form action={logout}>

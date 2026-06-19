@@ -356,20 +356,20 @@ export function TasksTable({
                   </td>
                 )}
                 <td className="px-3 py-2">
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1.5">
                     {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} showComplete={false} />}
                     <button
                       onClick={() => openThread(t)}
                       title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
-                      className={`relative rounded p-1 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
+                      className={`relative rounded p-2 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
                     >
-                      <MessageSquare className="h-4 w-4" />
+                      <MessageSquare className="h-5 w-5" />
                       {isUnread(t) && (
                         <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
                       )}
                     </button>
-                    <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-                      <Pencil className="h-4 w-4" />
+                    <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                      <Pencil className="h-5 w-5" />
                     </button>
                     <form
                       action={delAction}
@@ -379,8 +379,8 @@ export function TasksTable({
                     >
                       <input type="hidden" name="id" value={t.id} />
                       <input type="hidden" name="project_id" value={t.project_id ?? ""} />
-                      <button type="submit" title="מחק" className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
+                      <button type="submit" title="מחק" className="rounded p-2 text-slate-500 hover:bg-red-50 hover:text-red-600">
+                        <Trash2 className="h-5 w-5" />
                       </button>
                     </form>
                   </div>

@@ -89,30 +89,32 @@ export function ManualTimeForm({
         className={`${inputCls} sm:col-span-2`}
       />
 
-      <div className="flex items-center gap-2">
-        <input
-          name="hours"
-          type="number"
-          min="0"
-          step="1"
-          defaultValue="0"
-          className={inputCls}
-          aria-label="שעות"
-        />
-        <span className="text-sm text-slate-500">שעות</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <input
-          name="minutes"
-          type="number"
-          min="0"
-          max="59"
-          step="1"
-          defaultValue="0"
-          className={inputCls}
-          aria-label="דקות"
-        />
-        <span className="text-sm text-slate-500">דקות</span>
+      <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+        <div className="flex items-center gap-2">
+          <input
+            name="hours"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue="0"
+            className={inputCls}
+            aria-label="שעות"
+          />
+          <span className="text-sm text-slate-500">שעות</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            name="minutes"
+            type="number"
+            min="0"
+            max="59"
+            step="1"
+            defaultValue="0"
+            className={inputCls}
+            aria-label="דקות"
+          />
+          <span className="text-sm text-slate-500">דקות</span>
+        </div>
       </div>
 
       {state.error && (

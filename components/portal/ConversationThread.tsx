@@ -223,7 +223,7 @@ export function ConversationThread({
             <button
               type="button"
               onClick={() => setLinks((p) => p.filter((_, idx) => idx !== i))}
-              className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+              className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
               title="הסר"
             >
               <X className="h-4 w-4" />
@@ -256,7 +256,7 @@ export function ConversationThread({
                     <button
                       type="button"
                       onClick={() => removeFile(u.id)}
-                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
                       title="הסר"
                     >
                       <X className="h-4 w-4" />
@@ -270,7 +270,7 @@ export function ConversationThread({
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleSend} disabled={busy || uploading}>
             {busy ? (
               <span className="flex items-center gap-2">

@@ -161,7 +161,7 @@ export function EmailBuilder({
   const setD = (patch: Partial<EmailDesign>) => setDesign((d) => ({ ...d, ...patch }));
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-3">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col gap-3 lg:h-[calc(100vh-8rem)]">
       {/* Top bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -224,9 +224,9 @@ export function EmailBuilder({
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className="flex min-h-0 flex-1 gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
           {/* Sidebar */}
-          <div className="w-80 shrink-0 space-y-3 overflow-y-auto pe-1">
+          <div className="w-full shrink-0 space-y-3 overflow-y-auto pe-1 lg:w-80">
             {selectedBlock && selected ? (
               <Inspector block={selectedBlock} onChange={patchSelected} onClose={() => setSelected(null)} />
             ) : null}

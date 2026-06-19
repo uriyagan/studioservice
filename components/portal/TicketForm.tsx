@@ -267,7 +267,7 @@ export function TicketForm({
                     <button
                       type="button"
                       onClick={() => removeFile(u.id)}
-                      className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                      className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
                       title="הסר"
                     >
                       <X className="h-4 w-4" />
