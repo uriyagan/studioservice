@@ -30,38 +30,84 @@ export function PurchaseForm({
   billing: BillingInfo;
   onCancel: () => void;
 }) {
-  // Deferred flow: render the Payment Element with amount only; the
-  // invoice + PaymentIntent are created on submit (after billing entry).
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [b, setB] = useState<BillingInfo>(billing);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const summary = (
+    <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+      {pkg.name} · {pkg.hours} שעות · <span className="font-bold">€{Number(pkg.price_ils).toLocaleString("he-IL")}</span>
+    </div>
+  );
+
+  // Step 1 — billing details → create the invoice + PaymentIntent.
+  const proceed = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const r = await createInvoicePayment({
+      packageId: pkg.id,
+      projectId,
+      invoiceName: b.company,
+      companyNumber: b.company_number,
+      email: b.email,
+      phone: b.phone,
+      address: b.address,
+    });
+    setBusy(false);
+    if (!r.ok || !r.clientSecret) {
+      setError(r.error ?? "שגיאה ביצירת החשבונית");
+      return;
+    }
+    setClientSecret(r.clientSecret);
+  };
+
+  if (!clientSecret) {
+    return (
+      <form onSubmit={proceed} className="space-y-4">
+        {summary}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input value={b.company} onChange={(e) => setB({ ...b, company: e.target.value })} placeholder="השם שיופיע על החשבונית" className={cls} />
+          <input value={b.company_number} onChange={(e) => setB({ ...b, company_number: e.target.value })} placeholder="מספר חברה" className={cls} />
+          <input value={b.email} onChange={(e) => setB({ ...b, email: e.target.value })} placeholder="אימייל" className={cls} dir="ltr" type="email" />
+          <input value={b.phone} onChange={(e) => setB({ ...b, phone: e.target.value })} placeholder="טלפון" className={cls} dir="ltr" />
+          <input value={b.address} onChange={(e) => setB({ ...b, address: e.target.value })} placeholder="כתובת" className={`${cls} sm:col-span-2`} />
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={busy} className="flex-1">
+            {busy ? "מכין תשלום…" : "המשך לתשלום"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            ביטול
+          </Button>
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <Elements
-      stripe={getStripe()}
-      options={{
-        mode: "payment",
-        amount: Math.round(Number(pkg.price_ils) * 100),
-        currency: "eur",
-        locale: "he",
-      }}
-    >
-      <Inner pkg={pkg} projectId={projectId} billing={billing} onCancel={onCancel} />
+    <Elements stripe={getStripe()} options={{ clientSecret, locale: "he" }}>
+      <PayStep pkg={pkg} billing={b} summary={summary} onBack={() => setClientSecret(null)} />
     </Elements>
   );
 }
 
-function Inner({
+function PayStep({
   pkg,
-  projectId,
   billing,
-  onCancel,
+  summary,
+  onBack,
 }: {
   pkg: HourPackageRow;
-  projectId: string;
   billing: BillingInfo;
-  onCancel: () => void;
+  summary: React.ReactNode;
+  onBack: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
-  const [b, setB] = useState<BillingInfo>(billing);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -71,44 +117,21 @@ function Inner({
     if (!stripe || !elements) return;
     setBusy(true);
     setError(null);
-
     try {
-      const { error: submitErr } = await elements.submit();
-      if (submitErr) {
-        setError(submitErr.message ?? "בדוק את פרטי הכרטיס");
-        return;
-      }
-
-      const r = await createInvoicePayment({
-        packageId: pkg.id,
-        projectId,
-        invoiceName: b.company,
-        companyNumber: b.company_number,
-        email: b.email,
-        phone: b.phone,
-        address: b.address,
-      });
-      if (!r.ok || !r.clientSecret) {
-        setError(r.error ?? "שגיאה ביצירת החשבונית");
-        return;
-      }
-
       const { error: payErr, paymentIntent } = await stripe.confirmPayment({
         elements,
-        clientSecret: r.clientSecret,
         redirect: "if_required",
         confirmParams: {
           return_url: `${window.location.origin}/portal?purchase=success`,
           payment_method_data: {
             billing_details: {
-              name: b.company || undefined,
-              email: b.email || undefined,
-              phone: b.phone || undefined,
+              name: billing.company || undefined,
+              email: billing.email || undefined,
+              phone: billing.phone || undefined,
             },
           },
         },
       });
-
       if (payErr) {
         setError(payErr.message ?? "התשלום נכשל");
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
@@ -138,30 +161,17 @@ function Inner({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-        {pkg.name} · {pkg.hours} שעות · <span className="font-bold">€{Number(pkg.price_ils).toLocaleString("he-IL")}</span>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <input value={b.company} onChange={(e) => setB({ ...b, company: e.target.value })} placeholder="השם שיופיע על החשבונית" className={cls} />
-        <input value={b.company_number} onChange={(e) => setB({ ...b, company_number: e.target.value })} placeholder="מספר חברה" className={cls} />
-        <input value={b.email} onChange={(e) => setB({ ...b, email: e.target.value })} placeholder="אימייל" className={cls} dir="ltr" type="email" />
-        <input value={b.phone} onChange={(e) => setB({ ...b, phone: e.target.value })} placeholder="טלפון" className={cls} dir="ltr" />
-        <input value={b.address} onChange={(e) => setB({ ...b, address: e.target.value })} placeholder="כתובת" className={`${cls} sm:col-span-2`} />
-      </div>
-
+      {summary}
       <div className="rounded-lg border border-slate-200 p-3">
         <PaymentElement options={{ fields: { billingDetails: { name: "never", email: "never", phone: "never" } } }} />
       </div>
-
       {error && <p className="text-sm text-red-600">{error}</p>}
-
       <div className="flex gap-2">
         <Button type="submit" disabled={busy || !stripe} className="flex-1">
           {busy ? "מעבד…" : `תשלום €${Number(pkg.price_ils).toLocaleString("he-IL")}`}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          ביטול
+        <Button type="button" variant="ghost" onClick={onBack}>
+          ← חזרה לפרטים
         </Button>
       </div>
     </form>
