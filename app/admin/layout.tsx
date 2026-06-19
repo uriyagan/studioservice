@@ -6,7 +6,7 @@ const LINKS = [
   { href: "/admin", label: "דשבורד" },
   { href: "/admin/projects", label: "פרויקטים" },
   { href: "/admin/clients", label: "לקוחות" },
-  { href: "/admin/users", label: "משתמשים" },
+  { href: "/admin/users", label: "מנהלי מערכת" },
   { href: "/admin/emails", label: "מיילים" },
   { href: "/admin/billing", label: "תשלומים" },
 ];

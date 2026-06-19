@@ -23,7 +23,7 @@ type Tab = "status" | "submit" | "purchase" | "details";
 const TABS: { id: Tab; label: string }[] = [
   { id: "status", label: "סטטוס הפרויקט" },
   { id: "submit", label: "יצירת משימה" },
-  { id: "purchase", label: "רכישת שעות" },
+  { id: "purchase", label: "חבילות שירות" },
   { id: "details", label: "הפרטים שלי" },
 ];
 
@@ -99,7 +99,13 @@ export function PortalClient({
         </Card>
       )}
       {tab === "purchase" && (
-        <PurchaseView projectId={project.id} packages={packages} purchases={purchases} billing={billing} />
+        <PurchaseView
+          projectId={project.id}
+          projects={projects}
+          packages={packages}
+          purchases={purchases}
+          billing={billing}
+        />
       )}
       {tab === "details" && (
         <Card>
@@ -184,11 +190,13 @@ function StatusView({
 
 function PurchaseView({
   projectId,
+  projects,
   packages,
   purchases,
   billing,
 }: {
   projectId: string;
+  projects: ProjectStats[];
   packages: HourPackageRow[];
   purchases: Purchase[];
   billing: BillingInfo;
@@ -197,36 +205,57 @@ function PurchaseView({
 
   return (
     <div className="space-y-8">
-      {selected ? (
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">תשלום עבור {selected.name}</h2>
-            <button onClick={() => setSelected(null)} className="text-sm text-slate-500 hover:text-slate-700">
-              ← בחירת חבילה אחרת
-            </button>
-          </div>
-          <PurchaseForm pkg={selected} projectId={projectId} billing={billing} onCancel={() => setSelected(null)} />
-        </Card>
-      ) : packages.length === 0 ? (
-        <Card>
-          <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {packages.map((pkg) => (
-            <Card key={pkg.id} className="flex flex-col">
-              <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
-              <p className="mt-2 text-3xl font-bold text-slate-900">
-                €{Number(pkg.price_ils).toLocaleString("he-IL")}
-              </p>
-              <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
-              <Button type="button" className="mt-4 w-full" onClick={() => setSelected(pkg)}>
-                רכישה
-              </Button>
-            </Card>
+      {/* Active packages */}
+      <Card>
+        <h2 className="mb-4 font-semibold text-slate-900">חבילות פעילות</h2>
+        <div className="divide-y divide-slate-100">
+          {projects.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="font-medium text-slate-800">{p.name}</span>
+              <span className="text-sm text-slate-500">
+                {p.is_retainer
+                  ? "ריטיינר · ללא הגבלה"
+                  : `נותרו ${formatHours(p.hours_remaining)} מתוך ${formatHours(p.total_hours_allocated)}`}
+              </span>
+            </div>
           ))}
         </div>
-      )}
+      </Card>
+
+      {/* Buy a new package */}
+      <div>
+        <h2 className="mb-3 font-semibold text-slate-900">רכישת חבילה חדשה</h2>
+        {selected ? (
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">תשלום עבור {selected.name}</h3>
+              <button onClick={() => setSelected(null)} className="text-sm text-slate-500 hover:text-slate-700">
+                ← בחירת חבילה אחרת
+              </button>
+            </div>
+            <PurchaseForm pkg={selected} projectId={projectId} billing={billing} onCancel={() => setSelected(null)} />
+          </Card>
+        ) : packages.length === 0 ? (
+          <Card>
+            <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            {packages.map((pkg) => (
+              <Card key={pkg.id} className="flex flex-col">
+                <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  €{Number(pkg.price_ils).toLocaleString("he-IL")}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
+                <Button type="button" className="mt-4 w-full" onClick={() => setSelected(pkg)}>
+                  רכישה
+                </Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       <Card>
         <h2 className="mb-4 font-semibold text-slate-900">היסטוריית רכישות</h2>
