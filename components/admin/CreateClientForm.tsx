@@ -26,12 +26,12 @@ export function CreateClientForm() {
   const [isRetainer, setIsRetainer] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state.ok) {
+    if (state.ok && !state.warning) {
       ref.current?.reset();
       setWithProject(true);
       setIsRetainer(false);
     }
-  }, [state.ok]);
+  }, [state.ok, state.warning]);
 
   return (
     <form ref={ref} action={action} className="space-y-3">
@@ -85,7 +85,8 @@ export function CreateClientForm() {
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-sm text-emerald-600">הלקוח נוצר בהצלחה ✓</p>}
+      {state.ok && !state.warning && <p className="text-sm text-emerald-600">הלקוח נוצר בהצלחה ✓</p>}
+      {state.ok && state.warning && <p className="text-sm text-amber-600">{state.warning}</p>}
       <Submit />
     </form>
   );

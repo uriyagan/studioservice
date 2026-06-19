@@ -10,7 +10,7 @@ import { DEFAULT_BRAND, EmailBlock } from "@/lib/email/types";
 
 const SITE = "https://service.uriyaganor.com";
 
-type Result = { ok: boolean; error?: string };
+type Result = { ok: boolean; error?: string; warning?: string };
 
 async function assertAdmin() {
   const supabase = await createClient();
@@ -95,32 +95,41 @@ export async function createClientFull(
     }
 
     // Send the welcome email with a set-password link (best-effort;
-    // respects the "welcome" template's enabled toggle).
+    // respects the "welcome" template's enabled toggle). Surface a warning to
+    // the admin if it fails — the client has only a random password and needs
+    // the set-password link to ever log in.
+    let warning: string | undefined;
     try {
       const { data: linkData } = await admin.auth.admin.generateLink({
         type: "recovery",
         email,
         options: { redirectTo: `${SITE}/set-password` },
       });
-      const setLink = linkData?.properties?.action_link ?? `${SITE}/login`;
-      await dispatchEmail("welcome", email, {
+      const action = linkData?.properties?.action_link;
+      const res = await dispatchEmail("welcome", email, {
         first_name: fields.first_name ?? "",
         last_name: fields.last_name ?? "",
         full_name: fields.name ?? "",
         client_name: fields.name ?? "",
         email,
-        set_password_link: setLink,
+        set_password_link: action ?? `${SITE}/login`,
         login_url: `${SITE}/login`,
         portal_url: `${SITE}/portal`,
         site_url: SITE,
       });
-    } catch {
-      /* non-fatal: client is created even if the email fails */
+      if (!action) {
+        warning = "החשבון נוצר, אך לא נוצר קישור ליצירת סיסמה. שלח/י ללקוח קישור איפוס סיסמה ידנית.";
+      } else if (!res.sent) {
+        warning = "החשבון נוצר, אך מייל הברוכים הבאים לא נשלח. אפשר לשלוח אותו שוב מכרטיס הלקוח.";
+      }
+    } catch (e) {
+      console.error("welcome email failed:", (e as Error).message);
+      warning = "החשבון נוצר, אך שליחת מייל הברוכים הבאים נכשלה. אפשר לשלוח אותו שוב מכרטיס הלקוח.";
     }
 
     revalidatePath("/admin/clients");
     revalidatePath("/admin/projects");
-    return { ok: true };
+    return { ok: true, warning };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
