@@ -224,21 +224,43 @@ function PurchaseView({
   return (
     <div className="space-y-8">
       {/* Active packages */}
-      <Card>
-        <h2 className="mb-4 font-semibold text-slate-900">חבילות פעילות</h2>
-        <div className="divide-y divide-slate-100">
-          {projects.map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-3 py-2.5">
-              <span className="font-medium text-slate-800">{p.name}</span>
-              <span className="text-sm text-slate-500">
-                {p.is_retainer
-                  ? "ריטיינר · ללא הגבלה"
-                  : `נותרו ${formatHours(p.hours_remaining)} מתוך ${formatHours(p.total_hours_allocated)}`}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
+      <div>
+        <h2 className="mb-3 font-semibold text-slate-900">חבילות פעילות</h2>
+        <Card>
+          <div className="space-y-5">
+            {projects.map((p) => {
+              if (p.is_retainer) {
+                return (
+                  <div key={p.id} className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-800">{p.name}</span>
+                    <span className="text-sm text-slate-500">ריטיינר · ללא הגבלה</span>
+                  </div>
+                );
+              }
+              const total = Number(p.total_hours_allocated) || 0;
+              const remaining = Math.max(0, Number(p.hours_remaining) || 0);
+              const pct = total > 0 ? Math.min(100, Math.round((remaining / total) * 100)) : 0;
+              const low = pct <= 20;
+              return (
+                <div key={p.id}>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-800">{p.name}</span>
+                    <span className="text-sm text-slate-500">
+                      {formatHours(remaining)} מתוך {formatHours(total)}
+                    </span>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${low ? "bg-red-500" : "bg-primary"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
 
       {/* Buy a new package */}
       <div>
@@ -258,7 +280,7 @@ function PurchaseView({
             <p className="text-sm text-slate-400">אין חבילות זמינות כרגע.</p>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {packages.map((pkg) => (
               <Card key={pkg.id} className="flex flex-col">
                 <h3 className="font-semibold text-slate-900">{pkg.name}</h3>
@@ -275,8 +297,9 @@ function PurchaseView({
         )}
       </div>
 
-      <Card>
-        <h2 className="mb-4 font-semibold text-slate-900">היסטוריית רכישות</h2>
+      <div>
+        <h2 className="mb-3 font-semibold text-slate-900">היסטוריית רכישות</h2>
+        <Card>
         {purchases.length === 0 ? (
           <p className="text-sm text-slate-400">עדיין אין רכישות.</p>
         ) : (
@@ -315,7 +338,8 @@ function PurchaseView({
             </table>
           </div>
         )}
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
