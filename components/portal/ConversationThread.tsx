@@ -26,6 +26,7 @@ export function ConversationThread({
   mineLabel,
   otherLabel,
   placeholder,
+  closeOnSend = false,
 }: {
   ticketId: string;
   title: string;
@@ -36,6 +37,7 @@ export function ConversationThread({
   mineLabel: string;
   otherLabel: string;
   placeholder: string;
+  closeOnSend?: boolean;
 }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [text, setText] = useState("");
@@ -105,7 +107,8 @@ export function ConversationThread({
     setFiles([]);
     setBusy(false);
     setPhase("");
-    reload();
+    if (closeOnSend) onClose();
+    else reload();
   }
 
   const inputCls =

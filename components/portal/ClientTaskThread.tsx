@@ -24,6 +24,7 @@ export function ClientTaskThread({
       mineLabel="אני"
       otherLabel="הסטודיו"
       placeholder="כתוב/י הודעה… (תישלח לצוות ותתועד כאן)"
+      closeOnSend
     />
   );
 }
