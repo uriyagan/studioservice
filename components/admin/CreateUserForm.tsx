@@ -48,10 +48,7 @@ export function CreateUserForm() {
         placeholder="סיסמה (6+ תווים)"
         className={fieldCls}
       />
-      <select name="role" defaultValue="client" className={fieldCls}>
-        <option value="client">לקוח</option>
-        <option value="admin">מנהל (אדמין)</option>
-      </select>
+      <input type="hidden" name="role" value="admin" />
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state.ok && (
         <p className="text-sm text-emerald-600">המשתמש נוצר בהצלחה ✓</p>

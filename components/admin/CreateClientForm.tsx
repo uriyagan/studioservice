@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
 import { createClientFull } from "@/app/actions/clients";
@@ -22,9 +22,15 @@ function Submit() {
 
 export function CreateClientForm() {
   const [state, action] = useActionState(createClientFull, initial);
+  const [withProject, setWithProject] = useState(true);
+  const [isRetainer, setIsRetainer] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state.ok) ref.current?.reset();
+    if (state.ok) {
+      ref.current?.reset();
+      setWithProject(true);
+      setIsRetainer(false);
+    }
   }, [state.ok]);
 
   return (
@@ -45,6 +51,39 @@ export function CreateClientForm() {
       </div>
       <input name="address" placeholder="כתובת" className={cls} />
       <textarea name="notes" rows={2} placeholder="הערות פנימיות" className={cls} />
+
+      <div className="rounded-lg border border-slate-200 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            name="create_project"
+            checked={withProject}
+            onChange={(e) => setWithProject(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-primary"
+          />
+          צור פרויקט ראשוני ללקוח
+        </label>
+
+        {withProject && (
+          <div className="mt-3 space-y-3">
+            <input name="project_name" placeholder="שם הפרויקט" className={cls} />
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="is_retainer"
+                checked={isRetainer}
+                onChange={(e) => setIsRetainer(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-primary"
+              />
+              חבילת ריטיינר (שעות בלתי מוגבלות)
+            </label>
+            {!isRetainer && (
+              <input name="total_hours" type="number" step="0.5" min="0" placeholder="סך שעות בחבילה" className={cls} />
+            )}
+          </div>
+        )}
+      </div>
+
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       {state.ok && <p className="text-sm text-emerald-600">הלקוח נוצר בהצלחה ✓</p>}
       <Submit />

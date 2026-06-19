@@ -78,6 +78,20 @@ export async function createClientFull(
     if (id) {
       const db = admin as unknown as { from: (t: string) => any };
       await db.from("profiles").update(fields).eq("id", id);
+
+      // Optionally create an initial project linked to this client.
+      const wantProject = formData.get("create_project") === "on";
+      const projectName = String(formData.get("project_name") ?? "").trim();
+      if (wantProject && projectName) {
+        const isRetainer = formData.get("is_retainer") === "on";
+        const totalHours = isRetainer ? 0 : Number(formData.get("total_hours") ?? 0);
+        await db.from("projects").insert({
+          name: projectName,
+          client_id: id,
+          is_retainer: isRetainer,
+          total_hours_allocated: totalHours,
+        });
+      }
     }
 
     // Send the welcome email with a set-password link (best-effort;
@@ -105,6 +119,7 @@ export async function createClientFull(
     }
 
     revalidatePath("/admin/clients");
+    revalidatePath("/admin/projects");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: (e as Error).message };

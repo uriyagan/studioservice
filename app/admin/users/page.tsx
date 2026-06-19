@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
   const supabase = await createClient();
+  // Team only — clients are managed in /admin/clients.
   const [{ data: users }, { data: auth }] = await Promise.all([
     supabase
       .from("profiles")
       .select("*")
-      .order("role", { ascending: true })
+      .eq("role", "admin")
       .order("created_at", { ascending: false }),
     supabase.auth.getUser(),
   ]);
@@ -22,12 +23,12 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-slate-900">ניהול משתמשים</h1>
+      <h1 className="text-2xl font-bold text-slate-900">צוות הסטודיו</h1>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-1">
           <Card>
-            <h2 className="mb-4 font-semibold text-slate-900">משתמש חדש</h2>
+            <h2 className="mb-4 font-semibold text-slate-900">חבר צוות חדש</h2>
             <CreateUserForm />
           </Card>
         </div>
@@ -35,12 +36,12 @@ export default async function UsersPage() {
         <div className="md:col-span-2">
           <Card>
             <h2 className="mb-4 font-semibold text-slate-900">
-              משתמשים ({rows.length})
+              חברי צוות ({rows.length})
             </h2>
             <div className="divide-y divide-slate-100">
               {rows.length === 0 && (
                 <p className="py-4 text-sm text-slate-400">
-                  עדיין אין משתמשים.
+                  עדיין אין חברי צוות.
                 </p>
               )}
               {rows.map((u) => (
