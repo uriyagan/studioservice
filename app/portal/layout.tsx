@@ -23,7 +23,8 @@ export default async function PortalLayout({
     <div className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <span className="font-bold text-slate-900">פורטל שירות</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/studio-logo.svg" alt="Uriya Ganor Studio" className="h-8 w-auto" />
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-500">
               {profile?.name || user.email}

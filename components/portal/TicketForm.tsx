@@ -2,9 +2,16 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UploadCloud, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTicket, attachFile } from "@/app/actions/tickets";
 import { Button } from "@/components/ui/Button";
+
+function fmtSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 // New-task form. Creates the ticket, then uploads each file
 // directly to Storage via a signed URL (no size/count limit on the
@@ -12,9 +19,17 @@ import { Button } from "@/components/ui/Button";
 export function TicketForm({ projectId }: { projectId: string }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  };
+  const removeFile = (i: number) => setFiles((prev) => prev.filter((_, idx) => idx !== i));
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -29,7 +44,7 @@ export function TicketForm({ projectId }: { projectId: string }) {
       formData
     );
     if (!res.ok || !res.ticketId) {
-      setError(res.error ?? "שגיאה בשליחת הפנייה");
+      setError(res.error ?? "שגיאה ביצירת המשימה");
       setStatus("idle");
       return;
     }
@@ -54,7 +69,7 @@ export function TicketForm({ projectId }: { projectId: string }) {
         await attachFile(res.ticketId, path, file.name);
       } catch {
         // Non-fatal: the ticket is already created. Surface a note.
-        setError("הפנייה נשלחה, אך העלאת חלק מהקבצים נכשלה.");
+        setError("המשימה נוצרה, אך העלאת חלק מהקבצים נכשלה.");
       }
     }
 
@@ -95,25 +110,70 @@ export function TicketForm({ projectId }: { projectId: string }) {
           קבצים מצורפים
         </label>
         <input
+          ref={fileInputRef}
           type="file"
           multiple
-          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-          className="block w-full text-sm text-slate-500 file:me-3 file:rounded-lg file:border-0 file:bg-primary-light file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/10"
+          className="hidden"
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = "";
+          }}
         />
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            addFiles(e.dataTransfer.files);
+          }}
+          className={`flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
+            dragOver ? "border-primary bg-primary-light/40" : "border-slate-300 hover:border-primary hover:bg-slate-50"
+          }`}
+        >
+          <UploadCloud className="h-7 w-7 text-slate-400" />
+          <p className="text-sm font-medium text-slate-700">גרור קבצים לכאן או לחץ להעלאה</p>
+          <p className="text-xs text-slate-400">כל סוג קובץ, כל גודל, כמה קבצים שתרצה</p>
+        </div>
+
         {files.length > 0 && (
-          <p className="mt-1 text-xs text-slate-400">
-            {files.length} קבצים נבחרו
-          </p>
+          <ul className="mt-3 space-y-1.5">
+            {files.map((f, i) => (
+              <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                <span className="min-w-0 truncate text-slate-700">{f.name}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-slate-400">{fmtSize(f.size)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(i)}
+                    className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                    title="הסר"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {status === "done" && !error && (
-        <p className="text-sm text-emerald-600">הפנייה נשלחה בהצלחה ✓</p>
+        <p className="text-sm text-emerald-600">המשימה נוצרה בהצלחה ✓</p>
       )}
 
       <Button type="submit" disabled={status === "saving"} className="w-full">
-        {status === "saving" ? "שולח..." : "שליחת פנייה"}
+        {status === "saving" ? "יוצר..." : "יצירת משימה"}
       </Button>
     </form>
   );

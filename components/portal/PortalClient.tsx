@@ -20,7 +20,7 @@ type Tab = "status" | "submit" | "purchase";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "status", label: "סטטוס הפרויקט" },
-  { id: "submit", label: "הגשת פנייה" },
+  { id: "submit", label: "יצירת משימה" },
   { id: "purchase", label: "רכישת שעות" },
 ];
 
