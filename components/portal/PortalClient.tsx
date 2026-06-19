@@ -73,7 +73,6 @@ export function PortalClient({
           ) : (
             <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
           )}
-          <p className="text-sm text-slate-500">ברוכים הבאים לפורטל השירות</p>
         </div>
         <Button onClick={() => setTab("submit")}>+ משימה חדשה</Button>
       </div>

@@ -54,6 +54,11 @@ export function ConversationThread({
   const reload = () => load(ticketId).then(setMessages);
   useEffect(() => {
     reload();
+    // Keep the open conversation current (new replies from the other side).
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") reload();
+    }, 12000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
 
