@@ -32,11 +32,19 @@ export default async function PortalPage() {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const { data: projectRows } = await supabase
-    .from("project_stats")
-    .select("*")
-    .eq("client_id", user!.id)
-    .order("name");
+  // Projects the user owns (client_id) OR is a member of. The members
+  // table may not exist yet → falls back to owned-only.
+  const { data: memberRows } = await supabase
+    .from("project_members")
+    .select("project_id")
+    .eq("profile_id", user!.id);
+  const memberIds = ((memberRows ?? []) as { project_id: string }[]).map((m) => m.project_id);
+
+  let projectQuery = supabase.from("project_stats").select("*").order("name");
+  projectQuery = memberIds.length
+    ? projectQuery.or(`client_id.eq.${user!.id},id.in.(${memberIds.join(",")})`)
+    : projectQuery.eq("client_id", user!.id);
+  const { data: projectRows } = await projectQuery;
   const projects = (projectRows ?? []) as ProjectStats[];
 
   // No project yet → show the service packages so the client can buy one

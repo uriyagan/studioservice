@@ -191,6 +191,52 @@ export async function assignProjects(
   }
 }
 
+// Add a client as a member of an existing project (many-to-many).
+export async function addProjectMember(
+  _prev: Result,
+  formData: FormData
+): Promise<Result> {
+  try {
+    await assertAdmin();
+    const projectId = String(formData.get("project_id") ?? "");
+    const profileId = String(formData.get("profile_id") ?? "");
+    if (!projectId || !profileId) return { ok: false, error: "בחר/י לקוח" };
+    const admin = createAdminClient() as unknown as { from: (t: string) => any };
+    const { error } = await admin
+      .from("project_members")
+      .upsert({ project_id: projectId, profile_id: profileId }, { onConflict: "project_id,profile_id" });
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Remove a member from a project.
+export async function removeProjectMember(
+  _prev: Result,
+  formData: FormData
+): Promise<Result> {
+  try {
+    await assertAdmin();
+    const projectId = String(formData.get("project_id") ?? "");
+    const profileId = String(formData.get("profile_id") ?? "");
+    if (!projectId || !profileId) return { ok: false, error: "מידע חסר" };
+    const admin = createAdminClient() as unknown as { from: (t: string) => any };
+    const { error } = await admin
+      .from("project_members")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("profile_id", profileId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 // Permanently delete a client: detach their projects (kept, just
 // unassigned) and remove the auth user + profile.
 export async function deleteClient(

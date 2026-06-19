@@ -6,6 +6,7 @@ import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { ProjectStats } from "@/lib/types";
+import { ProjectMembers, MemberRow } from "@/components/admin/ProjectMembers";
 import { ArrowRight } from "@/components/icons";
 import { formatHours } from "@/lib/format";
 
@@ -37,6 +38,21 @@ export default async function ProjectPage({
   const projects = (projectList ?? []) as { id: string; name: string }[];
   const open = rows.filter((t) => t.status !== "completed");
   const done = rows.filter((t) => t.status === "completed");
+
+  // Members (additional viewers). The members table may not exist yet —
+  // both queries fail gracefully to an empty list.
+  const db = supabase as unknown as { from: (t: string) => any };
+  const [{ data: clientRows }, { data: memberRows }] = await Promise.all([
+    db.from("profiles").select("id, name, email, role").eq("role", "client").order("name"),
+    db.from("project_members").select("profile_id").eq("project_id", id),
+  ]);
+  const clients: MemberRow[] = ((clientRows ?? []) as { id: string; name: string | null; email: string | null }[]).map(
+    (c) => ({ id: c.id, name: c.name ?? "", email: c.email ?? "" })
+  );
+  const clientById = new Map(clients.map((c) => [c.id, c]));
+  const members: MemberRow[] = ((memberRows ?? []) as { profile_id: string }[])
+    .map((m) => clientById.get(m.profile_id))
+    .filter(Boolean) as MemberRow[];
 
   return (
     <div className="space-y-8">
@@ -70,6 +86,14 @@ export default async function ProjectPage({
           </div>
         </div>
       </div>
+
+      <Card>
+        <h2 className="mb-1 font-semibold text-slate-900">משתתפים בפרויקט</h2>
+        <p className="mb-4 text-sm text-slate-500">
+          מי שמשויך כאן רואה את הפרויקט בפורטל, יכול לפתוח משימות ולראות את ההתכתבות.
+        </p>
+        <ProjectMembers projectId={id} ownerId={p.client_id} members={members} clients={clients} />
+      </Card>
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
