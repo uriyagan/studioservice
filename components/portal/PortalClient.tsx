@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ProjectStats } from "@/lib/types";
+import { Profile, ProjectStats } from "@/lib/types";
 import { Card, StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatHours } from "@/lib/format";
 import { HOUR_PACKAGES } from "@/lib/packages";
 import { buyHourPackage } from "@/app/actions/stripe";
 import { TicketForm } from "@/components/portal/TicketForm";
+import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
+
+type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "address" | "notes">;
 
 interface CompletedTask {
   id: string;
@@ -16,20 +19,23 @@ interface CompletedTask {
   seconds: number;
 }
 
-type Tab = "status" | "submit" | "purchase";
+type Tab = "status" | "submit" | "purchase" | "details";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "status", label: "סטטוס הפרויקט" },
   { id: "submit", label: "יצירת משימה" },
   { id: "purchase", label: "רכישת שעות" },
+  { id: "details", label: "הפרטים שלי" },
 ];
 
 export function PortalClient({
   project,
   completedTasks,
+  profile,
 }: {
   project: ProjectStats;
   completedTasks: CompletedTask[];
+  profile: MyProfile;
 }) {
   const [tab, setTab] = useState<Tab>("status");
 
@@ -62,11 +68,17 @@ export function PortalClient({
       )}
       {tab === "submit" && (
         <Card>
-          <h2 className="mb-4 font-semibold text-slate-900">פנייה חדשה</h2>
+          <h2 className="mb-4 font-semibold text-slate-900">משימה חדשה</h2>
           <TicketForm projectId={project.id} />
         </Card>
       )}
       {tab === "purchase" && <PurchaseView projectId={project.id} />}
+      {tab === "details" && (
+        <Card>
+          <h2 className="mb-4 font-semibold text-slate-900">הפרטים שלי</h2>
+          <ClientDetailsForm profile={profile} mode="self" />
+        </Card>
+      )}
     </div>
   );
 }

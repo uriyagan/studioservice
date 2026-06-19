@@ -96,14 +96,20 @@ export function TaskCard({
             </p>
           )}
           {ticket.link && (
-            <a
-              href={ticket.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block text-sm text-primary hover:underline"
-            >
-              לינק רלוונטי ↗
-            </a>
+            <div className="mt-2 flex flex-col gap-0.5">
+              {ticket.link.split("\n").filter(Boolean).map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  dir="ltr"
+                  className="inline-block text-sm text-primary hover:underline"
+                >
+                  {url} ↗
+                </a>
+              ))}
+            </div>
           )}
         </div>
 

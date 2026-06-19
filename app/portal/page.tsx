@@ -16,12 +16,19 @@ export default async function PortalPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 1 client = 1 project. Grab it from the stats view.
-  const { data: project } = await supabase
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, phone, company, address, notes")
+    .eq("id", user!.id)
+    .maybeSingle();
+
+  // A client may have one or more projects; show the first for now.
+  const { data: projects } = await supabase
     .from("project_stats")
     .select("*")
     .eq("client_id", user!.id)
-    .maybeSingle();
+    .order("name");
+  const project = (projects ?? [])[0] ?? null;
 
   if (!project) {
     return (
@@ -52,6 +59,18 @@ export default async function PortalPage() {
     }));
 
   return (
-    <PortalClient project={proj} completedTasks={completed} />
+    <PortalClient
+      project={proj}
+      completedTasks={completed}
+      profile={{
+        id: user!.id,
+        first_name: myProfile?.first_name ?? null,
+        last_name: myProfile?.last_name ?? null,
+        phone: myProfile?.phone ?? null,
+        company: myProfile?.company ?? null,
+        address: myProfile?.address ?? null,
+        notes: null,
+      }}
+    />
   );
 }

@@ -8,6 +8,10 @@ export interface Profile {
   name: string | null; // combined display name, kept in sync with first+last
   first_name: string | null;
   last_name: string | null;
+  phone: string | null;
+  company: string | null;
+  address: string | null;
+  notes: string | null;
   role: Role;
   created_at: string;
 }

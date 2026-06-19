@@ -22,6 +22,7 @@ export function TicketForm({ projectId }: { projectId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [links, setLinks] = useState<string[]>([""]);
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +76,7 @@ export function TicketForm({ projectId }: { projectId: string }) {
 
     setStatus("done");
     setFiles([]);
+    setLinks([""]);
     formRef.current?.reset();
     router.refresh();
   }
@@ -100,9 +102,40 @@ export function TicketForm({ projectId }: { projectId: string }) {
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">
-          לינק רלוונטי
+          לינקים רלוונטיים
         </label>
-        <input name="link" type="url" placeholder="https://" className={inputCls} />
+        <div className="space-y-2">
+          {links.map((val, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                name="link"
+                type="url"
+                value={val}
+                onChange={(e) => setLinks((prev) => prev.map((l, idx) => (idx === i ? e.target.value : l)))}
+                placeholder="https://"
+                dir="ltr"
+                className={inputCls}
+              />
+              {links.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setLinks((prev) => prev.filter((_, idx) => idx !== i))}
+                  className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                  title="הסר"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setLinks((prev) => [...prev, ""])}
+          className="mt-2 text-sm font-medium text-primary hover:underline"
+        >
+          + הוספת לינק נוסף
+        </button>
       </div>
 
       <div>

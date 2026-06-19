@@ -5,6 +5,7 @@ import { NavBar } from "@/components/NavBar";
 const LINKS = [
   { href: "/admin", label: "דשבורד" },
   { href: "/admin/projects", label: "פרויקטים" },
+  { href: "/admin/clients", label: "לקוחות" },
   { href: "/admin/users", label: "משתמשים" },
   { href: "/admin/emails", label: "מיילים" },
 ];

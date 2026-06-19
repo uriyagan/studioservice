@@ -21,7 +21,13 @@ export async function createTicket(
     const projectId = String(formData.get("project_id") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
-    const link = String(formData.get("link") ?? "").trim();
+    // Multiple relevant links — stored newline-separated in `link`.
+    const link =
+      formData
+        .getAll("link")
+        .map((l) => String(l).trim())
+        .filter(Boolean)
+        .join("\n") || "";
 
     if (!projectId || !title) {
       return { ok: false, error: "כותרת נדרשת" };
