@@ -9,6 +9,8 @@ import { formatDuration, formatDate, formatHours } from "@/lib/format";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
+import { ClientTaskThread } from "@/components/portal/ClientTaskThread";
+import { MessageSquare } from "lucide-react";
 
 type MyProfile = Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
 
@@ -126,6 +128,7 @@ function StatusView({
   project: ProjectStats;
   completedTasks: CompletedTask[];
 }) {
+  const [openTask, setOpenTask] = useState<CompletedTask | null>(null);
   return (
     <div className="space-y-6">
       {project.is_retainer ? (
@@ -161,17 +164,28 @@ function StatusView({
                   <th className="px-4 py-2.5 text-start font-medium">כותרת משימה</th>
                   <th className="px-4 py-2.5 text-start font-medium">סטטוס</th>
                   <th className="px-4 py-2.5 text-start font-medium">זמן ביצוע</th>
+                  <th className="px-4 py-2.5 text-start font-medium">שיחה</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {completedTasks.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50">
+                  <tr
+                    key={t.id}
+                    onClick={() => setOpenTask(t)}
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
                     <td className="px-4 py-3 font-medium text-slate-800">{t.title}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={t.status} />
                     </td>
                     <td className="px-4 py-3 font-mono tabular-nums text-slate-700">
                       {formatDuration(t.seconds)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-primary hover:underline">
+                        <MessageSquare className="h-4 w-4" />
+                        צפייה בשיחה
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -180,6 +194,14 @@ function StatusView({
           </div>
         )}
       </Card>
+
+      {openTask && (
+        <ClientTaskThread
+          ticketId={openTask.id}
+          title={openTask.title}
+          onClose={() => setOpenTask(null)}
+        />
+      )}
     </div>
   );
 }

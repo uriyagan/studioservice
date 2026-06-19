@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { sendEmail } from "@/lib/email/send";
 import { logMessage, replyAddress } from "@/lib/email/thread";
+import { DEFAULT_BRAND } from "@/lib/email/types";
 
 export interface ThreadMessage {
   id: string;
@@ -39,6 +42,95 @@ export async function getTicketMessages(ticketId: string): Promise<ThreadMessage
     return (data ?? []) as ThreadMessage[];
   } catch {
     return [];
+  }
+}
+
+// Client-side: read the full conversation for one of MY tasks.
+// RLS restricts the rows to tasks on the logged-in client's projects.
+export async function getMyTicketMessages(ticketId: string): Promise<ThreadMessage[]> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data } = await db
+      .from("messages")
+      .select("*")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: true });
+    return (data ?? []) as ThreadMessage[];
+  } catch {
+    return [];
+  }
+}
+
+// Client replies from the portal → logs the message (inbound) and emails
+// the admins. Ownership is verified via RLS before writing.
+export async function sendClientReply(
+  _prev: { ok: boolean; error?: string },
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "לא מחובר" };
+
+    const ticketId = String(formData.get("ticket_id") ?? "");
+    const message = String(formData.get("message") ?? "").trim();
+    if (!ticketId) return { ok: false, error: "מזהה משימה חסר" };
+    if (!message) return { ok: false, error: "יש להזין תוכן" };
+
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data: ticket } = await db
+      .from("tickets")
+      .select("title, projects(name, client_id)")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (!ticket || ticket.projects?.client_id !== user.id) {
+      return { ok: false, error: "אין הרשאה" };
+    }
+
+    const taskTitle = ticket.title || "המשימה שלי";
+    await logMessage({
+      ticketId,
+      direction: "in",
+      fromEmail: user.email ?? null,
+      toEmail: replyAddress(ticketId),
+      subject: `בנוגע למשימה: ${taskTitle}`,
+      bodyText: message,
+    });
+
+    // Notify admins by email.
+    const adb = createAdminClient() as unknown as { from: (t: string) => any };
+    const { data: admins } = await adb.from("profiles").select("email").eq("role", "admin");
+    const emails = ((admins ?? []) as { email: string | null }[])
+      .map((a) => a.email)
+      .filter(Boolean) as string[];
+    if (emails.length) {
+      await sendEmail({
+        to: emails,
+        subject: `תגובה חדשה מלקוח: ${taskTitle}`,
+        from: `${DEFAULT_BRAND.fromName} <${DEFAULT_BRAND.fromEmail}>`,
+        replyTo: replyAddress(ticketId),
+        html: `<div dir="rtl" style="font-family:Arial,sans-serif;font-size:15px;">
+          <p><b>בנוגע למשימה:</b> ${taskTitle.replace(/</g, "&lt;")}</p>
+          <blockquote style="border-right:3px solid #ddd;padding-right:10px;color:#555;">${message
+            .replace(/</g, "&lt;")
+            .replace(/\n/g, "<br>")}</blockquote>
+          <p><a href="https://service.uriyaganor.com/admin">פתח/י במערכת ←</a></p>
+        </div>`,
+      });
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/portal");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
 }
 
