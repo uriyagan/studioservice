@@ -1,216 +1,185 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-06-04.
+> Full context to resume work in a fresh conversation. Last updated: 2026-06-19.
+
+A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
+It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
+projects/tasks, and message back and forth. Live at **https://service.uriyaganor.com**.
 
 ---
 
-## 1. What this is
+## 0. Working agreement (read first)
 
-A private web **Client Portal + Time-Tracking system** for the studio — replaces Toggl.
-- **Admins** create projects/tasks and run a live per-task timer (Start → Pause/Resume → Complete).
-- **Clients** log in, see their package (hourly or retainer), remaining hours, completed tasks,
-  submit support tickets (with file uploads), and buy more hours via Stripe.
-- Fully **Hebrew RTL**, modern SaaS look, black buttons, custom studio logo.
-
-**Status: LIVE in production.** 🟢
-
----
-
-## 2. Key links & identifiers
-
-| Thing | Value |
-|---|---|
-| **Live site** | https://service.uriyaganor.com |
-| **GitHub repo** | https://github.com/uriyagan/studioservice (branch `main`) |
-| **Working dir** | `~/code/studioservice` (clone of the GitHub repo, **off Google Drive**). The old Drive folder is abandoned — it silently zeroed files and made `" 2"` duplicates. Work + commit + deploy from `~/code/studioservice` only. |
-| **Host** | Cloudflare Workers, worker name `studioservice` |
-| **Cloudflare account** | `info@uriyaganor.com` — account ID `8b904080ccb2858612d4edba364d85b2` (wrangler already authenticated on this Mac) |
-| **Supabase project** | ref `eepbcsidaitixxrjzgiw` → https://eepbcsidaitixxrjzgiw.supabase.co |
-| **Admin login** | `office@uriyaganor.com` (role=admin; password in owner's password manager) |
+- **Reply in English, shortest possible answers.**
+- **Always deploy straight to production** (push to `main` → auto-deploys).
+- **Work only from the git repo:** `/Users/uriyaganor/code/studioservice`
+  (an older Google Drive copy exists and is **abandoned** — never edit there; the Drive mount
+  zeroes files and creates `" 2"` duplicates).
+- **The user runs all SQL migrations** in the Supabase SQL Editor — the assistant cannot reach the
+  DB. Hand over SQL to paste; never assume a migration ran without a check query.
+- Run `npx tsc --noEmit` before every commit (and a full build for big changes).
 
 ---
 
-## 3. Tech stack
+## 1. Tech stack
 
-- **Next.js 15.5.19** (App Router) + **React 19.2.7** + TypeScript
-- **Supabase** — Postgres + Auth + Storage (uses the NEW key format: `sb_publishable_…` as the anon/public key, `sb_secret_…` as the service-role key)
-- **Tailwind CSS 3.4** — RTL via logical props (`ms-`/`me-`/`ps-`/`pe-`); primary color = black (`#111111`)
-- **Stripe** — Checkout + webhook, **configured in TEST mode** (secrets `STRIPE_SECRET_KEY` `sk_test_…` + `STRIPE_WEBHOOK_SECRET` on the Worker). Charges in **EUR**. Webhook endpoint: `/api/stripe/webhook` (event `checkout.session.completed`).
-- **Resend** — transactional email (`RESEND_API_KEY` Worker secret; from `info@uriyaganor.com`, domain verified on Cloudflare DNS).
-- **Hosting:** Cloudflare Workers via **OpenNext** adapter `@opennextjs/cloudflare` 1.19.11 + wrangler 4.97
-  - Chosen over Vercel because the domain `uriyaganor.com` is already on Cloudflare and the owner already uses Workers.
+- **Next.js 15** (App Router), **React 19**, Server Actions, `useActionState` / `useTransition`.
+- **Supabase**: Postgres + Auth + Storage + RLS.
+- **Cloudflare Workers** via **OpenNext**; deploy through **GitHub Actions on push to `main`**.
+- **Resend** for email (send + inbound).
+- **Stripe** embedded PaymentElement (invoice + PaymentIntent) for package purchases.
+- **Tailwind CSS**, UI scaled to 125% root font (`app/globals.css`). Language: Hebrew, **RTL**.
 
 ---
 
-## 4. Commands
-
-**Deploy = `git push origin main`.** A GitHub Actions workflow
-([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) builds with OpenNext and deploys to
-Cloudflare on every push to `main`. No local build needed — git is the single source of truth.
-Manual trigger: GitHub → Actions → "Deploy to Cloudflare" → Run workflow.
-
-One-time setup: the GitHub repo must have a secret `CLOUDFLARE_API_TOKEN` (Cloudflare → My Profile →
-API Tokens → "Edit Cloudflare Workers" template). All `NEXT_PUBLIC_*` build vars are set inside the
-workflow (they're public — they ship in the browser bundle). Runtime Worker secrets
-(`SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_*`) already live on the Worker via `wrangler secret put` and
-survive deploys.
+## 2. Run / build / deploy
 
 ```bash
-# Local dev (Node, http://localhost:3000)
-npm run dev
-
-# Typecheck
-npx tsc --noEmit
-
-# DEPLOY → just push; CI builds & deploys
-git push origin main
-
-# Manual local deploy (fallback only — slow on Google Drive, avoid):
-# NEXT_PUBLIC_SITE_URL=https://service.uriyaganor.com npm run cf:deploy
+cd /Users/uriyaganor/code/studioservice
+npx tsc --noEmit         # typecheck (always before commit)
+npm run build            # full Next build (for big changes)
+git add -A && git commit && git push origin main   # → GitHub Actions → Cloudflare (prod)
 ```
 
----
-
-## 5. Environment variables / secrets
-
-**Local** — `.env.local` (gitignored, already filled):
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (= publishable key), `SUPABASE_SERVICE_ROLE_KEY` (= secret key)
-- `NEXT_PUBLIC_SITE_URL` (localhost locally), Stripe keys (placeholders)
-
-**Local CF preview** — `.dev.vars` (gitignored): server-only secrets for `wrangler dev`.
-
-**Production (Cloudflare Worker secrets)** — set via `wrangler secret put <NAME>`:
-- `SUPABASE_SERVICE_ROLE_KEY` ✅ real value set
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` ⚠️ placeholders — replace when configuring Stripe
-- `NEXT_PUBLIC_*` are build-time inlined (not Worker secrets)
-
-List current worker secrets: `npx wrangler secret list`
+Deploy takes ~1–2 min. Stale-chunk errors after deploy self-heal (see §6).
 
 ---
 
-## 6. Database (Supabase) — already applied
+## 3. Supabase access layers
 
-Schema lives in [`supabase/schema.sql`](supabase/schema.sql) and has **already been run** on the project.
-Tables: `profiles`, `projects`, `tickets`, `time_logs`, `attachments` + view `project_stats` + Storage bucket `attachments`.
-
-**Core domain rules:**
-- **1 client = 1 project** (1:1). Login redirects a client straight to their project page.
-- `projects.is_retainer = true` → unlimited hours, never deducted.
-- `project_stats` view computes `hours_used` = sum of `time_logs.duration_seconds` for COMPLETED
-  tickets only → single source of truth, no drift. `hours_remaining` = allocated − used.
-- **RLS everywhere:** clients see only their own project/tickets/logs; all writes to projects and the
-  timer are admin-only. Helper `is_admin()` (SECURITY DEFINER). Trigger `on_auth_user_created` auto-creates
-  a `profiles` row from auth metadata (`name`, `role`).
-- New auth users get `role='client'` by default. Admin was promoted manually:
-  `update public.profiles set role='admin' where email='office@uriyaganor.com';`
+- `createClient()` (`lib/supabase/server.ts`) — **server, RLS-enforced** (acts as logged-in user).
+- `createAdminClient()` (`lib/supabase/admin.ts`) — **service role, bypasses RLS** (admin actions,
+  webhooks, email).
+- `createBrowserClient` — browser/middleware.
+- Storage: service-role `createSignedUrls` / `createSignedUrl` / `createBucket`. Append `&download=`
+  to a signed URL to force download.
 
 ---
 
-## 7. How the timer works (the core feature)
+## 4. Data model & RLS (migrations below are APPLIED in prod)
 
-- Per **task (ticket)**, not per project. Time rolls up to the project via the task.
-- Server Actions in [`app/actions/timer.ts`](app/actions/timer.ts): `startTimer` (used for both "התחל טיפול"
-  and "המשך טיימר"), `pauseTimer`, `completeTask`. Each Start opens a `time_logs` row (`end_time` NULL);
-  Pause/Complete closes it and stores `duration_seconds`.
-- **Refresh-safe:** the live elapsed time is computed from the active `time_logs` row's `start_time`
-  ([`components/TimerControl.tsx`](components/TimerControl.tsx) + `sumLoggedSeconds` in
-  [`lib/format.ts`](lib/format.ts)), so reloading the page recomputes the exact value and keeps ticking.
-- Complete button label is **"הטיפול הסתיים"**. On complete, hours are deducted automatically (via the view)
-  unless the project is a retainer.
-- DB guarantees one active segment per ticket (unique partial index).
+Core tables: `profiles` (role `admin`|`client`), `projects` (`client_id` = primary owner,
+`is_retainer`, `total_hours_allocated`), `tickets` (a task; `status`, `assignee_id`, `project_id`),
+`time_logs`, `attachments`, `messages` (`direction` `in`|`out`), `message_attachments`,
+`hour_packages`, `purchases`, `email_templates`, `email_settings`, `project_members`.
+
+Key view **`project_stats`** = projects + computed `hours_used` (sum of time on **completed**
+tickets) + `hours_remaining`. Single source of truth for usage. It's a plain view (owner rights),
+so the portal also **filters by `client_id`/membership in the query** for scoping.
+
+**RLS:** clients read own rows; admins read all via `is_admin()` (security definer). Membership via
+`is_project_member(pid)` / `is_ticket_member(tid)` (security definer) lets members read/insert on
+projects/tickets/time_logs/attachments/messages.
+
+Migrations in `supabase/migrations/`. **Confirmed applied** (verified via SQL): `project_members`
++ `is_project_member` + `is_ticket_member`, `tickets.assignee_id`, `email_settings.reply_to`.
 
 ---
 
-## 8. App structure
+## 5. Major features
+
+- **Admin dashboard** (`/admin`): tasks table with status tabs (open/completed/all), site/project +
+  assignee filters, title search, column toggle, pagination, edit-in-modal, complete-in-modal,
+  assignee column, stat cards; manual time entry; quick-start timer.
+- **Projects** (`/admin/projects`): create; single-row cards (name · usage bar · edit/delete);
+  detail page with tasks + **"משתתפים בפרויקט"** (project members manager).
+- **Clients** (`/admin/clients`): create (optionally with first project); list (each row →
+  "פרטי לקוח" button, bold name); detail page (details, assigned projects, **delete client**).
+- **Project members (many-to-many):** add several clients to one project; each sees it in their
+  portal, can open tasks and view the thread. Owner (`client_id`) stays the billing contact.
+- **Client portal** (`/portal`): project status, hours (purchased/used/remaining), completed tasks
+  + conversation thread, create task (files + links, instant upload), buy packages (Stripe),
+  purchase history, profile. No-project clients see the packages screen.
+- **Email system** — every system email is a **designable template** (`/admin/emails`, block
+  builder). 9 templates: welcome, password_reset, task_completed, package_half, package_depleted,
+  hours_added, new_task_admin, ticket_reply, client_reply_admin. Merge tags (`{first_name}`,
+  `{hours_remaining}`, `{task_time}`, …). "Copy from another template" supported. No auto-logo.
+  `lib/email/dispatch.ts` renders + substitutes + sends, falling back to `DEFAULT_BLOCKS`.
+- **Inbound email** (`/api/email/inbound`): Resend `email.received` is **metadata-only** — body
+  fetched via `GET https://api.resend.com/emails/receiving/{email_id}`; `cleanInboundReply` strips
+  quotes/footers/signatures; logs an `in` message and notifies admins.
+- **Billing** (`/admin/billing`): manage hour packages. Stripe webhook (`/api/stripe/webhook`) is
+  idempotent (by `stripe_payment_intent`), credits hours, creates a project for first-time buyers,
+  emails `hours_added`.
+- **Auth:** login with "remember me" (middleware strips cookie maxAge when unchecked).
+
+---
+
+## 6. Conventions & gotchas
+
+- **Icons:** custom SVG set in `components/icons.tsx` (`mk()` factory). They render **solid black
+  `#000000` by default**, unless the className carries an intent color (`text-white|emerald|red|
+  primary|…`, matched by `KEEP_COLOR`). Icons on dark buttons need `text-white`. Email builder still
+  uses lucide. `Loader2` re-exported from lucide.
+- **Duration formatting** (`lib/format.ts`): `formatHours(hours)` → human **"9 שעות 57 דקות" /
+  "5 דקות" / "10 שעות"** (no decimals); used app-wide + in email merge tags. `formatDurationShort`
+  = HH:MM (client task exec time, no seconds). Email default bodies must NOT append "שעות" after
+  these tags (value already includes the unit).
+- **RTL:** back arrows point **right** (`ArrowRight`). NavBar mobile: **hamburger right, logo left**.
+- **Mobile:** two-column input rows use `grid grid-cols-2` (NOT `flex` — flex won't shrink inputs
+  and overflows). Layout wrappers have `overflow-x-hidden`. Tasks table keeps `min-w-[640px]` in its
+  own scroll container; toolbar/filters stack full-width on mobile. Background `#f5f5f5`.
+- **Stale chunks after deploy:** `app/error.tsx` + `app/global-error.tsx` auto-reload once on any
+  error; `components/VersionWatcher.tsx` + `/api/version` + `NEXT_PUBLIC_BUILD_ID` (= `github.sha`)
+  show a "new version" banner.
+- **Fire-and-forget:** `lib/after.ts` `runAfter()` → `waitUntil` with inline-await fallback (email
+  dispatch, so actions don't block).
+- **Resilience:** code touching newer columns/tables retries-without / fails-closed so the app keeps
+  working before a migration is applied.
+
+---
+
+## 7. Key files map
 
 ```
 app/
-  page.tsx              root → redirect by role
-  login/page.tsx        email+password login (client component, studio logo, NO title)
-  admin/                role=admin guarded layout (NavBar)
-    page.tsx            dashboard: all tickets + live TimerControl + "+ משימה חדשה" (create task w/ project picker)
-    projects/page.tsx   create project (client picker, retainer toggle, hours), edit hours inline, stats
-    users/page.tsx      create client login (email+password)
-  portal/               client area (logout-only header)
-    page.tsx            fetches the client's single project + tickets
-  actions/              server actions: timer, admin, tickets, stripe, auth
-  api/stripe/webhook    Stripe checkout.session.completed → increment total_hours_allocated (uses service role)
-  api/upload-url        issues signed Storage upload URL (direct browser→bucket)
+  admin/page.tsx                 dashboard (tasks table + stats)
+  admin/projects/[id]/page.tsx   project detail + members manager
+  admin/clients/[id]/page.tsx    client detail + delete
+  portal/page.tsx                client portal (owned + member projects)
+  actions/clients.ts             client CRUD, project members, assign, delete, send email
+  actions/admin.ts               tickets/projects, manual time, completion
+  actions/messages.ts            thread: send reply, attachments, signed URLs
+  actions/stripe.ts              invoice/payment intent
+  api/email/inbound/route.ts     Resend inbound webhook
+  api/stripe/webhook/route.ts    Stripe webhook (idempotent)
+  globals.css                    125% root font, --background #f5f5f5
 components/
-  TimerControl.tsx      live refresh-safe timer + 4 buttons
-  NavBar.tsx            admin nav (active link highlight)
-  ui/                   Card, StatCard, Button (black), StatusBadge
-  admin/                CreateUserForm, CreateProjectForm, EditHoursForm, CreateTaskForm (all useActionState)
-  portal/               PortalClient (3 tabs), TicketForm (file uploads)
+  NavBar.tsx                     responsive nav (hamburger right / logo left)
+  icons.tsx                      custom black icon set
+  admin/TasksTable.tsx           main tasks table
+  admin/ProjectRow.tsx           single-row project card
+  admin/ProjectMembers.tsx       add/remove project members
+  admin/DeleteClientButton.tsx   delete client
+  portal/PortalClient.tsx        portal tabs/status/purchase/details
+  email-builder/                 email template designer
 lib/
-  supabase/             client.ts (browser), server.ts (async createClient — Next 15 await cookies()),
-                        admin.ts (service role), middleware.ts (session refresh + role routing)
-  stripe.ts  packages.ts  format.ts  types.ts
-supabase/schema.sql     full DB schema + RLS (already applied)
-wrangler.jsonc          Worker config + custom_domain route service.uriyaganor.com
-open-next.config.ts     OpenNext adapter config
+  email/{dispatch,render,notifications,thread,types}.ts
+  format.ts                      formatHours (human), formatDurationShort, etc.
+  supabase/{server,admin,middleware}.ts
+  after.ts                       runAfter()
+supabase/migrations/*.sql        DDL (run manually in Supabase)
 ```
 
-Client portal has **3 tabs**: סטטוס הפרויקט (cards + completed tasks table) · הגשת פנייה (ticket form +
-multi-file upload) · רכישת שעות (Stripe packages from `lib/packages.ts`).
+---
+
+## 8. Current state / open items
+
+- All migrations applied; project-sharing (members) fully live. **No known open bugs.**
+- Last work this session: human duration format everywhere; remove client comms card; RTL back
+  arrows; "פרטי לקוח" buttons + bold names; cleaner active-packages; `#f5f5f5` background; black
+  icons; delete client; project members (many-to-many); full mobile pass (nav hamburger right,
+  responsive toolbar/buttons, fixed form overflow via grid).
+
+### Possible next steps (not requested yet)
+- Green ✓ badge on the user's *saved* `task_completed` template (default already has it).
+- By-client filter on the tasks table (currently by-site/assignee).
+- Continue mobile polish on any screen flagged by screenshots.
 
 ---
 
-## 9. What's DONE ✅
+## 9. How to start the next conversation
 
-Auth + role routing · admin dashboard with live timer (start/pause/resume/complete) · admin creates
-tasks and assigns to a project · admin creates client logins · admin creates/edits projects (hourly &
-retainer, editable hours) · client portal (status, completed tasks, submit ticket, file uploads, purchase
-tab) · RLS · Storage signed uploads · Hebrew RTL · custom logo · black buttons · **deployed live on
-Cloudflare Workers at service.uriyaganor.com with SSL.**
-
----
-
-## 10. PENDING / next steps ⏳
-
-1. **Supabase Auth Site URL** — set to `https://service.uriyaganor.com` in
-   Supabase → Authentication → URL Configuration (needed for future password-reset emails; login works without it).
-2. **Stripe** — replace placeholder secrets with real keys, set webhook to
-   `https://service.uriyaganor.com/api/stripe/webhook` (event `checkout.session.completed`). Then
-   `wrangler secret put STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` and redeploy.
-3. **Admin: view/download ticket attachments** — uploads are stored but there's no admin UI to view them yet.
-4. **Client: list of their OPEN tickets** — portal currently shows only completed tasks + the submit form.
-5. **Edit/delete tickets**, optional email notifications, optional GitHub→Cloudflare auto-deploy (Workers Builds).
-
----
-
-## 11. Gotchas / notes
-
-- `cookies()` is **async** in Next 15 → `lib/supabase/server.ts` `createClient()` is async; every caller
-  uses `await createClient()`. Forms use **`useActionState`** (from `react`), not the old `useFormState`.
-- Need `nodejs_compat` flag + `compatibility_date` ≥ 2024-09-23 in `wrangler.jsonc` for the Stripe/Supabase
-  SDKs on Workers. Verified Supabase auth runs fine on workerd.
-- `.open-next/`, `.dev.vars`, `.wrangler/`, `.env*.local` are gitignored. Never commit secrets.
-- This project is unrelated to WooDonkey (the WordPress-plugin suite in a sibling folder). Ignore WooDonkey's
-  CLAUDE.md cart-fee / build.sh notes here.
-
----
-
-## 12. Major additions (2026-06-18 session)
-
-Working dir moved off Google Drive → `~/code/studioservice`. Deploy is now `git push` → GitHub Actions → Cloudflare (see §4).
-
-**Admin**
-- **Clients tab** (`/admin/clients`) — create client with full details (first/last name, email, phone, company, address, notes); **client card** (`/admin/clients/[id]`): edit details, assign to multiple projects, see remaining hours per project, send an initiated (free-form, brand-wrapped) email.
-- **Users tab** — admin/client **role** selection on create + edit (with self-lockout guards).
-- **Projects** — full edit + delete; per-project page (`/admin/projects/[id]`); project names link to it.
-- **Dashboard** — sortable, column-configurable **tasks table** (title/client/status/date/exec-time + timer + edit/delete). Quick "התחל טיימר מיידי" + manual time entry.
-- **Emails tab** (`/admin/emails`) — WYSIWYG **email builder** (drag-drop blocks, inline rich text, design panel, merge tags, send-test) + brand/sender settings. 7 templates; each has a פעיל/כבוי toggle.
-- **Billing tab** (`/admin/billing`) — manage hour packages (name/hours/price/active) in-app; prices in **EUR**.
-
-**Client portal**
-- Multi-project switcher; "+ משימה חדשה" button; task form with multiple links + modern drag-drop file upload; "הפרטים שלי" self-service; "רכישת שעות" (DB packages) + **purchase history with receipts**.
-- Onboarding: clients are created **without** a password → welcome email with a **set-password link** (`/set-password`). Branded "forgot password" on login.
-
-**Email automations (all wired, via `lib/email/`):** welcome, password_reset, task_completed, package_half (50%), package_depleted (incl. completed-tasks table), hours_added (Stripe), new_task_admin. Built/rendered/sent entirely in JS (`render.ts` → `dispatch.ts` → Resend `send.ts`); fired from `lib/email/notifications.ts` + the Stripe webhook + client/auth actions. Threshold emails fire once via `projects.notified_half/notified_depleted` (reset when hours are added).
-
-**Migrations applied** (all run in Supabase; files in `supabase/migrations/`): `tasks_quickstart_delete`, `email_billing`, `name_split`, `client_fields`, `billing_phase2`.
-
-**Key new files:** `app/actions/{clients,packages,email,stripe,auth}.ts` · `lib/email/*` · `components/email-builder/*` · `components/admin/{TasksTable,ClientDetailsForm,ClientProjects,SendClientEmail,PackagesManager,CreateClientForm,...}.tsx` · `app/set-password/page.tsx` · `app/api/stripe/webhook/route.ts`.
-
-**Open / nice-to-have:** design the 7 email templates in the builder (they send with sensible defaults until then); the `hour_packages.price_ils` / `purchases.amount_ils` column names hold EUR values (cosmetic misnomer).
+> Continue work on the Studio Service App. Repo: `/Users/uriyaganor/code/studioservice`. Read
+> `HANDOFF.md` first. Reply in English, shortest answers, deploy straight to prod (push to main).
+> Then: <your task>.
