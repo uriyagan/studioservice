@@ -4,6 +4,8 @@ import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
+import { StatCard } from "@/components/ui/Card";
+import { formatDurationShort } from "@/lib/format";
 import { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +26,14 @@ interface RawTicket {
 export default async function AdminDashboard() {
   const supabase = await createClient();
 
-  const [{ data: tickets }, { data: projectList }, { data: profiles }] = await Promise.all([
+  const [{ data: tickets }, { data: projectList }, { data: profiles }, { data: statsRows }] = await Promise.all([
     supabase
       .from("tickets")
       .select("*, projects(name, is_retainer, client_id), time_logs(*)")
       .order("created_at", { ascending: false }),
     supabase.from("projects").select("id, name").order("name"),
     supabase.from("profiles").select("id, name"),
+    supabase.from("project_stats").select("client_id, is_retainer, hours_remaining"),
   ]);
 
   const projects = (projectList ?? []) as { id: string; name: string }[];
@@ -62,6 +65,23 @@ export default async function AdminDashboard() {
     lastInboundAt: lastInbound[t.id] ?? null,
   }));
 
+  // ── Top-line stats ─────────────────────────────────────────
+  const openCount = rows.filter((r) => r.status !== "completed").length;
+
+  const activeClientSet = new Set<string>();
+  for (const ps of (statsRows ?? []) as { client_id: string | null; is_retainer: boolean; hours_remaining: number | null }[]) {
+    if (ps.client_id && (ps.is_retainer || Number(ps.hours_remaining) > 0)) activeClientSet.add(ps.client_id);
+  }
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  let monthSeconds = 0;
+  for (const t of (tickets ?? []) as RawTicket[]) {
+    for (const l of t.time_logs ?? []) {
+      if (l.start_time && new Date(l.start_time).getTime() >= monthStart) monthSeconds += l.duration_seconds ?? 0;
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -80,6 +100,12 @@ export default async function AdminDashboard() {
             <p className="text-sm text-amber-600">צור פרויקט תחילה כדי להוסיף משימות.</p>
           )}
         </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="משימות פתוחות לטיפול" value={String(openCount)} accent />
+        <StatCard label="לקוחות עם חבילה פעילה" value={String(activeClientSet.size)} />
+        <StatCard label="שעות שעבדנו החודש" value={formatDurationShort(monthSeconds)} />
       </div>
 
       <TasksTable tasks={rows} projects={projects} />

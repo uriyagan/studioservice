@@ -53,7 +53,7 @@ export function ProjectRow({
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0 flex-1">
           <Link
             href={`/admin/projects/${project.id}`}
             className="font-semibold text-slate-900 hover:text-primary hover:underline"
@@ -65,13 +65,25 @@ export function ProjectRow({
               ריטיינר · שעות בלתי מוגבלות
             </span>
           ) : (
-            <p className="mt-1 text-sm text-slate-500">
-              נוצלו {formatHours(project.hours_used)} מתוך{" "}
-              {formatHours(project.total_hours_allocated)} ·{" "}
-              <span className="font-medium text-slate-700">
-                נותרו {formatHours(project.hours_remaining)}
-              </span>
-            </p>
+            (() => {
+              const total = Number(project.total_hours_allocated) || 0;
+              const remaining = Math.max(0, Number(project.hours_remaining) || 0);
+              const pct = total > 0 ? Math.round((remaining / total) * 100) : 0;
+              const bar = pct <= 20 ? "bg-red-500" : pct <= 50 ? "bg-amber-500" : "bg-emerald-500";
+              return (
+                <div className="mt-1.5 max-w-md">
+                  <div className="mb-1 flex items-center justify-between gap-2 text-sm text-slate-500">
+                    <span>
+                      נוצלו {formatHours(project.hours_used)} מתוך {formatHours(project.total_hours_allocated)}
+                    </span>
+                    <span className="font-bold text-slate-800">{pct}% נותרו</span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })()
           )}
         </div>
 
