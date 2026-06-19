@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useId } from "react";
-import { X, Paperclip, Link2, Loader2, FileText } from "lucide-react";
+import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
@@ -46,6 +46,7 @@ export function ConversationThread({
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fileStates, setFileStates] = useState<Record<number, "pending" | "up" | "done" | "err">>({});
   const fileInputId = useId();
 
   const reload = () => load(ticketId).then(setMessages);
@@ -64,6 +65,7 @@ export function ConversationThread({
     setError(null);
     setBusy(true);
     setPhase("שולח...");
+    setFileStates(Object.fromEntries(files.map((_, i) => [i, "pending" as const])));
 
     const fd = new FormData();
     fd.set("ticket_id", ticketId);
@@ -81,9 +83,11 @@ export function ConversationThread({
 
     // Upload files against the new message.
     const supabase = createClient();
+    let failed = 0;
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setPhase(`מעלה קבצים (${i + 1}/${files.length})...`);
+      setFileStates((s) => ({ ...s, [i]: "up" }));
       try {
         const r = await fetch("/api/upload-url", {
           method: "POST",
@@ -97,14 +101,23 @@ export function ConversationThread({
           .uploadToSignedUrl(path, token, file);
         if (upErr) throw upErr;
         await recordMessageAttachment({ messageId: res.messageId, ticketId, path, fileName: file.name });
+        setFileStates((s) => ({ ...s, [i]: "done" }));
       } catch {
-        setError("ההודעה נשלחה, אך חלק מהקבצים לא הועלו.");
+        failed++;
+        setFileStates((s) => ({ ...s, [i]: "err" }));
       }
+    }
+    if (failed > 0) {
+      setError(`ההודעה נשלחה, אך העלאת ${failed} קבצים נכשלה.`);
+      setBusy(false);
+      setPhase("");
+      return; // keep the window open so the failure is visible
     }
 
     setText("");
     setLinks([]);
     setFiles([]);
+    setFileStates({});
     setBusy(false);
     setPhase("");
     if (closeOnSend) onClose();
@@ -214,19 +227,36 @@ export function ConversationThread({
           <>
           <p className="text-xs font-medium text-slate-500">{files.length} קבצים מצורפים</p>
           <ul className="space-y-1.5">
-            {files.map((f, i) => (
-              <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
-                <span className="min-w-0 truncate text-slate-700">{f.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setFiles((p) => p.filter((_, idx) => idx !== i))}
-                  className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                  title="הסר"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
+            {files.map((f, i) => {
+              const st = fileStates[i];
+              return (
+                <li key={i} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {st === "up" && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />}
+                    {st === "done" && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+                    {st === "err" && <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />}
+                    <span className="min-w-0 truncate text-slate-700">{f.name}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    {st && (
+                      <span className="text-xs text-slate-400">
+                        {st === "up" ? "מעלה…" : st === "done" ? "הועלה ✓" : st === "err" ? "נכשל" : "ממתין"}
+                      </span>
+                    )}
+                    {!busy && (
+                      <button
+                        type="button"
+                        onClick={() => setFiles((p) => p.filter((_, idx) => idx !== i))}
+                        className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                        title="הסר"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           </>
         )}

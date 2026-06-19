@@ -5,7 +5,7 @@ import { HourPackageRow, Profile, ProjectStats, Purchase, TicketStatus } from "@
 import { Card, StatCard } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { formatDuration, formatDate, formatHours } from "@/lib/format";
+import { formatDuration, formatDate, formatHours, formatHoursClock } from "@/lib/format";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
@@ -239,14 +239,15 @@ function PurchaseView({
               }
               const total = Number(p.total_hours_allocated) || 0;
               const remaining = Math.max(0, Number(p.hours_remaining) || 0);
+              const used = Math.max(0, total - remaining);
               const pct = total > 0 ? Math.min(100, Math.round((remaining / total) * 100)) : 0;
               const low = pct <= 20;
               return (
                 <div key={p.id}>
                   <div className="mb-1.5 flex items-center justify-between gap-3">
                     <span className="font-medium text-slate-800">{p.name}</span>
-                    <span className="text-sm text-slate-500">
-                      {formatHours(remaining)} מתוך {formatHours(total)}
+                    <span className="text-sm font-medium text-slate-700">
+                      נותרו {formatHoursClock(remaining)} מתוך {formatHoursClock(total)} שעות
                     </span>
                   </div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
@@ -255,6 +256,9 @@ function PurchaseView({
                       style={{ width: `${pct}%` }}
                     />
                   </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    נוצלו {formatHoursClock(used)} · נותרו {formatHoursClock(remaining)}
+                  </p>
                 </div>
               );
             })}

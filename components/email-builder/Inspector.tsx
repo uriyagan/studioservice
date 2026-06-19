@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Trash2, Plus, UploadCloud } from "lucide-react";
+import { Trash2, Plus, UploadCloud, Loader2, CheckCircle2 } from "lucide-react";
 import type { EmailBlock } from "@/lib/email/types";
 import { uploadEmailImage } from "@/app/actions/email";
 import { ALIGN_OPTS, SOCIAL_NETWORKS, blockLabel } from "./blocks";
@@ -10,6 +10,7 @@ import { Stepper } from "./Stepper";
 function ImageUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   return (
     <div>
@@ -24,12 +25,15 @@ function ImageUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
           if (!file) return;
           setBusy(true);
           setErr(null);
+          setDone(false);
           const fd = new FormData();
           fd.set("file", file);
           const r = await uploadEmailImage(fd);
           setBusy(false);
-          if (r.ok && r.url) onUploaded(r.url);
-          else setErr(r.error || "ההעלאה נכשלה");
+          if (r.ok && r.url) {
+            onUploaded(r.url);
+            setDone(true);
+          } else setErr(r.error || "ההעלאה נכשלה");
         }}
       />
       <button
@@ -38,7 +42,19 @@ function ImageUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
         disabled={busy}
         className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
       >
-        <UploadCloud className="h-4 w-4" /> {busy ? "מעלה…" : "העלאת קובץ"}
+        {busy ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" /> מעלה…
+          </>
+        ) : done ? (
+          <>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" /> הועלה ✓
+          </>
+        ) : (
+          <>
+            <UploadCloud className="h-4 w-4" /> העלאת קובץ
+          </>
+        )}
       </button>
       {err && <p className="mt-1 text-[11px] text-red-600">{err}</p>}
     </div>
