@@ -213,9 +213,9 @@ function fmtDur(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (h && m) return `${h} ש׳ ${m} ד׳`;
-  if (h) return `${h} ש׳`;
-  return `${m} ד׳`;
+  if (h && m) return `${h} שעות ${m} דקות`;
+  if (h) return `${h} שעות`;
+  return `${m} דקות`;
 }
 
 // Build the completed-tasks summary table (HTML) for {tasks_summary}.
@@ -237,7 +237,7 @@ export function renderTasksSummary(
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:8px 0;font-size:14px;">
 <thead><tr>
 <th style="padding:8px;text-align:right;border-bottom:2px solid #ddd;">משימה</th>
-<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">זמן</th>
+<th style="padding:8px;text-align:left;border-bottom:2px solid #ddd;">זמן ביצוע</th>
 </tr></thead>
 <tbody>${body}</tbody>
 <tfoot><tr><td style="padding:8px;font-weight:700;">סה״כ</td><td style="padding:8px;text-align:left;font-weight:700;white-space:nowrap;">${esc(
