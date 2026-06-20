@@ -111,7 +111,7 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="משימות פתוחות לטיפול" value={String(openCount)} accent />
+        <StatCard label="משימות פתוחות לטיפול" value={String(openCount)} />
         <StatCard label="לקוחות עם חבילה פעילה" value={String(activeClientSet.size)} />
         <StatCard label="שעות שעבדנו החודש" value={formatHours(monthSeconds / 3600)} />
       </div>

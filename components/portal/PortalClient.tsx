@@ -156,7 +156,6 @@ function StatusView({
           <StatCard
             label="שעות שנותרו"
             value={formatHours(project.hours_remaining)}
-            accent
           />
         </div>
       )}
