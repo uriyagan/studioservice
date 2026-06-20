@@ -4,13 +4,14 @@
 
 alter table public.projects add column if not exists is_build boolean not null default false;
 
+-- NOTE: is_build is appended LAST. CREATE OR REPLACE VIEW can only add new
+-- columns at the end — inserting one mid-list renames existing columns (42P16).
 create or replace view public.project_stats as
 select
   p.id,
   p.client_id,
   p.name,
   p.is_retainer,
-  p.is_build,
   p.total_hours_allocated,
   round(
     coalesce(
@@ -25,7 +26,8 @@ select
         0
       )::numeric / 3600.0, 2
     ), 0
-  ) as hours_remaining
+  ) as hours_remaining,
+  p.is_build
 from public.projects p
 left join public.tickets t on t.project_id = p.id
 left join public.time_logs tl on tl.ticket_id = t.id
