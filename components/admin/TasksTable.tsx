@@ -340,7 +340,8 @@ export function TasksTable({
               ))}
             </select>
           )}
-          <div className="relative col-span-2 sm:col-span-1">
+          {/* Column toggle only applies to the desktop table — hidden on mobile cards. */}
+          <div className="relative col-span-2 hidden sm:col-span-1 sm:block">
             <button onClick={() => setShowCols((v) => !v)} className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 sm:w-auto">
               <SlidersHorizontal className="h-4 w-4" /> עמודות
             </button>
@@ -383,7 +384,7 @@ export function TasksTable({
               {t.projects?.name && (
                 <div className="col-span-2 min-w-0">
                   <dt className="text-xs text-slate-400">אתר</dt>
-                  <dd className="break-words text-slate-700" dir="ltr">{t.projects.name}</dd>
+                  <dd className="break-words text-right text-slate-700" dir="ltr">{t.projects.name}</dd>
                 </div>
               )}
               {t.clientName && (
