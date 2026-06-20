@@ -299,7 +299,7 @@ export function InboxWidget() {
                       onChange={(e) => setUnreadOnly(e.target.checked)}
                       className="h-3.5 w-3.5 rounded border-slate-300 text-primary"
                     />
-                    לא נקראו בלבד
+                    הצג רק הודעות שטרם נקראו
                   </label>
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} className="text-xs text-primary hover:underline">
@@ -322,7 +322,7 @@ export function InboxWidget() {
                   <button
                     key={c.ticketId}
                     onClick={() => select(c)}
-                    className={`flex flex-col gap-0.5 border-b border-slate-50 px-4 py-3 text-start hover:bg-slate-50 ${
+                    className={`flex w-full flex-col gap-0.5 border-b border-slate-50 px-4 py-3 text-start hover:bg-slate-50 ${
                       selectedId === c.ticketId ? "bg-slate-50" : ""
                     }`}
                   >
