@@ -128,7 +128,7 @@ export function PurchaseView({
                 </p>
                 <p className="mt-1 text-sm text-slate-500">{pkg.hours} שעות עבודה</p>
                 <Button type="button" className="mt-4 w-full" onClick={() => setSelected(pkg)}>
-                  רכישה
+                  לרכישת החבילה
                 </Button>
               </Card>
             ))}
