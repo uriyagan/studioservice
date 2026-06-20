@@ -56,8 +56,9 @@ export async function sendEmail(opts: {
     await logEmail(recipients, opts.subject, opts.template, "failed", `Resend ${res.status}: ${body}`);
     throw new Error(`Resend ${res.status}: ${body}`);
   }
-  await logEmail(recipients, opts.subject, opts.template, "sent");
-  return res.json().catch(() => ({}));
+  const json = (await res.json().catch(() => ({}))) as { id?: string };
+  await logEmail(recipients, opts.subject, opts.template, "sent", undefined, json.id);
+  return json;
 }
 
 // One log row per recipient. Best-effort — logging must never break a send,
@@ -67,18 +68,22 @@ async function logEmail(
   subject: string,
   template: string | undefined,
   status: "sent" | "failed",
-  error?: string
+  error?: string,
+  resendId?: string
 ) {
   try {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
     await adb.from("email_log").insert(
-      recipients.filter(Boolean).map((to) => ({
+      recipients.filter(Boolean).map((to, i) => ({
         to_email: to,
         subject,
         template: template ?? null,
         status,
         error: error ?? null,
+        // Resend returns one id per send → put it only on the first recipient
+        // row (the unique index on resend_id forbids duplicates; nulls are OK).
+        resend_id: i === 0 ? resendId ?? null : null,
       }))
     );
   } catch {
