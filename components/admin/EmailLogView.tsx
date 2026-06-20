@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/format";
 import { EMAIL_DEFS } from "@/lib/email/types";
-import { getEmailLog, backfillEmailLog } from "@/app/actions/email-log";
+import { getEmailLog } from "@/app/actions/email-log";
 import { EMAIL_LOG_PAGE, type EmailLogRow } from "@/lib/email-log-shared";
 
 const titleByKey = new Map<string, string>(EMAIL_DEFS.map((d) => [d.key, d.title]));
@@ -32,8 +32,6 @@ export function EmailLogView({ initialRows }: { initialRows: EmailLogRow[] }) {
   const [query, setQuery] = useState("");
   const [hasMore, setHasMore] = useState(initialRows.length >= EMAIL_LOG_PAGE);
   const [loading, setLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const first = useRef(true);
 
   // Debounced search.
@@ -60,29 +58,9 @@ export function EmailLogView({ initialRows }: { initialRows: EmailLogRow[] }) {
     setLoading(false);
   };
 
-  const backfill = async () => {
-    setImporting(true);
-    setMsg(null);
-    const r = await backfillEmailLog();
-    setImporting(false);
-    if (r.ok) {
-      setMsg(`יובאו ${r.imported ?? 0} מיילים מ‑Resend.`);
-      const fresh = await getEmailLog({ offset: 0, query });
-      setRows(fresh);
-      setHasMore(fresh.length >= EMAIL_LOG_PAGE);
-    } else {
-      setMsg(`ייבוא נכשל: ${r.error ?? ""}`);
-    }
-  };
-
   return (
     <Card>
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold text-slate-900">לוג שליחת מיילים</h2>
-        <Button variant="secondary" onClick={backfill} disabled={importing}>
-          {importing ? "מייבא…" : "ייבוא היסטוריה מ‑Resend"}
-        </Button>
-      </div>
+      <h2 className="mb-1 font-semibold text-slate-900">לוג שליחת מיילים</h2>
       <p className="mb-4 text-sm text-slate-500">כל המיילים שיצאו מהמערכת, כולל סטטוס מסירה.</p>
 
       <input
@@ -91,7 +69,6 @@ export function EmailLogView({ initialRows }: { initialRows: EmailLogRow[] }) {
         placeholder="חיפוש לפי נמען או נושא…"
         className="mb-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
       />
-      {msg && <p className="mb-3 text-sm text-slate-600">{msg}</p>}
 
       {rows.length === 0 ? (
         <p className="text-sm text-slate-400">
