@@ -28,6 +28,41 @@ async function assertAdmin() {
   return { supabase, userId: user.id };
 }
 
+// Re-send the welcome email with a fresh set-password link (for clients whose
+// original invite link was consumed/expired).
+export async function resendWelcome(clientId: string): Promise<Result> {
+  try {
+    await assertAdmin();
+    const admin = createAdminClient();
+    const { data: client } = await admin
+      .from("profiles")
+      .select("email, first_name, last_name, name")
+      .eq("id", clientId)
+      .maybeSingle();
+    if (!client?.email) return { ok: false, error: "ללקוח אין אימייל" };
+
+    const { setPasswordLink } = await import("@/lib/auth-links");
+    const action = await setPasswordLink(client.email);
+    if (!action) return { ok: false, error: "לא נוצר קישור להגדרת סיסמה" };
+
+    const res = await dispatchEmail("welcome", client.email, {
+      first_name: client.first_name ?? "",
+      last_name: client.last_name ?? "",
+      full_name: client.name ?? "",
+      client_name: client.name ?? "",
+      email: client.email,
+      set_password_link: action,
+      login_url: `${SITE}/login`,
+      portal_url: `${SITE}/portal`,
+      site_url: SITE,
+    });
+    if (!res.sent) return { ok: false, error: "שליחת המייל נכשלה" };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 function detailFields(fd: FormData) {
   const firstName = String(fd.get("first_name") ?? "").trim();
   const lastName = String(fd.get("last_name") ?? "").trim();

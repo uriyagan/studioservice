@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
 import { ClientDetailsForm } from "@/components/admin/ClientDetailsForm";
 import { ClientProjects, ProjectOpt } from "@/components/admin/ClientProjects";
+import { ResendWelcomeButton } from "@/components/admin/ResendWelcomeButton";
 import { DeleteClientButton } from "@/components/admin/DeleteClientButton";
 import { ArrowRight } from "@/components/icons";
 import { Profile, ProjectStats } from "@/lib/types";
@@ -62,6 +63,18 @@ export default async function ClientCardPage({
           <ClientProjects clientId={c.id} projects={projectOpts} />
         </Card>
       </div>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">גישה לחשבון</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              שליחה מחדש של מייל עם קישור להגדרת סיסמה (אם הקישור המקורי פג או לא התקבל).
+            </p>
+          </div>
+          <ResendWelcomeButton clientId={c.id} />
+        </div>
+      </Card>
 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-3">
