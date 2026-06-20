@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TimerControl } from "@/components/TimerControl";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
+import { getReadState, markTicketRead } from "@/app/actions/messages";
 import { Ticket, TimeLog } from "@/lib/types";
 import { formatDate, formatDuration, sumLoggedSeconds } from "@/lib/format";
 
@@ -108,6 +109,15 @@ export function TasksTable({
     } catch {
       /* noop */
     }
+    // Merge cross-device read state (server source of truth once migrated),
+    // keeping the newest read_at per ticket.
+    getReadState().then((server) =>
+      setReads((prev) => {
+        const m = { ...prev };
+        for (const k in server) m[k] = Math.max(m[k] ?? 0, server[k]);
+        return m;
+      })
+    );
   }, []);
   const isUnread = (t: TaskRow) =>
     !!t.lastInboundAt && new Date(t.lastInboundAt).getTime() > (reads[t.id] ?? 0);
@@ -122,6 +132,7 @@ export function TasksTable({
       }
       return nv;
     });
+    markTicketRead(t.id);
   };
 
   const [editState, editAction] = useActionState(updateTicket, initial);

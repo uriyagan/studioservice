@@ -252,6 +252,49 @@ export async function recordMessageAttachment(input: {
   }
 }
 
+// Server-backed read state per admin (cross-device). Falls back silently to {}
+// if the message_reads table isn't migrated yet — callers keep their
+// localStorage cache, so unread tracking still works before the migration.
+export async function getReadState(): Promise<Record<string, number>> {
+  try {
+    const supabase = await assertAdmin();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data, error } = await db
+      .from("message_reads")
+      .select("ticket_id, read_at")
+      .eq("admin_id", user!.id);
+    if (error) return {};
+    const map: Record<string, number> = {};
+    for (const r of (data ?? []) as { ticket_id: string; read_at: string }[]) {
+      map[r.ticket_id] = new Date(r.read_at).getTime();
+    }
+    return map;
+  } catch {
+    return {};
+  }
+}
+
+export async function markTicketRead(ticketId: string): Promise<void> {
+  try {
+    const supabase = await assertAdmin();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const db = supabase as unknown as { from: (t: string) => any };
+    await db
+      .from("message_reads")
+      .upsert(
+        { admin_id: user!.id, ticket_id: ticketId, read_at: new Date().toISOString() },
+        { onConflict: "admin_id,ticket_id" }
+      );
+  } catch {
+    /* table not migrated yet — localStorage cache covers it */
+  }
+}
+
 export interface Conversation {
   ticketId: string;
   taskTitle: string;

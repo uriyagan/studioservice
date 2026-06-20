@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import { ConversationThreadBody } from "@/components/portal/ConversationThread";
 import {
   getConversations,
+  getReadState,
+  markTicketRead,
   getTicketMessages,
   sendTicketReply,
   type Conversation,
@@ -15,6 +17,13 @@ import { formatDate } from "@/lib/format";
 // Per-browser "read at" per thread — shared with the tasks table so the unread
 // state stays consistent between the inbox and the row/tab dots.
 const READS_KEY = "studio.threadReads";
+
+// Merge two read maps, keeping the most-recent read_at per ticket.
+const mergeReads = (a: Record<string, number>, b: Record<string, number>) => {
+  const m = { ...a };
+  for (const k in b) m[k] = Math.max(m[k] ?? 0, b[k]);
+  return m;
+};
 
 export function InboxWidget() {
   const [open, setOpen] = useState(false);
@@ -44,6 +53,8 @@ export function InboxWidget() {
     } catch {
       /* noop */
     }
+    // Cross-device read state (server is the source of truth once migrated).
+    getReadState().then((server) => setReads((prev) => mergeReads(prev, server)));
     load();
     const id = setInterval(() => {
       if (document.visibilityState === "visible") load();
@@ -78,6 +89,7 @@ export function InboxWidget() {
   const select = (c: Conversation) => {
     setSelectedId(c.ticketId);
     setReads((prev) => persistReads({ ...prev, [c.ticketId]: Date.now() }));
+    markTicketRead(c.ticketId);
   };
 
   const markAllRead = () => {
@@ -85,7 +97,10 @@ export function InboxWidget() {
       const nv = { ...prev };
       const now = Date.now();
       convos.forEach((c) => {
-        if (isUnread(c)) nv[c.ticketId] = now;
+        if (isUnread(c)) {
+          nv[c.ticketId] = now;
+          markTicketRead(c.ticketId);
+        }
       });
       return persistReads(nv);
     });
