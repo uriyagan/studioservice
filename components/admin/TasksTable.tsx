@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "@/components/icons";
@@ -35,7 +36,7 @@ const READS_KEY = "studio.threadReads";
 type ColKey = "title" | "project" | "client" | "assignee" | "status" | "created" | "exec";
 const COLUMNS: { key: ColKey; label: string }[] = [
   { key: "title", label: "כותרת" },
-  { key: "project", label: "אתר" },
+  { key: "project", label: "פרויקט" },
   { key: "client", label: "לקוח" },
   { key: "assignee", label: "אחראי" },
   { key: "status", label: "סטטוס" },
@@ -383,8 +384,16 @@ export function TasksTable({
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
               {t.projects?.name && (
                 <div className="col-span-2 min-w-0">
-                  <dt className="text-xs text-slate-400">אתר</dt>
-                  <dd className="break-words text-right text-slate-700" dir="ltr">{t.projects.name}</dd>
+                  <dt className="text-xs text-slate-400">פרויקט</dt>
+                  <dd className="break-words text-right text-slate-700" dir="ltr">
+                    {t.project_id ? (
+                      <Link href={`/admin/projects/${t.project_id}`} className="text-primary hover:underline">
+                        {t.projects.name}
+                      </Link>
+                    ) : (
+                      t.projects.name
+                    )}
+                  </dd>
                 </div>
               )}
               {t.clientName && (
@@ -444,7 +453,17 @@ export function TasksTable({
                     </button>
                   </td>
                 )}
-                {visible.project && <td className="px-3 py-2 text-slate-600">{t.projects?.name || "—"}</td>}
+                {visible.project && (
+                  <td className="px-3 py-2 text-slate-600">
+                    {t.projects?.name && t.project_id ? (
+                      <Link href={`/admin/projects/${t.project_id}`} className="hover:text-primary hover:underline">
+                        {t.projects.name}
+                      </Link>
+                    ) : (
+                      t.projects?.name || "—"
+                    )}
+                  </td>
+                )}
                 {visible.client && <td className="px-3 py-2 text-slate-600">{t.clientName || "—"}</td>}
                 {visible.assignee && <td className="px-3 py-2 text-slate-600">{t.assigneeName || "—"}</td>}
                 {visible.status && (
