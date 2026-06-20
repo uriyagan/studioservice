@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageSquare, X, ArrowRight } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { ConversationThreadBody } from "@/components/portal/ConversationThread";
@@ -17,6 +17,43 @@ import { formatDate } from "@/lib/format";
 // Per-browser "read at" per thread — shared with the tasks table so the unread
 // state stays consistent between the inbox and the row/tab dots.
 const READS_KEY = "studio.threadReads";
+const SOUND_KEY = "studio.inboxSound";
+
+// A gentle short beep, synthesized to a WAV data URI (no asset needed).
+function makeBeepDataUri() {
+  const sr = 44100;
+  const dur = 0.2;
+  const n = Math.floor(sr * dur);
+  const buf = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(buf);
+  const ascii = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
+  };
+  ascii(0, "RIFF");
+  v.setUint32(4, 36 + n * 2, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true);
+  v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  ascii(36, "data");
+  v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    // Soft sine ~660Hz with quick fade in / slow fade out → a gentle "ping".
+    const env = Math.min(1, t / 0.008) * Math.min(1, (dur - t) / 0.08);
+    const s = Math.sin(2 * Math.PI * 660 * t) * env * 0.25;
+    v.setInt16(44 + i * 2, s * 32767, true);
+  }
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return "data:audio/wav;base64," + btoa(bin);
+}
 
 // Merge two read maps, keeping the most-recent read_at per ticket.
 const mergeReads = (a: Record<string, number>, b: Record<string, number>) => {
@@ -32,6 +69,16 @@ export function InboxWidget() {
   const [reads, setReads] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const soundOnRef = useRef(true);
+  const lastInboundSeen = useRef(0);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
 
   const persistReads = (nv: Record<string, number>) => {
     try {
@@ -43,7 +90,26 @@ export function InboxWidget() {
   };
 
   const load = useCallback(() => {
-    getConversations().then(setConvos);
+    getConversations().then((list) => {
+      setConvos(list);
+      // Beep when a newer inbound (client) message appears than we've seen.
+      const maxIn = list.reduce(
+        (m, c) => (c.lastInboundAt ? Math.max(m, new Date(c.lastInboundAt).getTime()) : m),
+        0
+      );
+      if (!initialized.current) {
+        initialized.current = true;
+        lastInboundSeen.current = maxIn;
+        return;
+      }
+      if (maxIn > lastInboundSeen.current) {
+        lastInboundSeen.current = maxIn;
+        if (soundOnRef.current && audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
+        }
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -53,12 +119,18 @@ export function InboxWidget() {
     } catch {
       /* noop */
     }
+    try {
+      if (localStorage.getItem(SOUND_KEY) === "off") setSoundOn(false);
+    } catch {
+      /* noop */
+    }
     // Cross-device read state (server is the source of truth once migrated).
     getReadState().then((server) => setReads((prev) => mergeReads(prev, server)));
     load();
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") load();
-    }, 20000);
+    // Poll even when the tab is hidden so the beep still fires from a background
+    // tab/window (browsers throttle hidden-tab timers to ~once/min; Realtime
+    // below makes it instant when enabled).
+    const id = setInterval(() => load(), 20000);
 
     // Instant refresh on any new message via Supabase Realtime. If the table
     // isn't in the realtime publication this simply never fires — the 20s poll
@@ -78,6 +150,47 @@ export function InboxWidget() {
       supabase.removeChannel(channel);
     };
   }, [load]);
+
+  // Prepare the beep audio and unlock it on the first user interaction
+  // (browsers block programmatic audio until the page has been interacted with).
+  useEffect(() => {
+    const a = new Audio(makeBeepDataUri());
+    a.volume = 0.4;
+    audioRef.current = a;
+    const unlock = () => {
+      a.play()
+        .then(() => {
+          a.pause();
+          a.currentTime = 0;
+        })
+        .catch(() => {});
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
+  const toggleSound = () => {
+    setSoundOn((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem(SOUND_KEY, next ? "on" : "off");
+      } catch {
+        /* noop */
+      }
+      // Play a confirmation beep when turning it on.
+      if (next && audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
+      return next;
+    });
+  };
 
   const isUnread = (c: Conversation) =>
     c.lastDirection === "in" &&
@@ -152,9 +265,19 @@ export function InboxWidget() {
                 <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{unreadCount}</span>
               )}
             </div>
-            <button onClick={() => setOpen(false)} className="rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="סגור">
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={toggleSound}
+                className="rounded p-2 text-lg leading-none hover:bg-slate-100"
+                title={soundOn ? "התראת צליל פעילה" : "התראת צליל כבויה"}
+                aria-label="התראת צליל"
+              >
+                {soundOn ? "🔔" : "🔕"}
+              </button>
+              <button onClick={() => setOpen(false)} className="rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="סגור">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-1">
