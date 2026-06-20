@@ -32,7 +32,7 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://service.uriyaganor.com
           NEXT_PUBLIC_SUPABASE_URL: https://eepbcsidaitixxrjzgiw.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_NQ9mv6yjGBxwGmTBLKf7-w_K9m9783Q
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_51KKmrFBzl94nybUtRhxhkbRVR0iDCAWYp27YobLZJvJ8xKOI9E8aO9PGzUQfjiDrZwWJRlnLwZoGpGxoPzZqHX7R00NnytIMic
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_live_51KKmrFBzl94nybUtV37BQbVI1yRDrUvApYzkttPlOjImv1o5REFiHlGEwkKxYLPtntsFwlXxXUMK24LynvipYeZd00cbj90MPA
           # Per-deploy version id — the client polls it to detect a new release
           # and offer a clean refresh (prevents stale-chunk errors).
           NEXT_PUBLIC_BUILD_ID: ${{ github.sha }}
