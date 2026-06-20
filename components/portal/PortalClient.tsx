@@ -271,15 +271,16 @@ function PurchaseView({
               const total = Number(p.total_hours_allocated) || 0;
               const remaining = Math.max(0, Number(p.hours_remaining) || 0);
               const used = Math.max(0, total - remaining);
-              const pct = total > 0 ? Math.min(100, Math.round((remaining / total) * 100)) : 0;
-              const low = pct <= 20;
+              // Bar fills with hours USED (empty = nothing used, full = depleted).
+              const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
+              const low = total > 0 && remaining / total <= 0.2;
               return (
                 <div key={p.id}>
                   <div className="mb-2 font-semibold text-slate-800">{p.name}</div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className={`h-full rounded-full transition-all ${low ? "bg-red-500" : "bg-primary"}`}
-                      style={{ width: `${pct}%` }}
+                      style={{ width: `${usedPct}%` }}
                     />
                   </div>
                   <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-500">
