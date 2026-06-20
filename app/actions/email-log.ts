@@ -47,15 +47,18 @@ export async function backfillEmailLog(): Promise<{ ok: boolean; imported?: numb
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
 
     let imported = 0;
-    let before: string | undefined;
-    // Cap pages so a huge history can't run away (20 × 100 = 2000 emails).
-    for (let page = 0; page < 20; page++) {
+    let after: string | undefined;
+    let hasMore = true;
+    // `after` paginates toward OLDER emails; stop on has_more=false. Cap pages
+    // so a huge history can't run away (20 × 100 = 2000 emails).
+    for (let page = 0; page < 20 && hasMore; page++) {
       const url = new URL("https://api.resend.com/emails");
       url.searchParams.set("limit", "100");
-      if (before) url.searchParams.set("before", before);
+      if (after) url.searchParams.set("after", after);
       const r = await fetch(url.toString(), { headers: { Authorization: `Bearer ${key}` } });
       if (!r.ok) return { ok: false, error: `Resend ${r.status}: ${await r.text().catch(() => "")}` };
       const j = (await r.json().catch(() => ({}))) as {
+        has_more?: boolean;
         data?: { id: string; to?: string[] | string; subject?: string; created_at?: string; last_event?: string }[];
       };
       const data = j.data ?? [];
@@ -73,8 +76,8 @@ export async function backfillEmailLog(): Promise<{ ok: boolean; imported?: numb
       if (error) return { ok: false, error: error.message };
       imported += rows.length;
 
-      before = data[data.length - 1].id;
-      if (data.length < 100) break;
+      after = data[data.length - 1].id;
+      hasMore = !!j.has_more;
     }
     return { ok: true, imported };
   } catch (e) {
