@@ -117,6 +117,14 @@ export function ConversationThreadBody({
     fd.set("message", text);
     cleanLinks.forEach((l) => fd.append("link", l));
     fd.set("file_count", String(uploads.length));
+    // Pass the uploaded files' storage refs so the email can attach them.
+    uploads.forEach((u) => {
+      if (u.status === "done" && u.path) {
+        fd.append("file_path", u.path);
+        fd.append("file_name", u.file.name);
+        fd.append("file_size", String(u.file.size));
+      }
+    });
 
     const res = await send({ ok: false }, fd);
     if (!res.ok) {

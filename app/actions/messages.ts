@@ -527,11 +527,46 @@ export async function sendTicketReply(
     const linksHtml = links.length
       ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
       : "";
-    // Files are uploaded to the portal (not as email attachments) — tell the
-    // client they're there so the emailed reply reflects what was sent.
-    const filesHtml = fileCount
-      ? `<br><br>📎 צורפו ${fileCount} קבצים — זמינים לצפייה והורדה בפורטל השירות.`
-      : "";
+
+    // Attach the actual files to the email (Resend fetches each signed URL at
+    // send time). Stay under Resend's ~40MB email cap; anything over the budget
+    // falls back to the "available in the portal" note.
+    const filePaths = formData.getAll("file_path").map(String);
+    const fileNames = formData.getAll("file_name").map(String);
+    const fileSizes = formData.getAll("file_size").map((s) => Number(s) || 0);
+    const ATTACH_BUDGET = 25 * 1024 * 1024;
+    const toAttach: { path: string; name: string }[] = [];
+    const overflow: string[] = [];
+    let budget = 0;
+    for (let i = 0; i < filePaths.length; i++) {
+      if (filePaths[i] && budget + fileSizes[i] <= ATTACH_BUDGET) {
+        toAttach.push({ path: filePaths[i], name: fileNames[i] || "קובץ" });
+        budget += fileSizes[i];
+      } else if (filePaths[i]) {
+        overflow.push(fileNames[i] || "קובץ");
+      }
+    }
+
+    let attachments: { filename: string; path: string }[] | undefined;
+    if (toAttach.length) {
+      const adb = createAdminClient() as unknown as {
+        storage: { from: (b: string) => any };
+      };
+      const { data: signed } = await adb.storage
+        .from("attachments")
+        .createSignedUrls(toAttach.map((a) => a.path), 3600);
+      attachments = ((signed ?? []) as { signedUrl: string | null }[])
+        .map((s, idx) => ({ filename: toAttach[idx].name, path: s.signedUrl ?? "" }))
+        .filter((a) => a.path);
+    }
+
+    // Only mention files in the body that couldn't be attached (too large), or
+    // fall back to the generic portal note if we didn't get file refs at all.
+    const filesHtml = overflow.length
+      ? `<br><br>📎 ${overflow.length} קבצים גדולים זמינים לצפייה והורדה בפורטל השירות.`
+      : !filePaths.length && fileCount
+        ? `<br><br>📎 צורפו ${fileCount} קבצים — זמינים לצפייה והורדה בפורטל השירות.`
+        : "";
     const messageHtml = message.replace(/\n/g, "<br>") + linksHtml + filesHtml;
 
     // Log the outbound message FIRST so the returned messageId is reliable
@@ -565,7 +600,7 @@ export async function sendTicketReply(
           client_name: fullName,
         },
         { message: messageHtml },
-        { replyTo: replyAddress(ticketId) }
+        { replyTo: replyAddress(ticketId), attachments }
       )
     );
 

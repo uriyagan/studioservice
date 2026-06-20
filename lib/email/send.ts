@@ -12,6 +12,9 @@ export async function sendEmail(opts: {
   html: string;
   from?: string;
   replyTo?: string;
+  // Resend fetches each `path` URL at send time and attaches it (no local
+  // download/encoding needed on the Worker).
+  attachments?: { filename: string; path: string }[];
 }): Promise<{ id?: string }> {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error("RESEND_API_KEY חסר — לא ניתן לשלוח מייל");
@@ -35,6 +38,7 @@ export async function sendEmail(opts: {
         subject: opts.subject,
         html: opts.html,
         ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+        ...(opts.attachments?.length ? { attachments: opts.attachments } : {}),
       }),
     });
   } finally {

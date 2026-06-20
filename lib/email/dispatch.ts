@@ -80,7 +80,11 @@ export async function dispatchEmail(
   to: string | string[],
   vars: Vars,
   rawVars: Record<string, string | undefined> = {},
-  opts: { replyTo?: string; ticketId?: string } = {}
+  opts: {
+    replyTo?: string;
+    ticketId?: string;
+    attachments?: { filename: string; path: string }[];
+  } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
   try {
     const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
@@ -131,6 +135,7 @@ export async function dispatchEmail(
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
       replyTo: opts.replyTo || brand.replyTo || undefined,
+      attachments: opts.attachments,
     });
 
     if (opts.ticketId) {
