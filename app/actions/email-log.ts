@@ -46,6 +46,17 @@ export async function backfillEmailLog(): Promise<{ ok: boolean; imported?: numb
     if (!key) return { ok: false, error: "RESEND_API_KEY חסר" };
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
 
+    // The Resend account is shared across projects — only import emails this app
+    // actually sent (matched by its own sending domain), never other projects'.
+    const { DEFAULT_BRAND } = await import("@/lib/email/types");
+    const { data: settings } = await adb
+      .from("email_settings")
+      .select("from_email")
+      .eq("id", true)
+      .maybeSingle();
+    const fromEmail: string = settings?.from_email || DEFAULT_BRAND.fromEmail;
+    const ownDomain = fromEmail.includes("@") ? fromEmail.split("@")[1] : fromEmail;
+
     let imported = 0;
     let after: string | undefined;
     let hasMore = true;
@@ -59,12 +70,14 @@ export async function backfillEmailLog(): Promise<{ ok: boolean; imported?: numb
       if (!r.ok) return { ok: false, error: `Resend ${r.status}: ${await r.text().catch(() => "")}` };
       const j = (await r.json().catch(() => ({}))) as {
         has_more?: boolean;
-        data?: { id: string; to?: string[] | string; subject?: string; created_at?: string; last_event?: string }[];
+        data?: { id: string; from?: string; to?: string[] | string; subject?: string; created_at?: string; last_event?: string }[];
       };
       const data = j.data ?? [];
       if (!data.length) break;
 
-      const rows = data.map((e) => ({
+      // Keep only this app's emails (shared Resend account).
+      const own = data.filter((e) => (e.from ?? "").includes(ownDomain));
+      const rows = own.map((e) => ({
         resend_id: e.id,
         to_email: Array.isArray(e.to) ? e.to[0] ?? "" : e.to ?? "",
         subject: e.subject ?? null,
@@ -72,11 +85,13 @@ export async function backfillEmailLog(): Promise<{ ok: boolean; imported?: numb
         status: e.last_event ?? "sent",
         created_at: e.created_at ?? new Date().toISOString(),
       }));
-      const { error } = await adb.from("email_log").upsert(rows, { onConflict: "resend_id" });
-      if (error) return { ok: false, error: error.message };
-      imported += rows.length;
+      if (rows.length) {
+        const { error } = await adb.from("email_log").upsert(rows, { onConflict: "resend_id" });
+        if (error) return { ok: false, error: error.message };
+        imported += rows.length;
+      }
 
-      after = data[data.length - 1].id;
+      after = data[data.length - 1].id; // paginate over the full page
       hasMore = !!j.has_more;
     }
     return { ok: true, imported };
