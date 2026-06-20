@@ -19,42 +19,6 @@ import { formatDate } from "@/lib/format";
 const READS_KEY = "studio.threadReads";
 const SOUND_KEY = "studio.inboxSound";
 
-// A gentle short beep, synthesized to a WAV data URI (no asset needed).
-function makeBeepDataUri() {
-  const sr = 44100;
-  const dur = 0.2;
-  const n = Math.floor(sr * dur);
-  const buf = new ArrayBuffer(44 + n * 2);
-  const v = new DataView(buf);
-  const ascii = (off: number, s: string) => {
-    for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i));
-  };
-  ascii(0, "RIFF");
-  v.setUint32(4, 36 + n * 2, true);
-  ascii(8, "WAVE");
-  ascii(12, "fmt ");
-  v.setUint32(16, 16, true);
-  v.setUint16(20, 1, true);
-  v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true);
-  v.setUint32(28, sr * 2, true);
-  v.setUint16(32, 2, true);
-  v.setUint16(34, 16, true);
-  ascii(36, "data");
-  v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) {
-    const t = i / sr;
-    // Soft sine ~660Hz with quick fade in / slow fade out → a gentle "ping".
-    const env = Math.min(1, t / 0.008) * Math.min(1, (dur - t) / 0.08);
-    const s = Math.sin(2 * Math.PI * 660 * t) * env * 0.25;
-    v.setInt16(44 + i * 2, s * 32767, true);
-  }
-  let bin = "";
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return "data:audio/wav;base64," + btoa(bin);
-}
-
 // Merge two read maps, keeping the most-recent read_at per ticket.
 const mergeReads = (a: Record<string, number>, b: Record<string, number>) => {
   const m = { ...a };
@@ -154,8 +118,8 @@ export function InboxWidget() {
   // Prepare the beep audio and unlock it on the first user interaction
   // (browsers block programmatic audio until the page has been interacted with).
   useEffect(() => {
-    const a = new Audio(makeBeepDataUri());
-    a.volume = 0.4;
+    const a = new Audio("/notification.mp3");
+    a.volume = 0.5;
     audioRef.current = a;
     const unlock = () => {
       a.play()
