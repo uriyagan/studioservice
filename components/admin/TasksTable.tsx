@@ -260,14 +260,21 @@ export function TasksTable({
     </th>
   );
 
-  const tabBtn = (key: "open" | "completed" | "all", label: string) => (
+  // An unread client message can land on a completed task — flag it on the tab
+  // so it isn't missed while viewing "פתוחות".
+  const completedUnread = tasks.some((t) => t.status === "completed" && isUnread(t));
+
+  const tabBtn = (key: "open" | "completed" | "all", label: string, dot = false) => (
     <button
       onClick={() => setStatusFilter(key)}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+      className={`relative rounded-md px-3 py-1.5 text-sm font-medium ${
         statusFilter === key ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100"
       }`}
     >
       {label}
+      {dot && (
+        <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+      )}
     </button>
   );
 
@@ -283,7 +290,7 @@ export function TasksTable({
       <div className="flex flex-col gap-3 border-b border-slate-100 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex items-center gap-1 self-start rounded-lg bg-slate-50 p-1">
           {tabBtn("open", "פתוחות")}
-          {tabBtn("completed", "הושלמו")}
+          {tabBtn("completed", "הושלמו", completedUnread)}
           {tabBtn("all", "הכל")}
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
