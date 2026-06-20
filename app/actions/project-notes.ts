@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Append the download flag so the signed URL serves the file as an attachment.
 const withDownload = (url: string, name: string) =>
   url && url !== "#"
     ? `${url}${url.includes("?") ? "&" : "?"}download=${encodeURIComponent(name)}`
@@ -19,91 +18,117 @@ async function assertAdmin() {
   if (p?.role !== "admin") throw new Error("אין הרשאה");
 }
 
-export interface ProjectFile {
+export interface NoteFile {
   id: string;
   name: string;
   url: string;
 }
-
-export async function getProjectNotes(projectId: string): Promise<string> {
-  try {
-    await assertAdmin();
-    const adb = createAdminClient() as unknown as { from: (t: string) => any };
-    const { data } = await adb
-      .from("project_notes")
-      .select("notes")
-      .eq("project_id", projectId)
-      .maybeSingle();
-    return data?.notes ?? "";
-  } catch {
-    return "";
-  }
+export interface ProjectNote {
+  id: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  files: NoteFile[];
 }
 
-export async function saveProjectNotes(
-  projectId: string,
-  notes: string
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await assertAdmin();
-    const adb = createAdminClient() as unknown as { from: (t: string) => any };
-    const { error } = await adb
-      .from("project_notes")
-      .upsert(
-        { project_id: projectId, notes, updated_at: new Date().toISOString() },
-        { onConflict: "project_id" }
-      );
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
+type Ok = { ok: boolean; error?: string };
 
-export async function getProjectFiles(projectId: string): Promise<ProjectFile[]> {
+// All note cards for a project (newest first), each with signed file URLs.
+export async function getProjectNotes(projectId: string): Promise<ProjectNote[]> {
   try {
     await assertAdmin();
     const adb = createAdminClient() as unknown as {
       from: (t: string) => any;
       storage: { from: (b: string) => any };
     };
-    const { data } = await adb
-      .from("project_files")
-      .select("id, file_url, file_name")
+    const { data: notes } = await adb
+      .from("project_notes")
+      .select("id, body, created_at, updated_at")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false });
-    const rows = (data ?? []) as { id: string; file_url: string; file_name: string }[];
-    if (!rows.length) return [];
-    const { data: signed } = await adb.storage
-      .from("attachments")
-      .createSignedUrls(rows.map((r) => r.file_url), 3600);
+    const noteRows = (notes ?? []) as {
+      id: string;
+      body: string;
+      created_at: string;
+      updated_at: string;
+    }[];
+    if (!noteRows.length) return [];
+
+    const { data: files } = await adb
+      .from("project_note_files")
+      .select("id, note_id, file_url, file_name")
+      .in("note_id", noteRows.map((n) => n.id));
+    const fileRows = (files ?? []) as {
+      id: string;
+      note_id: string;
+      file_url: string;
+      file_name: string;
+    }[];
+
     const urlByPath: Record<string, string> = {};
-    for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
-      if (s.path) urlByPath[s.path] = s.signedUrl;
+    if (fileRows.length) {
+      const { data: signed } = await adb.storage
+        .from("attachments")
+        .createSignedUrls(fileRows.map((f) => f.file_url), 3600);
+      for (const s of (signed ?? []) as { path: string | null; signedUrl: string }[]) {
+        if (s.path) urlByPath[s.path] = s.signedUrl;
+      }
     }
-    return rows.map((r) => ({
-      id: r.id,
-      name: r.file_name,
-      url: withDownload(urlByPath[r.file_url] ?? "#", r.file_name),
+    const filesByNote: Record<string, NoteFile[]> = {};
+    for (const f of fileRows) {
+      (filesByNote[f.note_id] ??= []).push({
+        id: f.id,
+        name: f.file_name,
+        url: withDownload(urlByPath[f.file_url] ?? "#", f.file_name),
+      });
+    }
+
+    return noteRows.map((n) => ({
+      id: n.id,
+      body: n.body,
+      createdAt: n.created_at,
+      updatedAt: n.updated_at,
+      files: filesByNote[n.id] ?? [],
     }));
   } catch {
     return [];
   }
 }
 
-export async function addProjectFile(input: {
-  projectId: string;
-  path: string;
-  fileName: string;
-}): Promise<{ ok: boolean; error?: string }> {
+export async function createProjectNote(
+  projectId: string,
+  body: string,
+  files: { path: string; name: string }[]
+): Promise<Ok> {
+  try {
+    await assertAdmin();
+    if (!body.trim() && !files.length) return { ok: false, error: "יש להזין טקסט או לצרף קובץ" };
+    const adb = createAdminClient() as unknown as { from: (t: string) => any };
+    const { data: note, error } = await adb
+      .from("project_notes")
+      .insert({ project_id: projectId, body })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: error.message };
+    if (files.length) {
+      await adb
+        .from("project_note_files")
+        .insert(files.map((f) => ({ note_id: note.id, file_url: f.path, file_name: f.name })));
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function updateProjectNote(noteId: string, body: string): Promise<Ok> {
   try {
     await assertAdmin();
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
-    const { error } = await adb.from("project_files").insert({
-      project_id: input.projectId,
-      file_url: input.path,
-      file_name: input.fileName,
-    });
+    const { error } = await adb
+      .from("project_notes")
+      .update({ body, updated_at: new Date().toISOString() })
+      .eq("id", noteId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e) {
@@ -111,9 +136,46 @@ export async function addProjectFile(input: {
   }
 }
 
-export async function deleteProjectFile(
-  fileId: string
-): Promise<{ ok: boolean; error?: string }> {
+export async function deleteProjectNote(noteId: string): Promise<Ok> {
+  try {
+    await assertAdmin();
+    const adb = createAdminClient() as unknown as {
+      from: (t: string) => any;
+      storage: { from: (b: string) => any };
+    };
+    const { data: files } = await adb
+      .from("project_note_files")
+      .select("file_url")
+      .eq("note_id", noteId);
+    const paths = ((files ?? []) as { file_url: string }[]).map((f) => f.file_url);
+    if (paths.length) await adb.storage.from("attachments").remove(paths);
+    const { error } = await adb.from("project_notes").delete().eq("id", noteId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function addNoteFile(input: {
+  noteId: string;
+  path: string;
+  fileName: string;
+}): Promise<Ok> {
+  try {
+    await assertAdmin();
+    const adb = createAdminClient() as unknown as { from: (t: string) => any };
+    const { error } = await adb
+      .from("project_note_files")
+      .insert({ note_id: input.noteId, file_url: input.path, file_name: input.fileName });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+export async function deleteNoteFile(fileId: string): Promise<Ok> {
   try {
     await assertAdmin();
     const adb = createAdminClient() as unknown as {
@@ -121,12 +183,12 @@ export async function deleteProjectFile(
       storage: { from: (b: string) => any };
     };
     const { data: row } = await adb
-      .from("project_files")
+      .from("project_note_files")
       .select("file_url")
       .eq("id", fileId)
       .maybeSingle();
     if (row?.file_url) await adb.storage.from("attachments").remove([row.file_url]);
-    const { error } = await adb.from("project_files").delete().eq("id", fileId);
+    const { error } = await adb.from("project_note_files").delete().eq("id", fileId);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (e) {
