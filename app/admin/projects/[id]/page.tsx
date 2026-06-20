@@ -7,6 +7,7 @@ import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { ProjectStats } from "@/lib/types";
 import { ProjectMembers, MemberRow } from "@/components/admin/ProjectMembers";
+import { ProjectNotes } from "@/components/admin/ProjectNotes";
 import { ArrowRight } from "@/components/icons";
 import { formatHours } from "@/lib/format";
 
@@ -93,6 +94,17 @@ export default async function ProjectPage({
           מי שמשויך כאן רואה את הפרויקט בפורטל, יכול לפתוח משימות ולראות את ההתכתבות.
         </p>
         <ProjectMembers projectId={id} ownerId={p.client_id} members={members} clients={clients} />
+      </Card>
+
+      <Card>
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold text-slate-900">הערות פנימיות</h2>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">לאדמינים בלבד</span>
+        </div>
+        <p className="mb-4 text-sm text-slate-500">
+          הערות וקבצים פנימיים על הפרויקט. הלקוח לא רואה את התוכן הזה.
+        </p>
+        <ProjectNotes projectId={id} />
       </Card>
 
       <section className="space-y-4">
