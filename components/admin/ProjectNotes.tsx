@@ -155,7 +155,7 @@ function Composer({
       <FileChips pending={pending} />
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={add} disabled={busy || uploading || (!body.trim() && !pending.some((u) => u.status === "done"))}>
-          {busy ? "מוסיף…" : uploading ? "ממתין להעלאה…" : "הוספת הערה"}
+          {busy ? "שומר…" : uploading ? "ממתין להעלאה…" : "שמירת הערה"}
         </Button>
         <input
           id={fileInputId}
