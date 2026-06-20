@@ -34,6 +34,7 @@ export default async function ClientCardPage({
     id: p.id,
     name: p.name,
     is_retainer: p.is_retainer,
+    is_build: p.is_build,
     hours_remaining: p.hours_remaining,
     total_hours_allocated: p.total_hours_allocated,
     client_id: p.client_id,

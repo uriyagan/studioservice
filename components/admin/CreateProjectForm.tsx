@@ -20,13 +20,13 @@ function Submit() {
 
 export function CreateProjectForm({ clients }: { clients: Profile[] }) {
   const [state, action] = useActionState(createProject, initial);
-  const [isRetainer, setIsRetainer] = useState(false);
+  const [type, setType] = useState<"hours" | "retainer" | "build">("hours");
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
-      setIsRetainer(false);
+      setType("hours");
     }
   }, [state.ok]);
 
@@ -48,18 +48,18 @@ export function CreateProjectForm({ clients }: { clients: Profile[] }) {
         ))}
       </select>
 
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          name="is_retainer"
-          checked={isRetainer}
-          onChange={(e) => setIsRetainer(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
-        />
-        חבילת ריטיינר (שעות בלתי מוגבלות)
-      </label>
+      <select
+        name="project_type"
+        value={type}
+        onChange={(e) => setType(e.target.value as "hours" | "retainer" | "build")}
+        className={inputCls}
+      >
+        <option value="hours">חבילת שעות</option>
+        <option value="retainer">ריטיינר (שעות בלתי מוגבלות)</option>
+        <option value="build">פרוייקט הקמה (ללא מעקב שעות)</option>
+      </select>
 
-      {!isRetainer && (
+      {type === "hours" && (
         <input
           name="total_hours"
           type="number"
@@ -68,6 +68,11 @@ export function CreateProjectForm({ clients }: { clients: Profile[] }) {
           placeholder="סך שעות בחבילה"
           className={inputCls}
         />
+      )}
+      {type === "build" && (
+        <p className="text-xs text-slate-400">
+          פרוייקט הקמה מתומחר בנפרד — ללא מעקב שעות. ניתן לשייך אותו ללקוח ולנהל בו משימות וקבצים.
+        </p>
       )}
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

@@ -67,7 +67,11 @@ export default async function ProjectPage({
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">{p.name}</h1>
-            {p.is_retainer ? (
+            {p.is_build ? (
+              <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                פרוייקט הקמה · ללא מעקב שעות
+              </span>
+            ) : p.is_retainer ? (
               <span className="mt-1 inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
                 ריטיינר · שעות בלתי מוגבלות
               </span>

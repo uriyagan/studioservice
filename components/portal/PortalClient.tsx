@@ -134,7 +134,13 @@ function StatusView({
   const [openTask, setOpenTask] = useState<CompletedTask | null>(null);
   return (
     <div className="space-y-6">
-      {project.is_retainer ? (
+      {project.is_build ? (
+        <StatCard
+          label="סוג הפרויקט"
+          value="פרוייקט הקמה"
+          accent
+        />
+      ) : project.is_retainer ? (
         <StatCard
           label="סטטוס חבילה"
           value="ריטיינר פעיל · שעות בלתי מוגבלות"
@@ -260,6 +266,14 @@ function PurchaseView({
         <Card>
           <div className="space-y-5">
             {projects.map((p) => {
+              if (p.is_build) {
+                return (
+                  <div key={p.id} className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-800">{p.name}</span>
+                    <span className="text-sm text-slate-500">פרוייקט הקמה</span>
+                  </div>
+                );
+              }
               if (p.is_retainer) {
                 return (
                   <div key={p.id} className="flex items-center justify-between gap-3">

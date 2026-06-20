@@ -22,6 +22,7 @@ export interface Project {
   client_id: string | null;
   name: string;
   is_retainer: boolean;
+  is_build?: boolean;
   total_hours_allocated: number;
   created_at: string;
 }
@@ -31,6 +32,7 @@ export interface ProjectStats {
   client_id: string | null;
   name: string;
   is_retainer: boolean;
+  is_build?: boolean;
   total_hours_allocated: number;
   hours_used: number;
   hours_remaining: number;

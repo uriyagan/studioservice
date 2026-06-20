@@ -42,7 +42,12 @@ export function ProjectRow({
   clients: Profile[];
 }) {
   const [editing, setEditing] = useState(false);
-  const [isRetainer, setIsRetainer] = useState(project.is_retainer);
+  const projectType: "hours" | "retainer" | "build" = project.is_build
+    ? "build"
+    : project.is_retainer
+      ? "retainer"
+      : "hours";
+  const [type, setType] = useState<"hours" | "retainer" | "build">(projectType);
   const [editState, editAction] = useActionState(updateProject, initial);
   const [delState, delAction] = useActionState(deleteProject, initial);
 
@@ -61,7 +66,11 @@ export function ProjectRow({
         </Link>
 
         <div className="min-w-0 sm:flex-1">
-          {project.is_retainer ? (
+          {project.is_build ? (
+            <span className="inline-block max-w-full truncate rounded-full bg-slate-100 px-2.5 py-1 align-middle text-xs font-medium text-slate-600">
+              פרוייקט הקמה
+            </span>
+          ) : project.is_retainer ? (
             <span className="inline-block max-w-full truncate rounded-full bg-primary-light px-2.5 py-1 align-middle text-xs font-medium text-primary">
               ריטיינר · שעות בלתי מוגבלות
             </span>
@@ -94,7 +103,7 @@ export function ProjectRow({
             title={editing ? "ביטול" : "עריכה"}
             className="p-2"
             onClick={() => {
-              setIsRetainer(project.is_retainer);
+              setType(projectType);
               setEditing((v) => !v);
             }}
           >
@@ -127,18 +136,18 @@ export function ProjectRow({
             ))}
           </select>
 
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              name="is_retainer"
-              checked={isRetainer}
-              onChange={(e) => setIsRetainer(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
-            />
-            חבילת ריטיינר (שעות בלתי מוגבלות)
-          </label>
+          <select
+            name="project_type"
+            value={type}
+            onChange={(e) => setType(e.target.value as "hours" | "retainer" | "build")}
+            className={inputCls}
+          >
+            <option value="hours">חבילת שעות</option>
+            <option value="retainer">ריטיינר (שעות בלתי מוגבלות)</option>
+            <option value="build">פרוייקט הקמה (ללא מעקב שעות)</option>
+          </select>
 
-          {!isRetainer && (
+          {type === "hours" && (
             <input
               name="total_hours"
               type="number"

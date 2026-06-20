@@ -67,19 +67,29 @@ export async function createProject(
     const supabase = await assertAdmin();
     const name = String(formData.get("name") ?? "").trim();
     const clientId = String(formData.get("client_id") ?? "") || null;
-    const isRetainer = formData.get("is_retainer") === "on";
-    const totalHours = isRetainer
-      ? 0
-      : Number(formData.get("total_hours") ?? 0);
+    // project_type: "hours" | "retainer" | "build" (falls back to the old
+    // is_retainer checkbox for any caller that hasn't been updated).
+    const projectType = String(
+      formData.get("project_type") ??
+        (formData.get("is_retainer") === "on" ? "retainer" : "hours")
+    );
+    const isRetainer = projectType === "retainer";
+    const isBuild = projectType === "build";
+    const totalHours = projectType === "hours" ? Number(formData.get("total_hours") ?? 0) : 0;
 
     if (!name) return { ok: false, error: "שם פרויקט נדרש" };
 
-    const { error } = await supabase.from("projects").insert({
+    const base = {
       name,
       client_id: clientId,
       is_retainer: isRetainer,
       total_hours_allocated: totalHours,
-    });
+    };
+    let { error } = await supabase.from("projects").insert({ ...base, is_build: isBuild });
+    // Fall back if the is_build column isn't migrated yet.
+    if (error && /is_build/.test(error.message)) {
+      ({ error } = await supabase.from("projects").insert(base));
+    }
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin/projects");
@@ -347,8 +357,13 @@ export async function updateProject(
     const projectId = String(formData.get("project_id") ?? "");
     const name = String(formData.get("name") ?? "").trim();
     const clientId = String(formData.get("client_id") ?? "") || null;
-    const isRetainer = formData.get("is_retainer") === "on";
-    const totalHours = isRetainer ? 0 : Number(formData.get("total_hours") ?? 0);
+    const projectType = String(
+      formData.get("project_type") ??
+        (formData.get("is_retainer") === "on" ? "retainer" : "hours")
+    );
+    const isRetainer = projectType === "retainer";
+    const isBuild = projectType === "build";
+    const totalHours = projectType === "hours" ? Number(formData.get("total_hours") ?? 0) : 0;
 
     if (!projectId) return { ok: false, error: "מזהה פרויקט חסר" };
     if (!name) return { ok: false, error: "שם פרויקט נדרש" };
@@ -360,18 +375,22 @@ export async function updateProject(
       .select("total_hours_allocated")
       .eq("id", projectId)
       .maybeSingle();
-    const toppedUp = !isRetainer && totalHours > Number(cur?.total_hours_allocated ?? 0);
+    const toppedUp = projectType === "hours" && totalHours > Number(cur?.total_hours_allocated ?? 0);
 
-    const { error } = await supabase
+    const base = {
+      name,
+      client_id: clientId,
+      is_retainer: isRetainer,
+      total_hours_allocated: totalHours,
+      ...(toppedUp ? { notified_half: false, notified_depleted: false } : {}),
+    };
+    let { error } = await supabase
       .from("projects")
-      .update({
-        name,
-        client_id: clientId,
-        is_retainer: isRetainer,
-        total_hours_allocated: totalHours,
-        ...(toppedUp ? { notified_half: false, notified_depleted: false } : {}),
-      })
+      .update({ ...base, is_build: isBuild })
       .eq("id", projectId);
+    if (error && /is_build/.test(error.message)) {
+      ({ error } = await supabase.from("projects").update(base).eq("id", projectId));
+    }
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin/projects");

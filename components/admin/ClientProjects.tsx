@@ -13,6 +13,7 @@ export interface ProjectOpt {
   id: string;
   name: string;
   is_retainer: boolean;
+  is_build?: boolean;
   hours_remaining: number;
   total_hours_allocated: number;
   client_id: string | null;
@@ -61,7 +62,7 @@ export function ClientProjects({
                 {takenByOther && <span className="text-xs text-amber-600">משויך כעת ל{p.ownerName || "לקוח אחר"}</span>}
               </span>
               <span className="text-xs text-slate-500">
-                {p.is_retainer ? "ריטיינר" : `נותרו ${formatHours(p.hours_remaining)}`}
+                {p.is_build ? "פרוייקט הקמה" : p.is_retainer ? "ריטיינר" : `נותרו ${formatHours(p.hours_remaining)}`}
               </span>
             </label>
           );
