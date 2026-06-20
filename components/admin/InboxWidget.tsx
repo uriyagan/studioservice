@@ -361,7 +361,7 @@ export function InboxWidget() {
                 </>
               ) : (
                 <div className="hidden flex-1 items-center justify-center p-6 text-sm text-slate-400 sm:flex">
-                  בחר שיחה מהרשימה כדי להשיב
+                  יש לבחור שיחה מהרשימה
                 </div>
               )}
             </div>
