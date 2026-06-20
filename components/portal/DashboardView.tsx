@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { formatHours } from "@/lib/format";
 import { ProjectStats } from "@/lib/types";
@@ -9,12 +8,7 @@ export function DashboardView({ projects }: { projects: ProjectStats[] }) {
     <div className="space-y-4">
       {projects.map((p) => (
         <Card key={p.id}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-semibold text-slate-900">{p.name}</h2>
-            <Link href="/portal/tasks" className="text-sm text-primary hover:underline">
-              המשימות בפרויקט →
-            </Link>
-          </div>
+          <h2 className="font-semibold text-slate-900">{p.name}</h2>
 
           {p.is_build ? (
             <span className="mt-3 inline-block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
