@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MessageSquare, X, ArrowRight } from "@/components/icons";
+import { createClient } from "@/lib/supabase/client";
 import { ConversationThreadBody } from "@/components/portal/ConversationThread";
 import {
   getConversations,
@@ -20,6 +21,17 @@ export function InboxWidget() {
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reads, setReads] = useState<Record<string, number>>({});
+  const [query, setQuery] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+
+  const persistReads = (nv: Record<string, number>) => {
+    try {
+      localStorage.setItem(READS_KEY, JSON.stringify(nv));
+    } catch {
+      /* noop */
+    }
+    return nv;
+  };
 
   const load = useCallback(() => {
     getConversations().then(setConvos);
@@ -36,7 +48,24 @@ export function InboxWidget() {
     const id = setInterval(() => {
       if (document.visibilityState === "visible") load();
     }, 20000);
-    return () => clearInterval(id);
+
+    // Instant refresh on any new message via Supabase Realtime. If the table
+    // isn't in the realtime publication this simply never fires — the 20s poll
+    // above stays as the fallback, so nothing breaks either way.
+    const supabase = createClient();
+    const channel = supabase
+      .channel("inbox-messages")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => load()
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(id);
+      supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const isUnread = (c: Conversation) =>
@@ -48,16 +77,30 @@ export function InboxWidget() {
 
   const select = (c: Conversation) => {
     setSelectedId(c.ticketId);
+    setReads((prev) => persistReads({ ...prev, [c.ticketId]: Date.now() }));
+  };
+
+  const markAllRead = () => {
     setReads((prev) => {
-      const nv = { ...prev, [c.ticketId]: Date.now() };
-      try {
-        localStorage.setItem(READS_KEY, JSON.stringify(nv));
-      } catch {
-        /* noop */
-      }
-      return nv;
+      const nv = { ...prev };
+      const now = Date.now();
+      convos.forEach((c) => {
+        if (isUnread(c)) nv[c.ticketId] = now;
+      });
+      return persistReads(nv);
     });
   };
+
+  const q = query.trim().toLowerCase();
+  const filtered = convos.filter((c) => {
+    if (unreadOnly && !isUnread(c)) return false;
+    if (!q) return true;
+    return (
+      c.clientName.toLowerCase().includes(q) ||
+      c.taskTitle.toLowerCase().includes(q) ||
+      c.projectName.toLowerCase().includes(q)
+    );
+  });
 
   const selected = convos.find((c) => c.ticketId === selectedId) ?? null;
 
@@ -101,11 +144,41 @@ export function InboxWidget() {
 
           <div className="flex min-h-0 flex-1">
             {/* Conversations list */}
-            <div className={`${selectedId ? "hidden" : "flex"} w-full flex-col overflow-y-auto sm:flex sm:w-72 sm:border-e sm:border-slate-100`}>
+            <div className={`${selectedId ? "hidden" : "flex"} w-full flex-col sm:flex sm:w-72 sm:border-e sm:border-slate-100`}>
+              {/* Search / filter toolbar */}
+              <div className="shrink-0 space-y-2 border-b border-slate-100 p-2">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="חיפוש לפי לקוח או משימה…"
+                  className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                />
+                <div className="flex items-center justify-between gap-2 px-0.5">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={unreadOnly}
+                      onChange={(e) => setUnreadOnly(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-primary"
+                    />
+                    לא נקראו בלבד
+                  </label>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs text-primary hover:underline">
+                      סמן הכל כנקרא
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto">
               {convos.length === 0 && (
                 <p className="p-4 text-sm text-slate-400">אין שיחות עדיין.</p>
               )}
-              {convos.map((c) => {
+              {convos.length > 0 && filtered.length === 0 && (
+                <p className="p-4 text-sm text-slate-400">לא נמצאו שיחות תואמות.</p>
+              )}
+              {filtered.map((c) => {
                 const unread = isUnread(c);
                 return (
                   <button
@@ -132,6 +205,7 @@ export function InboxWidget() {
                   </button>
                 );
               })}
+              </div>
             </div>
 
             {/* Thread */}
