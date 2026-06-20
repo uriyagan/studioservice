@@ -9,7 +9,7 @@ const heebo = Heebo({
 });
 
 export const metadata: Metadata = {
-  title: "פורטל שירות — Uriya Ganor Studio",
+  title: "אפליקציית שירות - סטודיו אוריה גנור",
   description: "מערכת ניהול שעות ופניות לקוחות",
 };
 
