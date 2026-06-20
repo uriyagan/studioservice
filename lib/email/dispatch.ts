@@ -136,6 +136,7 @@ export async function dispatchEmail(
       from: `${brand.fromName} <${brand.fromEmail}>`,
       replyTo: opts.replyTo || brand.replyTo || undefined,
       attachments: opts.attachments,
+      template: key,
     });
 
     if (opts.ticketId) {

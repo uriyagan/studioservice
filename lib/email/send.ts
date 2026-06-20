@@ -15,9 +15,15 @@ export async function sendEmail(opts: {
   // Resend fetches each `path` URL at send time and attaches it (no local
   // download/encoding needed on the Worker).
   attachments?: { filename: string; path: string }[];
+  // For the email log — the template key, or 'custom' / 'test'.
+  template?: string;
 }): Promise<{ id?: string }> {
+  const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
   const key = process.env.RESEND_API_KEY;
-  if (!key) throw new Error("RESEND_API_KEY חסר — לא ניתן לשלוח מייל");
+  if (!key) {
+    await logEmail(recipients, opts.subject, opts.template, "failed", "RESEND_API_KEY חסר");
+    throw new Error("RESEND_API_KEY חסר — לא ניתן לשלוח מייל");
+  }
 
   // Hard timeout so a slow/unreachable Resend never blocks the caller
   // (e.g. the new-task action would otherwise hang on "creating...").
@@ -47,7 +53,35 @@ export async function sendEmail(opts: {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    await logEmail(recipients, opts.subject, opts.template, "failed", `Resend ${res.status}: ${body}`);
     throw new Error(`Resend ${res.status}: ${body}`);
   }
+  await logEmail(recipients, opts.subject, opts.template, "sent");
   return res.json().catch(() => ({}));
+}
+
+// One log row per recipient. Best-effort — logging must never break a send,
+// and it no-ops until the email_log table is migrated.
+async function logEmail(
+  recipients: string[],
+  subject: string,
+  template: string | undefined,
+  status: "sent" | "failed",
+  error?: string
+) {
+  try {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const adb = createAdminClient() as unknown as { from: (t: string) => any };
+    await adb.from("email_log").insert(
+      recipients.filter(Boolean).map((to) => ({
+        to_email: to,
+        subject,
+        template: template ?? null,
+        status,
+        error: error ?? null,
+      }))
+    );
+  } catch {
+    /* table not migrated yet, or logging failed — ignore */
+  }
 }

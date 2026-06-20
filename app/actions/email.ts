@@ -205,6 +205,7 @@ export async function sendTestEmail(input: {
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
       replyTo: brand.replyTo || undefined,
+      template: "test",
     });
     return { ok: true };
   } catch (e) {

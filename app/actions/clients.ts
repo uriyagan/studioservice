@@ -357,6 +357,7 @@ export async function sendClientEmail(
       html,
       from: `${brand.fromName} <${brand.fromEmail}>`,
       replyTo: brand.replyTo || undefined,
+      template: "custom",
     });
     return { ok: true };
   } catch (e) {
