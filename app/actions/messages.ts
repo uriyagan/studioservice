@@ -252,6 +252,112 @@ export async function recordMessageAttachment(input: {
   }
 }
 
+export interface Conversation {
+  ticketId: string;
+  taskTitle: string;
+  clientName: string;
+  projectName: string;
+  preview: string;
+  lastMessageAt: string;
+  lastDirection: "in" | "out";
+  lastInboundAt: string | null;
+}
+
+// Admin: one row per ticket that has any messages — the centralized inbox.
+// Latest message wins as the preview; lastInboundAt drives the unread dot.
+// MVP groups in JS (fine at current volume); swap for a SQL view at scale.
+export async function getConversations(): Promise<Conversation[]> {
+  try {
+    await assertAdmin();
+    const adb = createAdminClient() as unknown as { from: (t: string) => any };
+
+    const { data: msgs } = await adb
+      .from("messages")
+      .select("ticket_id, direction, body_text, links, created_at")
+      .order("created_at", { ascending: false });
+    const rows = (msgs ?? []) as {
+      ticket_id: string;
+      direction: "in" | "out";
+      body_text: string | null;
+      links: string | null;
+      created_at: string;
+    }[];
+    if (!rows.length) return [];
+
+    // Group by ticket: first seen (rows are newest-first) is the latest message.
+    const byTicket = new Map<
+      string,
+      { last: (typeof rows)[number]; lastInboundAt: string | null }
+    >();
+    for (const r of rows) {
+      const cur = byTicket.get(r.ticket_id);
+      if (!cur) {
+        byTicket.set(r.ticket_id, {
+          last: r,
+          lastInboundAt: r.direction === "in" ? r.created_at : null,
+        });
+      } else if (!cur.lastInboundAt && r.direction === "in") {
+        cur.lastInboundAt = r.created_at;
+      }
+    }
+
+    const ticketIds = [...byTicket.keys()];
+    const { data: tickets } = await adb
+      .from("tickets")
+      .select("id, title, projects(name, client_id)")
+      .in("id", ticketIds);
+    const tById = new Map(
+      ((tickets ?? []) as {
+        id: string;
+        title: string | null;
+        projects: { name: string | null; client_id: string | null } | null;
+      }[]).map((t) => [t.id, t])
+    );
+
+    const clientIds = [
+      ...new Set(
+        [...tById.values()].map((t) => t.projects?.client_id).filter(Boolean) as string[]
+      ),
+    ];
+    const { data: clients } = clientIds.length
+      ? await adb.from("profiles").select("id, name, email").in("id", clientIds)
+      : { data: [] };
+    const cById = new Map(
+      ((clients ?? []) as { id: string; name: string | null; email: string | null }[]).map(
+        (c) => [c.id, c]
+      )
+    );
+
+    const preview = (m: (typeof rows)[number]) => {
+      const t = (m.body_text ?? "").trim();
+      if (t) return t;
+      if ((m.links ?? "").trim()) return "🔗 לינק";
+      return "📎 הודעה";
+    };
+
+    const list: Conversation[] = ticketIds.map((id) => {
+      const g = byTicket.get(id)!;
+      const t = tById.get(id);
+      const c = t?.projects?.client_id ? cById.get(t.projects.client_id) : null;
+      return {
+        ticketId: id,
+        taskTitle: t?.title || "ללא שם",
+        clientName: c?.name || c?.email || "—",
+        projectName: t?.projects?.name || "",
+        preview: preview(g.last),
+        lastMessageAt: g.last.created_at,
+        lastDirection: g.last.direction,
+        lastInboundAt: g.lastInboundAt,
+      };
+    });
+
+    list.sort((a, b) => (a.lastMessageAt < b.lastMessageAt ? 1 : -1));
+    return list;
+  } catch {
+    return [];
+  }
+}
+
 // Client replies from the portal → logs the message (inbound) and emails
 // the admins. Ownership is verified via RLS before writing.
 export async function sendClientReply(

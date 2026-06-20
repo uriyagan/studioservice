@@ -17,32 +17,34 @@ type Upload = {
   path?: string;
 };
 
-// Shared conversation view + composer (message, links, files). Files upload to
-// Storage the moment they're chosen; on send they're linked to the new message.
-export function ConversationThread({
+// Messages list + composer (text, links, files), WITHOUT any modal chrome.
+// Files upload to Storage the moment they're chosen; on send they're linked to
+// the new message. Used inline by the admin inbox and inside a Modal by
+// ConversationThread (portal task threads + admin task threads).
+export function ConversationThreadBody({
   ticketId,
-  title,
-  onClose,
   load,
   send,
   mineDirection,
   mineLabel,
   otherLabel,
   placeholder,
-  closeOnSend = false,
-  header,
+  reloadOnSend = true,
+  onAfterSend,
+  fill = false,
 }: {
   ticketId: string;
-  title: string;
-  onClose: () => void;
   load: (ticketId: string) => Promise<ThreadMessage[]>;
   send: (prev: SendResult, formData: FormData) => Promise<SendResult>;
   mineDirection: "in" | "out";
   mineLabel: string;
   otherLabel: string;
   placeholder: string;
-  closeOnSend?: boolean;
-  header?: React.ReactNode;
+  reloadOnSend?: boolean;
+  onAfterSend?: () => void;
+  // fill = stretch to the parent's height (inbox pane). Otherwise natural
+  // height capped at 42vh (modal).
+  fill?: boolean;
 }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [text, setText] = useState("");
@@ -54,6 +56,7 @@ export function ConversationThread({
 
   const reload = () => load(ticketId).then(setMessages);
   useEffect(() => {
+    setMessages(null);
     reload();
     const id = setInterval(() => {
       if (document.visibilityState === "visible") reload();
@@ -147,17 +150,20 @@ export function ConversationThread({
     setLinks([]);
     setUploads([]);
     setBusy(false);
-    if (closeOnSend) onClose();
-    else reload();
+    if (reloadOnSend) reload();
+    onAfterSend?.();
   }
 
   const inputCls =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
   return (
-    <Modal title={`שיחה — ${title || "ללא שם"}`} onClose={onClose}>
-      {header}
-      <div className="mb-4 max-h-[42vh] space-y-3 overflow-y-auto">
+    <div className={fill ? "flex min-h-0 flex-1 flex-col" : ""}>
+      <div
+        className={`space-y-3 overflow-y-auto ${
+          fill ? "min-h-0 flex-1 p-4" : "mb-4 max-h-[42vh]"
+        }`}
+      >
         {messages === null && <p className="text-sm text-slate-400">טוען…</p>}
         {messages?.length === 0 && (
           <p className="text-sm text-slate-400">אין עדיין הודעות בשיחה זו.</p>
@@ -206,8 +212,8 @@ export function ConversationThread({
         })}
       </div>
 
-      <div className="space-y-2 border-t border-slate-100 pt-3">
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder={placeholder} className={inputCls} />
+      <div className={`space-y-2 border-t border-slate-100 pt-3 ${fill ? "shrink-0 p-4 pt-3" : ""}`}>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={fill ? 2 : 3} placeholder={placeholder} className={inputCls} />
 
         {/* Links */}
         {links.map((val, i) => (
@@ -310,6 +316,50 @@ export function ConversationThread({
           </label>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Modal-wrapped conversation (portal task threads + admin TaskThread).
+export function ConversationThread({
+  ticketId,
+  title,
+  onClose,
+  load,
+  send,
+  mineDirection,
+  mineLabel,
+  otherLabel,
+  placeholder,
+  closeOnSend = false,
+  header,
+}: {
+  ticketId: string;
+  title: string;
+  onClose: () => void;
+  load: (ticketId: string) => Promise<ThreadMessage[]>;
+  send: (prev: SendResult, formData: FormData) => Promise<SendResult>;
+  mineDirection: "in" | "out";
+  mineLabel: string;
+  otherLabel: string;
+  placeholder: string;
+  closeOnSend?: boolean;
+  header?: React.ReactNode;
+}) {
+  return (
+    <Modal title={`שיחה — ${title || "ללא שם"}`} onClose={onClose}>
+      {header}
+      <ConversationThreadBody
+        ticketId={ticketId}
+        load={load}
+        send={send}
+        mineDirection={mineDirection}
+        mineLabel={mineLabel}
+        otherLabel={otherLabel}
+        placeholder={placeholder}
+        reloadOnSend={!closeOnSend}
+        onAfterSend={closeOnSend ? onClose : undefined}
+      />
     </Modal>
   );
 }
