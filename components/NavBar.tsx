@@ -21,11 +21,14 @@ export function NavBar({
   logoSrc,
   links,
   userName,
+  rootHref = "/admin",
 }: {
   title: string;
   logoSrc?: string;
   links: { href: string; label: string }[];
   userName: string;
+  // The section root — matched exactly so it doesn't stay "active" on subpages.
+  rootHref?: string;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -36,7 +39,7 @@ export function NavBar({
   }, [pathname]);
 
   const isActive = (href: string) =>
-    pathname === href || (href !== "/admin" && pathname.startsWith(href));
+    pathname === href || (href !== rootHref && pathname.startsWith(href));
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">

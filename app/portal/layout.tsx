@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { logout } from "@/app/actions/auth";
-import { LogOut } from "@/components/icons";
+import { NavBar } from "@/components/NavBar";
 import { VersionWatcher } from "@/components/VersionWatcher";
+
+const LINKS = [
+  { href: "/portal", label: "לוח בקרה" },
+  { href: "/portal/tasks", label: "משימות" },
+  { href: "/portal/packages", label: "חבילות שירות" },
+  { href: "/portal/profile", label: "הפרטים שלי" },
+];
 
 export default async function PortalLayout({
   children,
@@ -23,25 +29,13 @@ export default async function PortalLayout({
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f5f5f5]">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/studio-logo.svg" alt="Uriya Ganor Studio" className="h-8 w-auto" />
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="truncate text-sm text-slate-500">
-              {profile?.name || user.email}
-            </span>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <LogOut className="h-4 w-4" /> יציאה
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <NavBar
+        title="סטודיו אוריה גנור"
+        logoSrc="/studio-logo.svg"
+        links={LINKS}
+        userName={profile?.name || user.email || ""}
+        rootHref="/portal"
+      />
       <main className="mx-auto max-w-4xl px-4 py-8">{children}</main>
       <VersionWatcher />
     </div>
