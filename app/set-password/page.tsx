@@ -1,25 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
 export default function SetPasswordPage() {
-  // Plain client (implicit flow) so it reads the recovery tokens from
-  // the URL hash that the email link redirects with.
-  const supabase = useMemo(
-    () =>
-      createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { detectSessionInUrl: true, flowType: "implicit", persistSession: true } }
-      ),
-    []
+  const [supabase] = useState(() =>
+    createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      // detectSessionInUrl handles any legacy hash-based links; new links carry
+      // a token_hash we verify on submit instead.
+      { auth: { detectSessionInUrl: true, flowType: "implicit", persistSession: true } }
+    )
   );
 
-  const [ready, setReady] = useState(false);
-  const [invalid, setInvalid] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tokenHash, setTokenHash] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
+  const [missing, setMissing] = useState(false);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,22 +27,18 @@ export default function SetPasswordPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const check = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (data.session) setReady(true);
-      else setTimeout(async () => {
-        const { data: d2 } = await supabase.auth.getSession();
-        if (cancelled) return;
-        if (d2.session) setReady(true);
-        else setInvalid(true);
-      }, 1500);
-    };
-    check();
-    return () => {
-      cancelled = true;
-    };
+    const th = new URLSearchParams(window.location.search).get("token_hash");
+    if (th) {
+      setTokenHash(th);
+      setLoading(false);
+      return;
+    }
+    // Fallback: an older hash-based link may have created a session on load.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setVerified(true);
+      else setMissing(true);
+      setLoading(false);
+    });
   }, [supabase]);
 
   const submit = async (e: React.FormEvent) => {
@@ -51,6 +47,21 @@ export default function SetPasswordPage() {
     if (pw.length < 6) return setError("הסיסמה חייבת להכיל 6 תווים לפחות");
     if (pw !== pw2) return setError("הסיסמאות אינן תואמות");
     setBusy(true);
+
+    // Verify the recovery token only now (on a real submit) — so email scanners
+    // that pre-open the link don't consume the one-time token.
+    if (!verified && tokenHash) {
+      const { error: vErr } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
+      if (vErr) {
+        setBusy(false);
+        setError(
+          'הקישור אינו תקין או שפג תוקפו. ניתן לבקש קישור חדש דרך "שכחת סיסמה?" בעמוד ההתחברות.'
+        );
+        return;
+      }
+      setVerified(true);
+    }
+
     const { error } = await supabase.auth.updateUser({ password: pw });
     setBusy(false);
     if (error) setError(error.message);
@@ -76,15 +87,15 @@ export default function SetPasswordPage() {
                 <Button className="w-full">מעבר להתחברות</Button>
               </a>
             </div>
-          ) : invalid ? (
+          ) : loading ? (
+            <p className="text-sm text-slate-500">טוען…</p>
+          ) : missing ? (
             <div className="space-y-3">
               <p className="text-sm text-red-600">הקישור אינו תקין או שפג תוקפו.</p>
               <a href="/login" className="text-sm text-primary hover:underline">
                 חזרה להתחברות
               </a>
             </div>
-          ) : !ready ? (
-            <p className="text-sm text-slate-500">מאמת קישור…</p>
           ) : (
             <form onSubmit={submit} className="space-y-3">
               <input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="סיסמה חדשה" className={inputCls} required />

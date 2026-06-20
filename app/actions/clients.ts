@@ -101,12 +101,8 @@ export async function createClientFull(
     // the set-password link to ever log in.
     let warning: string | undefined;
     try {
-      const { data: linkData } = await admin.auth.admin.generateLink({
-        type: "recovery",
-        email,
-        options: { redirectTo: `${SITE}/set-password` },
-      });
-      const action = linkData?.properties?.action_link;
+      const { setPasswordLink } = await import("@/lib/auth-links");
+      const action = await setPasswordLink(email);
       const res = await dispatchEmail("welcome", email, {
         first_name: fields.first_name ?? "",
         last_name: fields.last_name ?? "",

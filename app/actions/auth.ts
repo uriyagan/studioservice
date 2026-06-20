@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function logout() {
   const supabase = await createClient();
@@ -20,13 +19,8 @@ export async function requestPasswordReset(
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { ok: false, error: "אימייל נדרש" };
   try {
-    const admin = createAdminClient();
-    const { data } = await admin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo: "https://service.uriyaganor.com/set-password" },
-    });
-    const link = data?.properties?.action_link;
+    const { setPasswordLink } = await import("@/lib/auth-links");
+    const link = await setPasswordLink(email);
     if (link) {
       const { dispatchEmail } = await import("@/lib/email/dispatch");
       await dispatchEmail("password_reset", email, {
