@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { renderEmailHtml, substituteTags } from "@/lib/email/render";
@@ -265,10 +266,13 @@ export async function deleteClient(
     await admin.from("profiles").delete().eq("id", id);
 
     revalidatePath("/admin/clients");
-    return { ok: true };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+  // Redirect from the server (outside the try, so NEXT_REDIRECT isn't caught).
+  // The detail page would otherwise re-render for the just-deleted client and
+  // hit notFound() → a 404 flash even though the delete succeeded.
+  redirect("/admin/clients");
 }
 
 // Send an initiated (free-form) email to a client, wrapped in the
