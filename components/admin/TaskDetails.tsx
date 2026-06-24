@@ -5,7 +5,16 @@ import { useRouter } from "next/navigation";
 import { Link2, FileText, Download } from "@/components/icons";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { NotesPanel, type NotesActions } from "@/components/admin/NotesPanel";
 import { getTaskAttachments } from "@/app/actions/messages";
+import {
+  getTicketNotes,
+  createTicketNote,
+  updateTicketNote,
+  deleteTicketNote,
+  addTicketNoteFile,
+  deleteTicketNoteFile,
+} from "@/app/actions/ticket-notes";
 import { completeTask } from "@/app/actions/timer";
 import { formatDuration } from "@/lib/format";
 
@@ -53,6 +62,17 @@ export function TaskDetails({
         a.remove();
       }, i * 400);
     });
+  };
+
+  // Admin-only internal notes/files for the studio team. Never emailed, never
+  // shown to the client.
+  const noteActions: NotesActions = {
+    list: () => getTicketNotes(ticketId),
+    create: (body, files) => createTicketNote(ticketId, body, files),
+    update: updateTicketNote,
+    remove: deleteTicketNote,
+    addFile: (id, path, name) => addTicketNoteFile({ noteId: id, path, fileName: name }),
+    removeFile: deleteTicketNoteFile,
   };
 
   const Section = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -127,6 +147,21 @@ export function TaskDetails({
             <p className="text-sm text-slate-400">אין קבצים.</p>
           )}
         </Section>
+
+        {/* Studio-internal notes + files: admin-only, not sent or shown to the client. */}
+        <div className="border-t border-slate-100 pt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            הערות פנימיות של הסטודיו
+          </h4>
+          <p className="mb-3 mt-1 text-xs text-slate-400">
+            לשימוש הצוות בלבד — לא נשלח ולא מוצג ללקוח.
+          </p>
+          <NotesPanel
+            actions={noteActions}
+            composerPlaceholder="הערה פנימית לגבי המשימה… (אפשר גם לצרף קובץ)"
+            emptyText="אין עדיין הערות פנימיות למשימה זו."
+          />
+        </div>
 
         {/* Complete the task (irreversible) — with confirmation + total time. */}
         {status === "completed" ? (
