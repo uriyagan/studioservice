@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { Paperclip, Loader2, FileText, Trash2, Pencil, X } from "@/components/icons";
+import { Paperclip, Loader2, FileText, Trash2, Pencil, X, Download } from "@/components/icons";
 import { formatDate } from "@/lib/format";
 
 // Generic admin-only "notes + files" panel, reused for both project-level and
@@ -31,6 +31,22 @@ export interface NotesActions {
 }
 
 type Pending = { id: string; name: string; path?: string; status: "uploading" | "done" | "error" };
+
+// Sequentially trigger a download for each file (small stagger so the browser
+// doesn't drop concurrent clicks).
+function downloadAll(files: { name: string; url: string }[]) {
+  files.forEach((f, i) => {
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = f.url;
+      a.download = f.name;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }, i * 400);
+  });
+}
 
 // Upload a file to Storage via a signed URL; returns its storage path.
 async function uploadToStorage(file: File): Promise<string> {
@@ -77,6 +93,9 @@ export function NotesPanel({
       )
     : notes;
 
+  // All files across the currently-shown notes — for the "download all" button.
+  const allFiles = filtered.flatMap((n) => n.files);
+
   return (
     <div className="space-y-4">
       <Composer actions={actions} placeholder={composerPlaceholder} onAdded={reload} onError={setError} />
@@ -88,6 +107,15 @@ export function NotesPanel({
           placeholder={searchPlaceholder}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
         />
+      )}
+
+      {allFiles.length > 1 && (
+        <button
+          onClick={() => downloadAll(allFiles)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          <Download className="h-4 w-4 text-white" /> הורדת כל הקבצים ({allFiles.length})
+        </button>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
