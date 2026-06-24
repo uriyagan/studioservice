@@ -4,7 +4,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "./dispatch";
 import { renderTasksSummary } from "./render";
-import { replyAddress } from "./thread";
+import { replyAddress, taskRecipient } from "./thread";
 import { formatHours, sumLoggedSeconds } from "@/lib/format";
 
 const SITE = "https://service.uriyaganor.com";
@@ -34,11 +34,9 @@ export async function notifyTaskCompleted(ticketId: string) {
       .maybeSingle();
 
     if (stats?.client_id) {
-      const { data: client } = await d
-        .from("profiles")
-        .select("email, name, first_name, last_name")
-        .eq("id", stats.client_id)
-        .maybeSingle();
+      // Notify whoever opened the task (a project member), falling back to the
+      // project's primary client.
+      const client = await taskRecipient(ticketId);
       if (client?.email) {
         await dispatchEmail(
           "task_completed",

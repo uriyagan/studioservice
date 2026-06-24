@@ -33,17 +33,25 @@ export async function createTicket(
       return { ok: false, error: "כותרת נדרשת" };
     }
 
-    const { data, error } = await supabase
+    // Record the opener so task correspondence goes back to whoever submitted
+    // it (a project member), not always the project's primary client. Retry
+    // without the column if the migration hasn't been applied yet.
+    const base = {
+      project_id: projectId,
+      title,
+      description: description || null,
+      link: link || null,
+    };
+    let { data, error } = await supabase
       .from("tickets")
-      .insert({
-        project_id: projectId,
-        title,
-        description: description || null,
-        link: link || null,
-      })
+      .insert({ ...base, created_by: user.id })
       .select("id")
       .single();
+    if (error) {
+      ({ data, error } = await supabase.from("tickets").insert(base).select("id").single());
+    }
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: "יצירת המשימה נכשלה" };
 
     const { runAfter } = await import("@/lib/after");
     await runAfter(async () => {

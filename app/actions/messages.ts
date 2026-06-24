@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
-import { logMessage, replyAddress } from "@/lib/email/thread";
+import { logMessage, replyAddress, taskRecipient } from "@/lib/email/thread";
 
 // Append the download flag so the signed URL serves the file as an attachment
 // (forces a download) with its original name, instead of opening in the tab.
@@ -509,14 +509,11 @@ export async function sendTicketReply(
       .select("title, project_id, projects(name, client_id)")
       .eq("id", ticketId)
       .maybeSingle();
-    const clientId = ticket?.projects?.client_id;
-    if (!clientId) return { ok: false, error: "למשימה זו אין לקוח משויך" };
+    if (!ticket?.projects?.client_id) return { ok: false, error: "למשימה זו אין לקוח משויך" };
 
-    const { data: client } = await db
-      .from("profiles")
-      .select("email, name")
-      .eq("id", clientId)
-      .maybeSingle();
+    // Send to whoever opened the task (a project member), not always the
+    // project's primary client.
+    const client = await taskRecipient(ticketId);
     if (!client?.email) return { ok: false, error: "ללקוח אין אימייל" };
 
     const taskTitle = ticket?.title || "המשימה שלך";

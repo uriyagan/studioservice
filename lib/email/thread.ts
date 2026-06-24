@@ -78,6 +78,60 @@ export function cleanInboundReply(raw: string): string {
   return result || raw.trim();
 }
 
+// Resolve who should receive correspondence about a task. The person who
+// opened the task (tickets.created_by — typically a project member) takes
+// priority over the project's primary billing client (projects.client_id).
+// Falls back to the owner for older tasks (no created_by), admin-created
+// tasks (admin creator), or a creator without an email.
+export async function taskRecipient(ticketId: string): Promise<{
+  id: string;
+  email: string;
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+} | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = createAdminClient() as unknown as { from: (t: string) => any };
+
+  let res = await db
+    .from("tickets")
+    .select("created_by, projects(client_id)")
+    .eq("id", ticketId)
+    .maybeSingle();
+  if (res.error) {
+    // created_by column not present yet — fall back to the owner only.
+    res = await db.from("tickets").select("projects(client_id)").eq("id", ticketId).maybeSingle();
+  }
+  const ticket = res.data as
+    | { created_by?: string | null; projects?: { client_id: string | null } | null }
+    | null;
+  if (!ticket) return null;
+
+  const ownerId = ticket.projects?.client_id ?? null;
+  const creatorId = ticket.created_by ?? null;
+
+  // Try the creator first, then the owner. The creator only wins if they're a
+  // client with an email (an admin creator stays on the project owner).
+  const candidates = [...new Set([creatorId, ownerId].filter(Boolean) as string[])];
+  for (const id of candidates) {
+    const { data: p } = await db
+      .from("profiles")
+      .select("id, email, name, first_name, last_name, role")
+      .eq("id", id)
+      .maybeSingle();
+    if (p?.email && (id === ownerId || p.role === "client")) {
+      return {
+        id: p.id,
+        email: p.email,
+        name: p.name ?? null,
+        first_name: p.first_name ?? null,
+        last_name: p.last_name ?? null,
+      };
+    }
+  }
+  return null;
+}
+
 export async function logMessage(msg: {
   ticketId: string;
   direction: "in" | "out";
