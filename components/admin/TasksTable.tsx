@@ -9,7 +9,7 @@ import { TaskDetails } from "@/components/admin/TaskDetails";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { TimerControl } from "@/components/TimerControl";
+import { RowTimerControl } from "@/components/admin/RowTimerControl";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
 import { getReadState, markTicketRead } from "@/app/actions/messages";
 import { Ticket, TimeLog } from "@/lib/types";
@@ -235,7 +235,7 @@ export function TasksTable({
   // desktop table row and the mobile card.
   const renderActions = (t: TaskRow) => (
     <div className="flex items-center gap-1.5">
-      {t.status !== "completed" && <TimerControl ticket={t} logs={t.time_logs} showComplete={false} />}
+      {t.status !== "completed" && <RowTimerControl ticket={t} />}
       <button
         onClick={() => openThread(t)}
         title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
