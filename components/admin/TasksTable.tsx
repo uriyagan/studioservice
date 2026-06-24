@@ -239,15 +239,15 @@ export function TasksTable({
       <button
         onClick={() => openThread(t)}
         title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
-        className={`relative rounded p-2 hover:bg-slate-100 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
+        className={`relative rounded-full bg-[#f5f5f5] p-2 hover:bg-slate-200 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
       >
-        <MessageSquare className="h-5 w-5" />
+        <MessageSquare className="h-[18px] w-[18px]" />
         {isUnread(t) && (
           <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
         )}
       </button>
-      <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
-        <Pencil className="h-5 w-5" />
+      <button onClick={() => setEditingId(t.id)} title="עריכה" className="rounded-full bg-[#f5f5f5] p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800">
+        <Pencil className="h-[18px] w-[18px]" />
       </button>
       <form
         action={delAction}
@@ -257,8 +257,8 @@ export function TasksTable({
       >
         <input type="hidden" name="id" value={t.id} />
         <input type="hidden" name="project_id" value={t.project_id ?? ""} />
-        <button type="submit" title="מחק" className="rounded p-2 text-slate-500 hover:bg-red-50 hover:text-red-600">
-          <Trash2 className="h-5 w-5" />
+        <button type="submit" title="מחק" className="rounded-full bg-[#f5f5f5] p-2 text-slate-500 hover:bg-red-100 hover:text-red-600">
+          <Trash2 className="h-[18px] w-[18px]" />
         </button>
       </form>
     </div>
