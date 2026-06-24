@@ -24,6 +24,7 @@ export interface TaskRow extends Ticket {
   projects: { name: string; is_retainer: boolean } | null;
   time_logs: TimeLog[];
   clientName: string;
+  openedByName?: string;
   lastInboundAt?: string | null;
   assignee_id?: string | null;
   assigneeName?: string;
@@ -400,6 +401,9 @@ export function TasksTable({
                 <div className="min-w-0">
                   <dt className="text-xs text-slate-400">לקוח</dt>
                   <dd className="truncate text-slate-700">{t.clientName}</dd>
+                  {t.openedByName && (
+                    <dd className="truncate text-xs text-slate-400">פתח/ה: {t.openedByName}</dd>
+                  )}
                 </div>
               )}
               {t.assigneeName && (
@@ -464,7 +468,14 @@ export function TasksTable({
                     )}
                   </td>
                 )}
-                {visible.client && <td className="px-3 py-2 text-slate-600">{t.clientName || "—"}</td>}
+                {visible.client && (
+                  <td className="px-3 py-2 text-slate-600">
+                    {t.clientName || "—"}
+                    {t.openedByName && (
+                      <span className="mt-0.5 block text-xs text-slate-400">פתח/ה: {t.openedByName}</span>
+                    )}
+                  </td>
+                )}
                 {visible.assignee && <td className="px-3 py-2 text-slate-600">{t.assigneeName || "—"}</td>}
                 {visible.status && (
                   <td className="px-3 py-2">

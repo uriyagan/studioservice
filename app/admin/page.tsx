@@ -20,6 +20,7 @@ interface RawTicket {
   created_at: string;
   completed_at: string | null;
   assignee_id?: string | null;
+  created_by?: string | null;
   projects: { name: string; is_retainer: boolean; client_id: string | null } | null;
   time_logs: TaskRow["time_logs"];
 }
@@ -43,6 +44,7 @@ export default async function AdminDashboard() {
   const projects = (projectList ?? []) as { id: string; name: string }[];
   const profileList = (profiles ?? []) as (Pick<Profile, "id" | "name"> & { role: string })[];
   const nameById = new Map<string, string>(profileList.map((p) => [p.id, p.name ?? ""]));
+  const roleById = new Map<string, string>(profileList.map((p) => [p.id, p.role]));
   const admins = profileList
     .filter((p) => p.role === "admin")
     .map((p) => ({ id: p.id, name: p.name || "" }));
@@ -64,14 +66,22 @@ export default async function AdminDashboard() {
     }
   }
 
-  const rows: TaskRow[] = ((tickets ?? []) as RawTicket[]).map((t) => ({
-    ...t,
-    projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
-    clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
-    lastInboundAt: lastInbound[t.id] ?? null,
-    assignee_id: t.assignee_id ?? null,
-    assigneeName: t.assignee_id ? nameById.get(t.assignee_id) ?? "" : "",
-  }));
+  const rows: TaskRow[] = ((tickets ?? []) as RawTicket[]).map((t) => {
+    // Who opened the task — only surfaced when it's a project member different
+    // from the project's primary client (admin-created / old tasks show none).
+    const openerId = t.created_by ?? null;
+    const openerIsMember =
+      !!openerId && roleById.get(openerId) === "client" && openerId !== t.projects?.client_id;
+    return {
+      ...t,
+      projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
+      clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
+      openedByName: openerIsMember ? nameById.get(openerId) ?? "" : "",
+      lastInboundAt: lastInbound[t.id] ?? null,
+      assignee_id: t.assignee_id ?? null,
+      assigneeName: t.assignee_id ? nameById.get(t.assignee_id) ?? "" : "",
+    };
+  });
 
   // ── Top-line stats ─────────────────────────────────────────
   const openCount = rows.filter((r) => r.status !== "completed").length;
