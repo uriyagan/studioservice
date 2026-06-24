@@ -15,7 +15,7 @@ import {
   addTicketNoteFile,
   deleteTicketNoteFile,
 } from "@/app/actions/ticket-notes";
-import { completeTask } from "@/app/actions/timer";
+import { completeTask, addManualTimeToTask } from "@/app/actions/timer";
 import { formatDuration } from "@/lib/format";
 
 // Read view of what a client submitted + the (irreversible) "complete task"
@@ -41,10 +41,38 @@ export function TaskDetails({
   const [files, setFiles] = useState<{ name: string; url: string }[] | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [completing, startComplete] = useTransition();
+  // Manual time added in this modal — tracked locally so the total updates
+  // immediately, on top of the time that was already logged when it opened.
+  const [addedSeconds, setAddedSeconds] = useState(0);
+  const [addH, setAddH] = useState("");
+  const [addM, setAddM] = useState("");
+  const [adding, startAdd] = useTransition();
+  const [addError, setAddError] = useState<string | null>(null);
+  const totalSeconds = seconds + addedSeconds;
   const links = (link ?? "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
+
+  const addTime = () => {
+    setAddError(null);
+    const extra = Math.round(((Number(addH) || 0) * 60 + (Number(addM) || 0)) * 60);
+    if (extra <= 0) {
+      setAddError("יש להזין זמן גדול מאפס");
+      return;
+    }
+    startAdd(async () => {
+      const r = await addManualTimeToTask(ticketId, extra);
+      if (!r.ok) {
+        setAddError(r.error ?? "הוספת הזמן נכשלה");
+        return;
+      }
+      setAddedSeconds((s) => s + extra);
+      setAddH("");
+      setAddM("");
+      router.refresh();
+    });
+  };
 
   useEffect(() => {
     getTaskAttachments(ticketId).then(setFiles);
@@ -64,8 +92,8 @@ export function TaskDetails({
     });
   };
 
-  // Admin-only internal notes/files for the studio team. Never emailed, never
-  // shown to the client.
+  // Studio notes/files for the task: shown read-only to the client in their
+  // portal, but never emailed.
   const noteActions: NotesActions = {
     list: () => getTicketNotes(ticketId),
     create: (body, files) => createTicketNote(ticketId, body, files),
@@ -148,6 +176,57 @@ export function TaskDetails({
           )}
         </Section>
 
+        {/* Work time: shows the logged total and lets the admin add time
+            manually (e.g. forgot to start the timer). Adding time does NOT
+            complete the task and never emails the client. */}
+        <div className="border-t border-slate-100 pt-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">זמן עבודה</h4>
+          <p className="mt-1 text-sm text-slate-700">
+            סה״כ תועד:{" "}
+            <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
+          </p>
+          {status !== "completed" && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-slate-400">
+                הוספת זמן ידנית למשימה זו (ללא סיום המשימה וללא מייל ללקוח).
+              </p>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="flex items-center gap-1.5 text-sm text-slate-500">
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={addH}
+                    onChange={(e) => setAddH(e.target.value)}
+                    placeholder="0"
+                    aria-label="שעות"
+                    className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  />
+                  שעות
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-slate-500">
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="1"
+                    value={addM}
+                    onChange={(e) => setAddM(e.target.value)}
+                    placeholder="0"
+                    aria-label="דקות"
+                    className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  />
+                  דקות
+                </label>
+                <Button onClick={addTime} disabled={adding}>
+                  {adding ? "מוסיף…" : "הוספת זמן"}
+                </Button>
+              </div>
+              {addError && <p className="text-sm text-red-600">{addError}</p>}
+            </div>
+          )}
+        </div>
+
         {/* Studio notes + files: shown to the client in their portal (read-only),
             but never emailed. For emailed updates use the conversation thread. */}
         <div className="border-t border-slate-100 pt-4">
@@ -167,7 +246,7 @@ export function TaskDetails({
         {/* Complete the task (irreversible) — with confirmation + total time. */}
         {status === "completed" ? (
           <p className="border-t border-slate-100 pt-4 text-sm font-medium text-emerald-600">
-            המשימה הושלמה ✓ · זמן כולל {formatDuration(seconds)}
+            המשימה הושלמה ✓ · זמן כולל {formatDuration(totalSeconds)}
           </p>
         ) : (
           <div className="border-t border-slate-100 pt-4">
@@ -179,7 +258,7 @@ export function TaskDetails({
               <div className="space-y-3 rounded-lg bg-emerald-50 p-3">
                 <p className="text-sm text-slate-800">
                   לסיים את המשימה ולעדכן את הלקוח במייל? זמן המשימה הכולל:{" "}
-                  <b className="font-mono tabular-nums">{formatDuration(seconds)}</b>
+                  <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
                 </p>
                 <div className="flex gap-2">
                   <Button

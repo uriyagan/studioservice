@@ -105,6 +105,37 @@ export async function completeTask(ticketId: string) {
   revalidatePath("/admin");
 }
 
+// Add a fixed block of time to an EXISTING task (e.g. the timer was never
+// started). Inserts a closed time_logs segment without touching the task's
+// status — so it stays open and the client gets no email (they're updated only
+// when the task is completed). Counts toward the project's usage like any log.
+export async function addManualTimeToTask(
+  ticketId: string,
+  seconds: number
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await assertAdmin();
+    if (!ticketId) return { ok: false, error: "מזהה משימה חסר" };
+    if (!Number.isFinite(seconds) || seconds <= 0)
+      return { ok: false, error: "יש להזין זמן גדול מאפס" };
+
+    const now = new Date();
+    const start = new Date(now.getTime() - seconds * 1000);
+    const { error } = await supabase.from("time_logs").insert({
+      ticket_id: ticketId,
+      start_time: start.toISOString(),
+      end_time: now.toISOString(),
+      duration_seconds: seconds,
+    });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 // Close the currently-running segment (end_time IS NULL), if any,
 // computing its duration from start_time.
 async function closeActiveSegment(
