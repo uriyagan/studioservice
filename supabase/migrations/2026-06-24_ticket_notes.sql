@@ -1,7 +1,9 @@
--- Admin-only internal notes + file storage per TASK (ticket). Mirrors
--- project_notes but scoped to a single ticket. Never exposed to clients
--- (RLS = is_admin() only) and never emailed — pure studio-team reference
--- (e.g. a working file the team needs for a client-submitted task).
+-- "Notes from the studio" per TASK (ticket): text + files the studio adds to a
+-- task. Shown READ-ONLY to the client in their portal (under "הערות מהסטודיו")
+-- but NEVER emailed — for emailed updates the conversation thread is used.
+-- Direct table access is admin-only (RLS = is_admin()); the client read path
+-- goes through the getMyTicketNotes server action, which authorizes the caller
+-- against the ticket (RLS) and then reads + signs via service role.
 -- Files live in the existing `attachments` storage bucket.
 
 create table if not exists public.ticket_notes (

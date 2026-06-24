@@ -148,18 +148,19 @@ export function TaskDetails({
           )}
         </Section>
 
-        {/* Studio-internal notes + files: admin-only, not sent or shown to the client. */}
+        {/* Studio notes + files: shown to the client in their portal (read-only),
+            but never emailed. For emailed updates use the conversation thread. */}
         <div className="border-t border-slate-100 pt-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            הערות פנימיות של הסטודיו
+            הערות מהסטודיו
           </h4>
           <p className="mb-3 mt-1 text-xs text-slate-400">
-            לשימוש הצוות בלבד — לא נשלח ולא מוצג ללקוח.
+            יופיעו ללקוח בלוח הבקרה כשיפתח/תפתח את המשימה — ללא שליחת מייל.
           </p>
           <NotesPanel
             actions={noteActions}
-            composerPlaceholder="הערה פנימית לגבי המשימה… (אפשר גם לצרף קובץ)"
-            emptyText="אין עדיין הערות פנימיות למשימה זו."
+            composerPlaceholder="הערה ללקוח לגבי המשימה… (אפשר גם לצרף קובץ)"
+            emptyText="אין עדיין הערות מהסטודיו למשימה זו."
           />
         </div>
 

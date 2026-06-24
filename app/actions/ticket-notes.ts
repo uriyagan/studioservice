@@ -33,11 +33,9 @@ export interface TicketNote {
 
 type Ok = { ok: boolean; error?: string };
 
-// All internal note cards for a task (newest first), each with signed URLs.
-// Admin-only and never surfaced to clients.
-export async function getTicketNotes(ticketId: string): Promise<TicketNote[]> {
-  try {
-    await assertAdmin();
+// All studio note cards for a task (newest first), each with signed file URLs.
+// Service-role read — callers must authorize access first.
+async function readNotes(ticketId: string): Promise<TicketNote[]> {
     const adb = createAdminClient() as unknown as {
       from: (t: string) => any;
       storage: { from: (b: string) => any };
@@ -91,6 +89,35 @@ export async function getTicketNotes(ticketId: string): Promise<TicketNote[]> {
       updatedAt: n.updated_at,
       files: filesByNote[n.id] ?? [],
     }));
+}
+
+// Admin: all studio note cards for a task (used by the task details panel).
+export async function getTicketNotes(ticketId: string): Promise<TicketNote[]> {
+  try {
+    await assertAdmin();
+    return await readNotes(ticketId);
+  } catch {
+    return [];
+  }
+}
+
+// Portal-side: the studio's notes for a task, shown read-only to the client
+// who can see the task (owner or project member). Access is gated by reading
+// the ticket through the RLS client first; the notes themselves are then read
+// + signed via service role. Never includes anything the admin marked private
+// (there is no private flag — every studio note here is client-visible).
+export async function getMyTicketNotes(ticketId: string): Promise<TicketNote[]> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    // RLS lets the caller see the ticket only if they own it / are a member.
+    const db = supabase as unknown as { from: (t: string) => any };
+    const { data: t } = await db.from("tickets").select("id").eq("id", ticketId).maybeSingle();
+    if (!t) return [];
+    return readNotes(ticketId);
   } catch {
     return [];
   }
