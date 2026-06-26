@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-06-20.
+> Full context to resume work in a fresh conversation. Last updated: 2026-06-24.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -61,10 +61,13 @@ Deploy takes ~1–2 min. Stale-chunk errors after deploy self-heal (see §6).
 
 Core tables: `profiles` (role `admin`|`client`), `projects` (`client_id` = primary owner,
 `is_retainer`, **`is_build`**, `total_hours_allocated`), `tickets` (a task; `status`, `assignee_id`,
-`project_id`), `time_logs`, `attachments`, `messages` (`direction` `in`|`out`), `message_attachments`,
-`hour_packages`, `purchases`, `email_templates`, `email_settings`, `project_members`.
+`project_id`, **`created_by`** = who opened it), `time_logs`, `attachments`, `messages`
+(`direction` `in`|`out`), `message_attachments`, `hour_packages`, `purchases`, `email_templates`,
+`email_settings`, `project_members`.
 Newer tables: **`message_reads`** (`admin_id`,`ticket_id`,`read_at` — cross-device unread),
 **`project_notes`** + **`project_note_files`** (admin-only per-project note cards + files),
+**`ticket_notes`** + **`ticket_note_files`** ("הערות מהסטודיו" — per-task note cards + files;
+admin writes, **client sees read-only** via `getMyTicketNotes`, never emailed),
 **`email_log`** (`to_email`,`subject`,`template`,`status`,`resend_id`,… — outbound email log).
 
 Key view **`project_stats`** = projects + `is_build` + computed `hours_used` (sum of time on
@@ -76,21 +79,40 @@ columns at the end (adding mid-list renames columns → error 42P16).
 **RLS:** clients read own rows; admins read all via `is_admin()` (security definer). Membership via
 `is_project_member(pid)` / `is_ticket_member(tid)` (security definer) lets members read/insert on
 projects/tickets/time_logs/attachments/messages. `message_reads`/`project_notes`/`project_note_files`/
-`email_log` are **admin-only** (`is_admin()`); the app inserts via service role.
+`ticket_notes`/`ticket_note_files`/`email_log` are **admin-only** (`is_admin()`); the app inserts via
+service role. Clients see studio task notes through the `getMyTicketNotes` action, which authorizes
+the caller against the ticket (RLS) then reads + signs files via service role — no client RLS needed.
 
 Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQL), incl.:
 `project_members` + `is_project_member`/`is_ticket_member`, `tickets.assignee_id`,
 `email_settings.reply_to`, `message_reads`, `project_build_type` (`projects.is_build` + view),
-`project_notes_cards` (`project_notes` + `project_note_files`), `email_log_v2` (+ `resend_id`).
-Also: `messages` is in the Supabase **realtime publication** (inbox live updates).
+`project_notes_cards` (`project_notes` + `project_note_files`), `email_log_v2` (+ `resend_id`),
+`2026-06-24_ticket_creator` (`tickets.created_by`), `2026-06-24_ticket_notes` (`ticket_notes` +
+`ticket_note_files`). Also: `messages` is in the Supabase **realtime publication** (inbox live updates).
 
 ---
 
 ## 5. Major features
 
 - **Admin dashboard** (`/admin`): tasks table with status tabs (open/completed/all), site/project +
-  assignee filters, title search, column toggle, pagination, edit-in-modal, complete-in-modal,
-  assignee column, stat cards; manual time entry; quick-start timer.
+  assignee filters, title search, column toggle, pagination, edit-in-modal, assignee column, stat
+  cards; quick-start timer. **Per-row timer** (`RowTimerControl`): a black circular **play** that
+  toggles to **pause**, plus a green circular **complete** check (custom SVG icons); the single live
+  clock runs in the **"זמן ביצוע"** column (no duplicate). The **לקוח** column shows **"פתח/ה: <name>"**
+  when a project member (not the primary client) opened the task.
+  - **Task details modal** (click the title): read view of what the client submitted + **"זמן עבודה"**
+    (logged total + **add manual time** to this existing open task — no new task/project, no email;
+    client is notified only on completion) + **"הערות מהסטודיו"** + complete-task action.
+  - **"הערות מהסטודיו"** (`NotesPanel` + `actions/ticket-notes.ts`): text and/or files added to a task,
+    add/edit/delete + search + **download-all**. Shown **read-only to the client** in their portal,
+    **never emailed** (for emailed updates use the conversation thread). `NotesPanel` is shared with
+    the project-level **"הערות פנימיות"** (`ProjectNotes` is a thin wrapper).
+  - Global **"הזנת זמן ידנית"** still creates a *separate completed task* (emails the client) — for work
+    with no existing task. Per-task manual time (above) is the silent, open-task variant.
+- **Task correspondence → the opener:** `taskRecipient(ticketId)` (`lib/email/thread.ts`) sends admin
+  replies + the task-completed email to whoever opened the task (`tickets.created_by`, a member),
+  falling back to the project's primary `client_id` for older/admin-created tasks. Reply still threads
+  on the same `reply+<ticketId>@…` address.
 - **Projects** (`/admin/projects`): create with a **3-way type selector** — hours-package /
   retainer / **פרוייקט הקמה (build)**. Build = client-linked, no hours budget, no time tracking.
   Single-row cards (name · usage bar / type badge · edit/delete); detail page with tasks +
@@ -138,7 +160,9 @@ Also: `messages` is in the Supabase **realtime publication** (inbox live updates
 - **Icons:** custom SVG set in `components/icons.tsx` (`mk()` factory). They render **solid black
   `#000000` by default**, unless the className carries an intent color (`text-white|emerald|red|
   primary|…`, matched by `KEEP_COLOR`). Icons on dark buttons need `text-white`. Email builder still
-  uses lucide. `Loader2` re-exported from lucide.
+  uses lucide. `Loader2` re-exported from lucide. **`Play`/`Pause`/`Check`** are circular (the circle
+  is part of the glyph) — used by the row timer. Row action buttons share a circular **`#f5f5f5`**
+  filled background (`h-[18px]` icons) so they read as one size; the play/pause button is `bg-black`.
 - **Duration formatting** (`lib/format.ts`): `formatHours(hours)` → human **"9 שעות 57 דקות" /
   "5 דקות" / "10 שעות"** (no decimals); used app-wide + in email merge tags. `formatDurationShort`
   = HH:MM (client task exec time, no seconds). Email default bodies must NOT append "שעות" after
@@ -183,8 +207,11 @@ app/
   portal/page.tsx                לוח בקרה (all projects)  + tasks/ packages/ profile/ subroutes
   actions/clients.ts             client CRUD, members, delete, send/resend email
   actions/admin.ts               tickets/projects (3 types), manual time, completion
-  actions/messages.ts            threads, getConversations, read-state, sendTicketReply
+  actions/messages.ts            threads, getConversations, read-state, sendTicketReply (→ taskRecipient)
+  actions/tickets.ts             client createTicket (stamps created_by)
+  actions/timer.ts               start/pause/complete + addManualTimeToTask (open task, no email)
   actions/project-notes.ts       admin project note cards + files
+  actions/ticket-notes.ts        studio task notes (admin CRUD + getMyTicketNotes for the client)
   actions/email-log.ts           getEmailLog (search/paginate) + backfillEmailLog (domain-scoped)
   actions/stripe.ts              invoice/payment intent
   api/email/inbound/route.ts     Resend inbound webhook
@@ -195,10 +222,13 @@ app/
 components/
   NavBar.tsx                     responsive nav (rootHref prop; admin + portal)
   icons.tsx                      custom black icon set
-  admin/TasksTable.tsx           tasks table (desktop) + mobile cards; פרויקט col links to project
+  admin/TasksTable.tsx           tasks table (desktop) + mobile cards; פרויקט col links; פתח/ה indicator
+  admin/RowTimerControl.tsx      compact per-row play/pause + complete (custom circular icons)
+  admin/TaskDetails.tsx          task view modal: submitted info + manual time + studio notes + complete
+  admin/NotesPanel.tsx           shared notes UI (text+files, CRUD, search, download-all) — project & task
   admin/ProjectRow.tsx           project card (type badge / usage bar)
   admin/ProjectMembers.tsx       add/remove project members
-  admin/ProjectNotes.tsx         admin-only note cards (text + files)
+  admin/ProjectNotes.tsx         thin wrapper over NotesPanel (per-project notes)
   admin/InboxWidget.tsx          floating centralized inbox + beep + read state
   admin/EmailLogView.tsx         email log (search/paginate/status pills)
   admin/DeleteClientButton.tsx / ResendWelcomeButton.tsx
@@ -218,8 +248,15 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 ## 8. Current state / open items
 
-- All migrations applied; everything below is **live in prod**. **No known open bugs.**
-- This session (2026-06-20): full mobile-native pass (grid-cols-1 fix, stacked cards, min-width:0);
+- All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
+  **No known open bugs. Nothing pending the user.**
+- This session (2026-06-24): **task correspondence routes to the opener** (`tickets.created_by` +
+  `taskRecipient`, with a "פתח/ה" indicator on the tasks table); **"הערות מהסטודיו"** per-task notes +
+  files (admin CRUD, client-visible read-only, never emailed, download-all) on a shared `NotesPanel`;
+  **manual time on an existing open task** (no new task/project, no email); **redesigned per-row timer**
+  (`RowTimerControl`: black play/pause + green complete, custom circular icons, single live clock in
+  the "זמן ביצוע" column, uniform `#f5f5f5` button backgrounds).
+- Prior session (2026-06-20): full mobile-native pass (grid-cols-1 fix, stacked cards, min-width:0);
   **Stripe switched to LIVE**; client portal rebuilt as a routed NavBar menu w/ multi-project
   dashboard; **admin centralized inbox** (beep, cross-device reads, realtime); **3rd project type
   "build"**; **admin project notes** (cards + files); **set-password link fix** (token_hash) +
