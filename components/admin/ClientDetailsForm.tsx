@@ -12,7 +12,9 @@ export function ClientDetailsForm({
   profile,
   mode,
 }: {
-  profile: Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes">;
+  profile: Pick<Profile, "id" | "first_name" | "last_name" | "phone" | "company" | "company_number" | "address" | "notes"> & {
+    email?: string | null;
+  };
   mode: "admin" | "self";
 }) {
   const [msg, setMsg] = useState<string | null>(null);
@@ -41,6 +43,12 @@ export function ClientDetailsForm({
         <input name="first_name" defaultValue={profile.first_name ?? ""} placeholder="שם פרטי" className={cls} />
         <input name="last_name" defaultValue={profile.last_name ?? ""} placeholder="שם משפחה" className={cls} />
       </div>
+      {mode === "admin" && (
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">אימייל (כתובת ההתחברות)</label>
+          <input name="email" type="email" defaultValue={profile.email ?? ""} placeholder="email@example.com" className={cls} dir="ltr" />
+        </div>
+      )}
       <input name="phone" defaultValue={profile.phone ?? ""} placeholder="טלפון" className={cls} dir="ltr" />
       <div className="grid grid-cols-2 gap-2">
         <input name="company" defaultValue={profile.company ?? ""} placeholder="חברה / עסק" className={cls} />

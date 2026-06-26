@@ -19,6 +19,7 @@ export default async function PortalProfilePage() {
 
   const profile = {
     id: user.id,
+    email: user.email ?? null,
     first_name: p?.first_name ?? null,
     last_name: p?.last_name ?? null,
     phone: p?.phone ?? null,

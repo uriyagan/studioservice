@@ -177,7 +177,28 @@ export async function updateClientDetails(
     const id = String(formData.get("id") ?? "");
     if (!id) return { ok: false, error: "מזהה לקוח חסר" };
 
-    const { error } = await supabase.from("profiles").update(detailFields(formData)).eq("id", id);
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return { ok: false, error: "כתובת אימייל לא תקינה" };
+    }
+
+    // The email is the login identity — it lives in Supabase Auth, not just the
+    // profiles row. Update Auth first; if the address is taken, surface that and
+    // don't touch the profile.
+    if (email) {
+      const admin = createAdminClient();
+      const { error: authErr } = await admin.auth.admin.updateUserById(id, {
+        email,
+        email_confirm: true,
+      });
+      if (authErr) {
+        const taken = /registered|already|exists|duplicate/i.test(authErr.message);
+        return { ok: false, error: taken ? "כתובת האימייל כבר בשימוש" : authErr.message };
+      }
+    }
+
+    const fields = { ...detailFields(formData), ...(email ? { email } : {}) };
+    const { error } = await supabase.from("profiles").update(fields).eq("id", id);
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin/clients");
