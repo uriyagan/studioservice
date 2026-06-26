@@ -27,17 +27,19 @@ export function RowTimerControl({ ticket }: { ticket: Ticket }) {
         onClick={() => run(() => (running ? pauseTimer(ticket.id) : startTimer(ticket.id)))}
         disabled={pending}
         title={running ? "השהיית טיימר" : "התחל טיפול"}
-        className="rounded-full bg-black p-2 hover:opacity-90 disabled:opacity-50"
+        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:opacity-90 disabled:opacity-50 ${
+          running ? "bg-emerald-500" : "bg-black"
+        }`}
       >
-        {running ? <Pause className="h-[18px] w-[18px] text-white" /> : <Play className="h-[18px] w-[18px] text-white" />}
+        {running ? <Pause className="h-[26px] w-[26px] text-white" /> : <Play className="h-[26px] w-[26px] text-white" />}
       </button>
       <button
         onClick={complete}
         disabled={pending}
         title="סמן כהושלמה"
-        className="rounded-full bg-[#f5f5f5] p-2 hover:bg-slate-200 disabled:opacity-50"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] hover:bg-slate-200 disabled:opacity-50"
       >
-        <Check className="h-[18px] w-[18px] text-emerald-500" />
+        <Check className="h-[26px] w-[26px] text-emerald-500" />
       </button>
     </>
   );
