@@ -33,7 +33,7 @@ export function RowTimerControl({ ticket }: { ticket: Ticket }) {
         onClick={() => run(() => (running ? pauseTimer(ticket.id) : startTimer(ticket.id)))}
         disabled={pending}
         title={running ? "השהיית טיימר" : "התחל טיפול"}
-        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:opacity-90 disabled:opacity-50 ${
+        className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full hover:opacity-90 disabled:opacity-50 ${
           running ? "bg-emerald-500" : "bg-black"
         }`}
       >
@@ -43,7 +43,7 @@ export function RowTimerControl({ ticket }: { ticket: Ticket }) {
         onClick={() => setConfirming(true)}
         disabled={pending}
         title="סמן כהושלמה"
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] hover:bg-slate-200 disabled:opacity-50"
+        className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] hover:bg-slate-200 disabled:opacity-50"
       >
         <Check className="h-[26px] w-[26px] text-emerald-500" />
       </button>
