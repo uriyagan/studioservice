@@ -86,7 +86,7 @@ export async function pauseTimer(ticketId: string) {
 // "Task Completed" — stop any running timer, save the final
 // segment, mark completed. hours_used updates automatically via
 // the project_stats view (no manual deduction, no drift).
-export async function completeTask(ticketId: string) {
+export async function completeTask(ticketId: string, note?: string) {
   const supabase = await assertAdmin();
   await closeActiveSegment(supabase, ticketId);
 
@@ -96,10 +96,11 @@ export async function completeTask(ticketId: string) {
     .eq("id", ticketId);
   if (error) throw new Error(error.message);
 
+  const trimmedNote = note?.trim() || undefined;
   const { runAfter } = await import("@/lib/after");
   await runAfter(async () => {
     const { notifyTaskCompleted } = await import("@/lib/email/notifications");
-    await notifyTaskCompleted(ticketId);
+    await notifyTaskCompleted(ticketId, trimmedNote);
   });
 
   revalidatePath("/admin");

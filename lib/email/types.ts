@@ -154,6 +154,11 @@ export const MERGE_TAGS: {
     tags: [{ token: "{assignee_name}", label: "שם האחראי" }],
   },
   {
+    group: "סיום משימה",
+    emails: ["task_completed"],
+    tags: [{ token: "{completion_note}", label: "הערת סיכום מהסטודיו (כולל עיצוב)" }],
+  },
+  {
     group: "התכתבות",
     emails: ["ticket_reply", "client_reply_admin"],
     tags: [{ token: "{message}", label: "תוכן ההודעה" }],

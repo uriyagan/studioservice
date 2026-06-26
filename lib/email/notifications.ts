@@ -14,8 +14,27 @@ function db(): { from: (t: string) => any } {
   return createAdminClient() as unknown as { from: (t: string) => any };
 }
 
+// Minimal HTML escape for user-supplied text injected as a raw merge var.
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// A styled "studio note" box for the completion email, or "" when there's no
+// note. Returned as raw HTML so the {completion_note} tag renders it directly.
+function completionNoteHtml(note?: string): string {
+  const text = note?.trim();
+  if (!text) return "";
+  const body = escHtml(text).replace(/\n/g, "<br>");
+  return `<div style="margin-top:12px;padding:12px 14px;background:#f6f7f9;border-right:3px solid #111111;border-radius:8px;text-align:right;"><div style="font-weight:bold;margin-bottom:4px;">הערה מהסטודיו</div><div style="font-size:14px;line-height:1.6;">${body}</div></div>`;
+}
+
 // Email the client that a task was completed, then check usage thresholds.
-export async function notifyTaskCompleted(ticketId: string) {
+// `note` is an optional free-text summary the admin attaches at completion.
+export async function notifyTaskCompleted(ticketId: string, note?: string) {
   try {
     const d = db();
     const { data: ticket } = await d
@@ -56,7 +75,7 @@ export async function notifyTaskCompleted(ticketId: string) {
             portal_url: `${SITE}/portal`,
             site_url: SITE,
           },
-          {},
+          { completion_note: completionNoteHtml(note) },
           { replyTo: replyAddress(ticketId), ticketId }
         );
       }

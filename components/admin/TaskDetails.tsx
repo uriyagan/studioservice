@@ -41,6 +41,7 @@ export function TaskDetails({
   const router = useRouter();
   const [files, setFiles] = useState<{ name: string; url: string }[] | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [completionNote, setCompletionNote] = useState("");
   const [completing, startComplete] = useTransition();
   // Manual time added in this modal — tracked locally so the total updates
   // immediately, on top of the time that was already logged when it opened.
@@ -268,13 +269,25 @@ export function TaskDetails({
                   לסיים את המשימה ולעדכן את הלקוח במייל? זמן המשימה הכולל:{" "}
                   <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
                 </p>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">
+                    הערה למייל ללקוח (אופציונלי)
+                  </label>
+                  <textarea
+                    value={completionNote}
+                    onChange={(e) => setCompletionNote(e.target.value)}
+                    rows={3}
+                    placeholder="סיכום קצר שיצורף למייל העדכון ללקוח…"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="success"
                     disabled={completing}
                     onClick={() =>
                       startComplete(async () => {
-                        await completeTask(ticketId);
+                        await completeTask(ticketId, completionNote);
                         router.refresh();
                         onClose();
                       })

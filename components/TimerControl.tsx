@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Ticket, TimeLog } from "@/lib/types";
 import { formatDuration, sumLoggedSeconds } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { startTimer, pauseTimer, completeTask } from "@/app/actions/timer";
 
 // Live, refresh-safe timer. Elapsed time is derived entirely from
@@ -22,6 +23,8 @@ export function TimerControl({
   const hasActive = logs.some((l) => l.end_time === null);
   const [elapsed, setElapsed] = useState(() => sumLoggedSeconds(logs));
   const [isPending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  const [note, setNote] = useState("");
 
   // Tick once a second only while a segment is actively running.
   useEffect(() => {
@@ -86,15 +89,47 @@ export function TimerControl({
           )}
 
           {showComplete && ticket.status !== "pending" && (
-            <Button
-              variant="success"
-              disabled={isPending}
-              onClick={() => run(() => completeTask(ticket.id))}
-            >
+            <Button variant="success" disabled={isPending} onClick={() => setConfirming(true)}>
               ✓ הטיפול הסתיים
             </Button>
           )}
         </>
+      )}
+
+      {confirming && (
+        <Modal title="סיום המשימה ועדכון הלקוח" onClose={() => setConfirming(false)} closeOnBackdrop={false}>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700">המשימה תסומן כהושלמה והלקוח יקבל עדכון במייל.</p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">הערה למייל ללקוח (אופציונלי)</label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+                placeholder="סיכום קצר שיצורף למייל העדכון ללקוח…"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="success"
+                disabled={isPending}
+                onClick={() =>
+                  run(async () => {
+                    await completeTask(ticket.id, note);
+                    setConfirming(false);
+                    setNote("");
+                  })
+                }
+              >
+                {isPending ? "מסיים…" : "סיים ועדכן לקוח"}
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirming(false)} disabled={isPending}>
+                ביטול
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

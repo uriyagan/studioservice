@@ -36,6 +36,7 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "h", type: "heading", text: "המשימה הושלמה", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, המשימה <b>{task_title}</b> הושלמה.", align: "right", size: "15" },
     { id: "t2", type: "text", text: "זמן ביצוע: {task_time}<br>זמן שנותר בחבילה: {hours_remaining}", align: "right", size: "15" },
+    { id: "note", type: "html", html: "{completion_note}" },
   ],
   hours_added: [
     { id: "h", type: "heading", text: "נוספו שעות לחבילה", level: "h2", align: "right" },
