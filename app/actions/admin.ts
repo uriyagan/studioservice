@@ -294,6 +294,9 @@ export async function updateTicket(
 ): Promise<ActionResult> {
   try {
     const supabase = await assertAdmin();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const id = String(formData.get("id") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const projectId = String(formData.get("project_id") ?? "") || null;
@@ -302,16 +305,36 @@ export async function updateTicket(
 
     if (!id) return { ok: false, error: "מזהה משימה חסר" };
 
+    // Previous assignee, to detect a *new* assignment (notify only on change).
+    const { data: before } = await supabase
+      .from("tickets")
+      .select("assignee_id")
+      .eq("id", id)
+      .maybeSingle();
+    const prevAssignee = (before?.assignee_id as string | null) ?? null;
+
     const base = { title: title || null, project_id: projectId, description: description || null };
     // Include assignee_id; retry without it if the column isn't there yet.
+    let assigneeApplied = true;
     let { error } = await supabase
       .from("tickets")
       .update({ ...base, assignee_id: assigneeId })
       .eq("id", id);
     if (error) {
+      assigneeApplied = false;
       ({ error } = await supabase.from("tickets").update(base).eq("id", id));
     }
     if (error) return { ok: false, error: error.message };
+
+    // Newly assigned to someone other than the admin doing the assigning →
+    // email the assignee. Best-effort, never blocks the action.
+    if (assigneeApplied && assigneeId && assigneeId !== prevAssignee && assigneeId !== user?.id) {
+      const { runAfter } = await import("@/lib/after");
+      await runAfter(async () => {
+        const { notifyTaskAssigned } = await import("@/lib/email/notifications");
+        await notifyTaskAssigned(id, assigneeId);
+      });
+    }
 
     revalidatePath("/admin");
     revalidatePath("/admin/projects");

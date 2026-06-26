@@ -79,6 +79,7 @@ export const EMAIL_DEFS = [
   { key: "package_depleted", title: "החבילה הסתיימה", to: "client" },
   { key: "hours_added", title: "שעות נוספו לחבילה", to: "client" },
   { key: "new_task_admin", title: "משימה חדשה מלקוח (למנהלים)", to: "admin" },
+  { key: "task_assigned", title: "שיוך אחראי למשימה (לאחראי)", to: "admin" },
   { key: "ticket_reply", title: "התכתבות עם לקוח", to: "client" },
   { key: "client_reply_admin", title: "תגובה מלקוח (למנהלים)", to: "admin" },
 ] as const;
@@ -110,7 +111,7 @@ export const MERGE_TAGS: {
 }[] = [
   {
     group: "כללי",
-    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin", "ticket_reply", "client_reply_admin"],
+    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{first_name}", label: "שם פרטי" },
       { token: "{last_name}", label: "שם משפחה" },
@@ -139,13 +140,18 @@ export const MERGE_TAGS: {
   },
   {
     group: "משימה",
-    emails: ["task_completed", "new_task_admin", "ticket_reply", "client_reply_admin"],
+    emails: ["task_completed", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
       { token: "{task_time}", label: "זמן ביצוע המשימה" },
       { token: "{task_url}", label: "קישור למשימה (מנהל)" },
     ],
+  },
+  {
+    group: "שיוך אחראי",
+    emails: ["task_assigned"],
+    tags: [{ token: "{assignee_name}", label: "שם האחראי" }],
   },
   {
     group: "התכתבות",

@@ -59,6 +59,12 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "ctx", type: "text", text: "<b>{task_title}</b><br>{task_description}", align: "right", size: "14" },
     { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
   ],
+  task_assigned: [
+    { id: "h", type: "heading", text: "שויכה אליך משימה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {assignee_name}, שויכה אליך משימה חדשה בפרויקט {project_name}:", align: "right", size: "15" },
+    { id: "ctx", type: "text", text: "<b>{task_title}</b><br>{task_description}", align: "right", size: "14" },
+    { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
 };
 
 const FALLBACK_SUBJECT: Record<EmailKey, string> = {
@@ -69,6 +75,7 @@ const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   package_depleted: "החבילה הסתיימה",
   hours_added: "נוספו שעות לחבילה",
   new_task_admin: "פנייה חדשה מלקוח",
+  task_assigned: "שויכה אליך משימה: {task_title}",
   ticket_reply: "בנוגע למשימה: {task_title}",
   client_reply_admin: "תגובה חדשה מלקוח: {task_title}",
 };

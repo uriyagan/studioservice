@@ -137,6 +137,56 @@ export async function checkUsageThresholds(projectId: string) {
   }
 }
 
+// Email the assignee (a studio team member) when a task is assigned to them.
+export async function notifyTaskAssigned(ticketId: string, assigneeId: string) {
+  try {
+    const d = db();
+    const { data: assignee } = await d
+      .from("profiles")
+      .select("email, name, first_name")
+      .eq("id", assigneeId)
+      .maybeSingle();
+    if (!assignee?.email) return;
+
+    const { data: ticket } = await d
+      .from("tickets")
+      .select("title, description, project_id")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (!ticket) return;
+
+    let projectName = "";
+    let clientName = "";
+    if (ticket.project_id) {
+      const { data: proj } = await d
+        .from("projects")
+        .select("name, client_id")
+        .eq("id", ticket.project_id)
+        .maybeSingle();
+      projectName = proj?.name ?? "";
+      if (proj?.client_id) {
+        const { data: c } = await d.from("profiles").select("name").eq("id", proj.client_id).maybeSingle();
+        clientName = c?.name ?? "";
+      }
+    }
+
+    await dispatchEmail("task_assigned", assignee.email, {
+      assignee_name: assignee.first_name || assignee.name || "",
+      first_name: assignee.first_name ?? "",
+      full_name: assignee.name ?? "",
+      client_name: clientName,
+      project_name: projectName,
+      task_title: ticket.title ?? "",
+      task_description: ticket.description ?? "",
+      task_url: `${SITE}/admin`,
+      site_url: SITE,
+      portal_url: `${SITE}/portal`,
+    });
+  } catch (e) {
+    console.error("notifyTaskAssigned failed:", (e as Error).message);
+  }
+}
+
 // Email all admins when a client opens a new task.
 export async function notifyAdminsNewTask(ticketId: string) {
   try {
