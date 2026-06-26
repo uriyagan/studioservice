@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Paperclip, Loader2, FileText, Trash2, Pencil, X, Download } from "@/components/icons";
+import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDate } from "@/lib/format";
 
 // Generic admin-only "notes + files" panel, reused for both project-level and
@@ -31,22 +32,6 @@ export interface NotesActions {
 }
 
 type Pending = { id: string; name: string; path?: string; status: "uploading" | "done" | "error" };
-
-// Sequentially trigger a download for each file (small stagger so the browser
-// doesn't drop concurrent clicks).
-function downloadAll(files: { name: string; url: string }[]) {
-  files.forEach((f, i) => {
-    setTimeout(() => {
-      const a = document.createElement("a");
-      a.href = f.url;
-      a.download = f.name;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    }, i * 400);
-  });
-}
 
 // Upload a file to Storage via a signed URL; returns its storage path.
 async function uploadToStorage(file: File): Promise<string> {
@@ -77,6 +62,19 @@ export function NotesPanel({
   const [notes, setNotes] = useState<PanelNote[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [zipping, setZipping] = useState(false);
+
+  const downloadAll = async (files: { name: string; url: string }[]) => {
+    if (zipping) return;
+    setZipping(true);
+    setError(null);
+    const { ok, failed } = await downloadAllAsZip(files);
+    if (!ok)
+      setError(
+        failed.length ? `לא ניתן היה להוריד ${failed.length} קבצים` : "ההורדה נכשלה"
+      );
+    setZipping(false);
+  };
 
   const reload = () => actions.list().then(setNotes);
   useEffect(() => {
@@ -112,9 +110,11 @@ export function NotesPanel({
       {allFiles.length > 1 && (
         <button
           onClick={() => downloadAll(allFiles)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+          disabled={zipping}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
         >
-          <Download className="h-4 w-4 text-white" /> הורדת כל הקבצים ({allFiles.length})
+          <Download className="h-4 w-4 text-white" />{" "}
+          {zipping ? "מכין הורדה…" : `הורדת כל הקבצים (${allFiles.length})`}
         </button>
       )}
 

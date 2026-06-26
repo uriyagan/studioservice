@@ -5,6 +5,7 @@ import { Link2, FileText, Download } from "@/components/icons";
 import { ConversationThread } from "@/components/portal/ConversationThread";
 import { getMyTicketMessages, sendClientReply, getMyTaskAttachments } from "@/app/actions/messages";
 import { getMyTicketNotes, type TicketNote } from "@/app/actions/ticket-notes";
+import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDate } from "@/lib/format";
 
 // Client-side conversation. "in" = sent by the client (me).
@@ -32,18 +33,13 @@ export function ClientTaskThread({
   const hasDetails = !!(description && description.trim()) || links.length > 0 || files.length > 0;
   const noteFiles = notes.flatMap((n) => n.files);
 
-  const downloadAll = (list: { name: string; url: string }[]) =>
-    list.forEach((f, i) => {
-      setTimeout(() => {
-        const a = document.createElement("a");
-        a.href = f.url;
-        a.download = f.name;
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }, i * 400);
-    });
+  const [zipping, setZipping] = useState(false);
+  const downloadAll = async (list: { name: string; url: string }[]) => {
+    if (zipping) return;
+    setZipping(true);
+    await downloadAllAsZip(list);
+    setZipping(false);
+  };
 
   const header = (
     <>
@@ -83,9 +79,11 @@ export function ClientTaskThread({
           {noteFiles.length > 1 && (
             <button
               onClick={() => downloadAll(noteFiles)}
-              className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+              disabled={zipping}
+              className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
             >
-              <Download className="h-4 w-4 text-white" /> הורדת כל הקבצים ({noteFiles.length})
+              <Download className="h-4 w-4 text-white" />{" "}
+              {zipping ? "מכין הורדה…" : `הורדת כל הקבצים (${noteFiles.length})`}
             </button>
           )}
           <div className="space-y-3">

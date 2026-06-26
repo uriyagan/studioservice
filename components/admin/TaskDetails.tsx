@@ -16,6 +16,7 @@ import {
   deleteTicketNoteFile,
 } from "@/app/actions/ticket-notes";
 import { completeTask, addManualTimeToTask } from "@/app/actions/timer";
+import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDuration } from "@/lib/format";
 
 // Read view of what a client submitted + the (irreversible) "complete task"
@@ -78,18 +79,20 @@ export function TaskDetails({
     getTaskAttachments(ticketId).then(setFiles);
   }, [ticketId]);
 
-  const downloadAll = () => {
-    (files ?? []).forEach((f, i) => {
-      setTimeout(() => {
-        const a = document.createElement("a");
-        a.href = f.url;
-        a.download = f.name;
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }, i * 400);
-    });
+  const [zipping, setZipping] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
+  const downloadAll = async () => {
+    if (zipping) return;
+    setZipping(true);
+    setZipError(null);
+    const { ok, failed } = await downloadAllAsZip(files ?? []);
+    if (!ok)
+      setZipError(
+        failed.length
+          ? `לא ניתן היה להוריד ${failed.length} קבצים`
+          : "ההורדה נכשלה"
+      );
+    setZipping(false);
   };
 
   // Studio notes/files for the task: shown read-only to the client in their
@@ -149,12 +152,17 @@ export function TaskDetails({
           ) : files.length ? (
             <div className="space-y-1.5">
               {files.length > 1 && (
-                <button
-                  onClick={downloadAll}
-                  className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-                >
-                  <Download className="h-4 w-4 text-white" /> הורדת כל הקבצים ({files.length})
-                </button>
+                <>
+                  <button
+                    onClick={downloadAll}
+                    disabled={zipping}
+                    className="mb-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+                  >
+                    <Download className="h-4 w-4 text-white" />{" "}
+                    {zipping ? "מכין הורדה…" : `הורדת כל הקבצים (${files.length})`}
+                  </button>
+                  {zipError && <p className="mb-1 text-xs text-red-600">{zipError}</p>}
+                </>
               )}
               {files.map((f, i) => (
                 <a
