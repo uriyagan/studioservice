@@ -28,7 +28,7 @@ export function CreateTaskForm({
         <PlusCircle className="h-4 w-4 text-white" /> משימה חדשה
       </Button>
       {open && (
-        <Modal title="משימה חדשה" onClose={() => setOpen(false)}>
+        <Modal title="משימה חדשה" onClose={() => setOpen(false)} closeOnBackdrop={false}>
           <TicketForm
             mode="admin"
             projects={projects}

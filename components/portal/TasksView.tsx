@@ -100,7 +100,7 @@ export function TasksView({
       </Card>
 
       {showNew && (
-        <Modal title="משימה חדשה" onClose={() => setShowNew(false)}>
+        <Modal title="משימה חדשה" onClose={() => setShowNew(false)} closeOnBackdrop={false}>
           {multiProject && (
             <div className="mb-3">
               <label className="mb-1 block text-sm text-slate-600">פרויקט</label>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UploadCloud, X, Loader2, CheckCircle2, AlertCircle } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +26,26 @@ function fmtSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// Locally-persisted draft of the text fields (not files), so an accidental
+// modal/page close doesn't lose what the user typed. Keyed per mode.
+type TaskDraft = { title: string; description: string; links: string[] };
+const draftKey = (mode: string) => `studioservice:taskdraft:${mode}`;
+
+function loadDraft(mode: string): TaskDraft | null {
+  try {
+    const raw = localStorage.getItem(draftKey(mode));
+    if (!raw) return null;
+    const d = JSON.parse(raw) as TaskDraft;
+    const hasText =
+      (d.title && d.title.trim()) ||
+      (d.description && d.description.trim()) ||
+      (d.links ?? []).some((l) => l.trim());
+    return hasText ? d : null;
+  } catch {
+    return null;
+  }
+}
+
 // New-task form. Files upload to Storage the moment they're chosen (so submit
 // is instant); on submit the ticket is created and the already-uploaded files
 // are linked to it. Used in the client portal (mode "client") and the admin
@@ -46,10 +66,74 @@ export function TicketForm({
   const fileInputId = useId();
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [links, setLinks] = useState<string[]>([""]);
   const [status, setStatus] = useState<"idle" | "saving" | "done">("idle");
   const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+
+  // Restore any saved draft once, on mount.
+  useEffect(() => {
+    const d = loadDraft(mode);
+    if (d) {
+      setTitle(d.title ?? "");
+      setDescription(d.description ?? "");
+      setLinks(d.links?.length ? d.links : [""]);
+      setRestored(true);
+    }
+  }, [mode]);
+
+  const writeDraft = () => {
+    try {
+      const draft: TaskDraft = { title, description, links };
+      const hasText =
+        title.trim() || description.trim() || links.some((l) => l.trim());
+      if (hasText) localStorage.setItem(draftKey(mode), JSON.stringify(draft));
+      else localStorage.removeItem(draftKey(mode));
+    } catch {
+      /* localStorage unavailable — ignore */
+    }
+  };
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(draftKey(mode));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Auto-save the draft ~1s after the user stops typing.
+  useEffect(() => {
+    if (status === "done") return;
+    const t = setTimeout(writeDraft, 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, description, links, status]);
+
+  // Flush the draft when the form unmounts (e.g. modal closed mid-typing,
+  // before the 1s debounce fired) so nothing typed is lost.
+  const latest = useRef(writeDraft);
+  latest.current = writeDraft;
+  useEffect(() => {
+    return () => latest.current();
+  }, []);
+
+  const saveDraftNow = () => {
+    writeDraft();
+    setRestored(false);
+    setDraftSaved(true);
+    setTimeout(() => setDraftSaved(false), 3000);
+  };
+  const discardDraft = () => {
+    clearDraft();
+    setTitle("");
+    setDescription("");
+    setLinks([""]);
+    setRestored(false);
+  };
 
   const setUp = (id: string, patch: Partial<Upload>) =>
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -136,8 +220,12 @@ export function TicketForm({
 
     setStatus("done");
     setUploads([]);
+    setTitle("");
+    setDescription("");
     setLinks([""]);
     setCreatedTicketId(null);
+    setRestored(false);
+    clearDraft();
     formRef.current?.reset();
     router.refresh();
     onDone?.();
@@ -164,14 +252,35 @@ export function TicketForm({
         </div>
       )}
 
+      {restored && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>שוחזרה טיוטה שלא נשלחה.</span>
+          <button type="button" onClick={discardDraft} className="shrink-0 font-medium text-amber-900 hover:underline">
+            ניקוי טיוטה
+          </button>
+        </div>
+      )}
+
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">כותרת</label>
-        <input name="title" required className={inputCls} />
+        <input
+          name="title"
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className={inputCls}
+        />
       </div>
 
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">טקסט חופשי</label>
-        <textarea name="description" rows={4} className={inputCls} />
+        <textarea
+          name="description"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className={inputCls}
+        />
       </div>
 
       <div>
@@ -282,10 +391,22 @@ export function TicketForm({
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {status === "done" && !error && <p className="text-sm text-emerald-600">המשימה נוצרה בהצלחה ✓</p>}
+      {draftSaved && <p className="text-sm text-emerald-600">נשמר כטיוטה ✓ — אפשר להמשיך מאוחר יותר (קבצים לא נשמרים בטיוטה)</p>}
 
-      <Button type="submit" disabled={status === "saving" || uploading} className="w-full">
-        {status === "saving" ? "יוצר משימה…" : uploading ? "ממתין לסיום העלאת קבצים…" : "יצירת משימה"}
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" disabled={status === "saving" || uploading} className="w-full">
+          {status === "saving" ? "יוצר משימה…" : uploading ? "ממתין לסיום העלאת קבצים…" : "יצירת משימה"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={saveDraftNow}
+          disabled={status === "saving"}
+          className="w-full sm:w-auto sm:whitespace-nowrap"
+        >
+          שמירה כטיוטה
+        </Button>
+      </div>
     </form>
   );
 }
