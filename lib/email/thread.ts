@@ -132,6 +132,24 @@ export async function taskRecipient(ticketId: string): Promise<{
   return null;
 }
 
+// A client added something new to a *completed* task → there's more work to do.
+// Flip it back to "pending" (the default open state) and clear completed_at so
+// it returns to the "פתוחות" tab. No-op for tasks that aren't completed.
+// Service role: clients have no update rights on tickets. Best-effort.
+export async function reopenIfCompleted(ticketId: string): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = createAdminClient() as unknown as { from: (t: string) => any };
+    await db
+      .from("tickets")
+      .update({ status: "pending", completed_at: null })
+      .eq("id", ticketId)
+      .eq("status", "completed");
+  } catch (e) {
+    console.error("reopenIfCompleted failed:", (e as Error).message);
+  }
+}
+
 export async function logMessage(msg: {
   ticketId: string;
   direction: "in" | "out";

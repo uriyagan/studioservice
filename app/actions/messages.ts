@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
-import { logMessage, replyAddress, taskRecipient } from "@/lib/email/thread";
+import { logMessage, replyAddress, reopenIfCompleted, taskRecipient } from "@/lib/email/thread";
 
 // Append the download flag so the signed URL serves the file as an attachment
 // (forces a download) with its original name, instead of opening in the tab.
@@ -444,6 +444,11 @@ export async function sendClientReply(
       bodyText: message,
       links: links.join("\n") || null,
     });
+
+    // A new client reply on a *completed* task means there's more to do — pull
+    // it back into "פתוחות" so it isn't lost (status only; needs an active
+    // re-completion to close again). Service role: clients can't update tickets.
+    await reopenIfCompleted(ticketId);
 
     // Notify admins via the designable "תגובה מלקוח (למנהלים)" template.
     const adb = createAdminClient() as unknown as { from: (t: string) => any };

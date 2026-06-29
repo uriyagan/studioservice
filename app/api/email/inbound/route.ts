@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cleanInboundReply, logMessage, replyAddress, ticketIdFromAddress } from "@/lib/email/thread";
+import { cleanInboundReply, logMessage, reopenIfCompleted, replyAddress, ticketIdFromAddress } from "@/lib/email/thread";
 import { dispatchEmail } from "@/lib/email/dispatch";
 
 // Receives parsed inbound emails (Resend Inbound webhook). Matches the
@@ -113,6 +113,9 @@ export async function POST(req: NextRequest) {
       bodyText: text,
       bodyHtml: html,
     });
+
+    // A reply on a completed task means more work — pull it back to "פתוחות".
+    await reopenIfCompleted(ticketId);
 
     // Notify admins there's a new reply, via the designable template.
     const db = createAdminClient() as unknown as { from: (t: string) => any };
