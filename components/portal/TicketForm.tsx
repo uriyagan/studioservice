@@ -114,11 +114,17 @@ export function TicketForm({
   }, [title, description, links, status]);
 
   // Flush the draft when the form unmounts (e.g. modal closed mid-typing,
-  // before the 1s debounce fired) so nothing typed is lost.
+  // before the 1s debounce fired) so nothing typed is lost — UNLESS the form
+  // was just submitted. After submit the modal unmounts in the same batch that
+  // cleared the fields, so `latest.current` still closes over the old (pre-clear)
+  // text; flushing it would re-write the just-created task as a "draft".
+  const skipFlush = useRef(false);
   const latest = useRef(writeDraft);
   latest.current = writeDraft;
   useEffect(() => {
-    return () => latest.current();
+    return () => {
+      if (!skipFlush.current) latest.current();
+    };
   }, []);
 
   const saveDraftNow = () => {
@@ -219,6 +225,7 @@ export function TicketForm({
     }
 
     setStatus("done");
+    skipFlush.current = true;
     setUploads([]);
     setTitle("");
     setDescription("");
