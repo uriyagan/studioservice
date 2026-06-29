@@ -153,9 +153,13 @@ export function TasksTable({
       /* noop */
     }
   }, []);
+  // Depend on the editState object (a fresh object per submit), not editState.ok:
+  // ok stays `true` across consecutive edits, so keying on it would skip closing
+  // the modal on the 2nd+ assignment (leaving a React-19 form-reset to flip the
+  // assignee select back to its default while the DB write actually succeeded).
   useEffect(() => {
     if (editState.ok) setEditingId(null);
-  }, [editState.ok]);
+  }, [editState]);
 
   // Reset to page 1 whenever the filters/sort change.
   useEffect(() => {
