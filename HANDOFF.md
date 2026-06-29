@@ -96,13 +96,16 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
 
 - **Admin dashboard** (`/admin`): tasks table with status tabs (open/completed/all), site/project +
   assignee filters, title search, column toggle, pagination, edit-in-modal, assignee column, stat
-  cards; quick-start timer. **Per-row timer** (`RowTimerControl`): a black circular **play** that
-  toggles to **pause**, plus a green circular **complete** check (custom SVG icons); the single live
-  clock runs in the **"זמן ביצוע"** column (no duplicate). The **לקוח** column shows **"פתח/ה: <name>"**
-  when a project member (not the primary client) opened the task.
+  cards; quick-start timer. **Per-row timer** (`RowTimerControl`): fixed **40px** circular buttons with
+  **26px** custom icons — a **play** that turns **green** (and toggles to **pause**) while running, plus
+  a **complete** check. The single live clock runs in the **"זמן ביצוע"** column (no duplicate) and its
+  digits turn green while running. Completing opens a confirm dialog with an optional **"הערה למייל
+  ללקוח"** (`completeTask(id, note)` → `{completion_note}` in the email). The **לקוח** column shows
+  **"פתח/ה: <name>"** when a project member (not the primary client) opened the task.
   - **Task details modal** (click the title): read view of what the client submitted + **"זמן עבודה"**
     (logged total + **add manual time** to this existing open task — no new task/project, no email;
-    client is notified only on completion) + **"הערות מהסטודיו"** + complete-task action.
+    client is notified only on completion) + **"הערות מהסטודיו"** + complete-task action (same
+    optional-note confirm dialog).
   - **"הערות מהסטודיו"** (`NotesPanel` + `actions/ticket-notes.ts`): text and/or files added to a task,
     add/edit/delete + search + **download-all**. Shown **read-only to the client** in their portal,
     **never emailed** (for emailed updates use the conversation thread). `NotesPanel` is shared with
@@ -120,7 +123,9 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   files, add/edit/delete/search — `components/admin/ProjectNotes.tsx`, `actions/project-notes.ts`).
 - **Clients** (`/admin/clients`): create (optionally with first project); list (each row →
   "פרטי לקוח" button, bold name); detail page (details, assigned projects, **"שליחת קישור להגדרת
-  סיסמה"** resend button, **delete client**).
+  סיסמה"** resend button, **delete client**). The details form (admin mode) can **edit the client's
+  login email** — updates Supabase Auth (`updateUserById`, `email_confirm`) + `profiles.email`
+  together (`ClientDetailsForm`, `actions/clients.ts`).
 - **Project members (many-to-many):** add several clients to one project; each sees it in their
   portal, can open tasks and view the thread. Owner (`client_id`) stays the billing contact.
 - **Admin inbox** (`components/admin/InboxWidget.tsx`) — floating bubble on every admin page; a
@@ -136,11 +141,16 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   (`/portal/profile`). No-project clients see the buy-packages welcome. Shared data via
   `lib/portal-data.ts` (`getMyProjects`).
 - **Email system** — every system email is a **designable template** (`/admin/emails`, block
-  builder). 9 templates: welcome, password_reset, task_completed, package_half, package_depleted,
-  hours_added, new_task_admin, ticket_reply, client_reply_admin. Merge tags (`{first_name}`,
-  `{hours_remaining}`, `{task_time}`, …). "Copy from another template" supported. No auto-logo.
-  `lib/email/dispatch.ts` renders + substitutes + sends, falling back to `DEFAULT_BLOCKS`.
-  Admin→client replies **attach the client's files to the email** (Resend `attachments` by URL).
+  builder). 10 templates: welcome, password_reset, task_completed, package_half, package_depleted,
+  hours_added, new_task_admin, ticket_reply, client_reply_admin, **task_assigned**. Merge tags
+  (`{first_name}`, `{hours_remaining}`, `{task_time}`, **`{completion_note}`**, …). "Copy from another
+  template" supported. No auto-logo. `lib/email/dispatch.ts` renders + substitutes + sends, falling
+  back to `DEFAULT_BLOCKS`. Admin→client replies **attach the client's files to the email** (Resend
+  `attachments` by URL).
+  - **task_assigned:** assigning a task to an admin emails that assignee (`notifyTaskAssigned`, fired
+    from `updateTicket` when the assignee changes, is non-null, and isn't a self-assign).
+  - **task_completed** carries the optional **`{completion_note}`** the admin typed in the complete
+    dialog (styled block, escaped + newline-aware; renders nothing when empty).
 - **Email log** (`/admin/emails` → "לוג שליחת מיילים"): every outbound email is logged at the single
   `sendEmail` choke point (`email_log`: recipient, template, subject, status, `resend_id`).
   Searchable + paginated. A `/api/resend/webhook` (Svix-verified, secret optional) updates rows to
@@ -161,8 +171,18 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   `#000000` by default**, unless the className carries an intent color (`text-white|emerald|red|
   primary|…`, matched by `KEEP_COLOR`). Icons on dark buttons need `text-white`. Email builder still
   uses lucide. `Loader2` re-exported from lucide. **`Play`/`Pause`/`Check`** are circular (the circle
-  is part of the glyph) — used by the row timer. Row action buttons share a circular **`#f5f5f5`**
-  filled background (`h-[18px]` icons) so they read as one size; the play/pause button is `bg-black`.
+  is part of the glyph) — used by the row timer. Row action/timer buttons are fixed **`h-[40px]
+  w-[40px]`** flex-centered circles with **26px (px-based)** icons; use explicit px sizes, not `rem`
+  (`h-10` inflates to 50px under the 125% root font). Gray buttons use `#f5f5f5`; play is `bg-black`,
+  turning `bg-emerald-500` while the timer runs.
+- **Download-all = ZIP** (`lib/download-files.ts`, lazy `JSZip`): files are cross-origin signed URLs,
+  so the old per-file `a.click()` loop was throttled/dropped by browsers. Now each file is fetched as
+  a blob and zipped into one object-URL download (busy state + failure reporting). Used by
+  `TaskDetails`, `NotesPanel`, and the client task thread.
+- **Modal** (`components/ui/Modal.tsx`): `closeOnBackdrop` (default true) — the new-task modals pass
+  `false` so a stray backdrop click can't discard a draft; the modal also ignores a click whose
+  mousedown started inside the box (text-selection drag). Portal `TicketForm` **auto-saves a draft**
+  (title/description/links) to localStorage (debounced, restore banner, clears on submit; files excluded).
 - **Duration formatting** (`lib/format.ts`): `formatHours(hours)` → human **"9 שעות 57 דקות" /
   "5 דקות" / "10 שעות"** (no decimals); used app-wide + in email merge tags. `formatDurationShort`
   = HH:MM (client task exec time, no seconds). Email default bodies must NOT append "שעות" after
@@ -206,10 +226,10 @@ app/
   portal/layout.tsx              portal NavBar (routed menu)
   portal/page.tsx                לוח בקרה (all projects)  + tasks/ packages/ profile/ subroutes
   actions/clients.ts             client CRUD, members, delete, send/resend email
-  actions/admin.ts               tickets/projects (3 types), manual time, completion
+  actions/admin.ts               tickets/projects (3 types), manual time, updateTicket (→ notifyTaskAssigned)
   actions/messages.ts            threads, getConversations, read-state, sendTicketReply (→ taskRecipient)
   actions/tickets.ts             client createTicket (stamps created_by)
-  actions/timer.ts               start/pause/complete + addManualTimeToTask (open task, no email)
+  actions/timer.ts               start/pause/completeTask(id,note) + addManualTimeToTask (open task, no email)
   actions/project-notes.ts       admin project note cards + files
   actions/ticket-notes.ts        studio task notes (admin CRUD + getMyTicketNotes for the client)
   actions/email-log.ts           getEmailLog (search/paginate) + backfillEmailLog (domain-scoped)
@@ -223,8 +243,10 @@ components/
   NavBar.tsx                     responsive nav (rootHref prop; admin + portal)
   icons.tsx                      custom black icon set
   admin/TasksTable.tsx           tasks table (desktop) + mobile cards; פרויקט col links; פתח/ה indicator
-  admin/RowTimerControl.tsx      compact per-row play/pause + complete (custom circular icons)
+  admin/RowTimerControl.tsx      per-row play/pause(+green running) + complete-with-note dialog (40px/26px)
   admin/TaskDetails.tsx          task view modal: submitted info + manual time + studio notes + complete
+  admin/ClientDetailsForm.tsx    client details; admin mode edits the login email
+  admin/CreateTaskForm.tsx / portal/TicketForm.tsx  new-task forms (TicketForm = localStorage drafts)
   admin/NotesPanel.tsx           shared notes UI (text+files, CRUD, search, download-all) — project & task
   admin/ProjectRow.tsx           project card (type badge / usage bar)
   admin/ProjectMembers.tsx       add/remove project members
@@ -240,6 +262,7 @@ lib/
   auth-links.ts                  setPasswordLink() (scanner-safe recovery link)
   portal-data.ts                 getMyProjects()
   email-log-shared.ts            EMAIL_LOG_PAGE + EmailLogRow type
+  download-files.ts              fetch+zip (JSZip) one-click "download all" for signed-URL files
   format.ts / supabase/{server,admin,middleware}.ts / after.ts
 supabase/migrations/*.sql        DDL (run manually in Supabase)
 ```
@@ -255,7 +278,12 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   files (admin CRUD, client-visible read-only, never emailed, download-all) on a shared `NotesPanel`;
   **manual time on an existing open task** (no new task/project, no email); **redesigned per-row timer**
   (`RowTimerControl`: black play/pause + green complete, custom circular icons, single live clock in
-  the "זמן ביצוע" column, uniform `#f5f5f5` button backgrounds).
+  the "זמן ביצוע" column).
+- Later same day (follow-up commits): **complete-task confirm dialog with an optional `{completion_note}`**
+  added to the client email; **`task_assigned` email** to the assignee on (re)assignment; **edit a
+  client's login email** (Auth + profiles); **row buttons** finalized to 40px circles + 26px icons +
+  **green running state**; **download-all → single ZIP** (`lib/download-files.ts`, JSZip); **new-task
+  modal** no longer closes on backdrop click + **localStorage draft auto-save** (`TicketForm`).
 - Prior session (2026-06-20): full mobile-native pass (grid-cols-1 fix, stacked cards, min-width:0);
   **Stripe switched to LIVE**; client portal rebuilt as a routed NavBar menu w/ multi-project
   dashboard; **admin centralized inbox** (beep, cross-device reads, realtime); **3rd project type
