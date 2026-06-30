@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-06-24.
+> Full context to resume work in a fresh conversation. Last updated: 2026-06-30.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -116,6 +116,12 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   replies + the task-completed email to whoever opened the task (`tickets.created_by`, a member),
   falling back to the project's primary `client_id` for older/admin-created tasks. Reply still threads
   on the same `reply+<ticketId>@…` address.
+- **Client reply reopens a completed task:** any inbound client message on a `completed` task flips it
+  back to **`pending`** (clears `completed_at`) so it returns to the "פתוחות" tab — it stays open until
+  actively re-completed. Shared helper `reopenIfCompleted(ticketId)` (`lib/email/thread.ts`, service
+  role — clients can't update tickets; only touches `completed` rows) is called from both inbound paths:
+  `sendClientReply` (portal) and `/api/email/inbound` (email). Admin dashboard is server-rendered, so the
+  status change shows on next load/refresh (the inbox bubble itself updates live via realtime).
 - **Projects** (`/admin/projects`): create with a **3-way type selector** — hours-package /
   retainer / **פרוייקט הקמה (build)**. Build = client-linked, no hours budget, no time tracking.
   Single-row cards (name · usage bar / type badge · edit/delete); detail page with tasks +
@@ -183,6 +189,14 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   `false` so a stray backdrop click can't discard a draft; the modal also ignores a click whose
   mousedown started inside the box (text-selection drag). Portal `TicketForm` **auto-saves a draft**
   (title/description/links) to localStorage (debounced, restore banner, clears on submit; files excluded).
+  The unmount-flush keeps a `skipFlush` ref set on successful submit — the modal unmounts in the same
+  batch that clears the fields, so without it the cleanup's stale closure would re-save the just-created
+  task as a "draft".
+- **React-19 form-action reset:** a `<form action={…}>` auto-resets its uncontrolled fields after the
+  action runs. `TasksTable`'s edit modal closes on the `editState` **object** (fresh per submit), NOT on
+  `editState.ok` — `ok` stays `true` across consecutive edits, so keying on it skipped closing the modal
+  on the 2nd+ assignment and the reset flipped the assignee `<select>` back to its default while the DB
+  write actually succeeded.
 - **Duration formatting** (`lib/format.ts`): `formatHours(hours)` → human **"9 שעות 57 דקות" /
   "5 דקות" / "10 שעות"** (no decimals); used app-wide + in email merge tags. `formatDurationShort`
   = HH:MM (client task exec time, no seconds). Email default bodies must NOT append "שעות" after
@@ -273,7 +287,11 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending the user.**
-- This session (2026-06-24): **task correspondence routes to the opener** (`tickets.created_by` +
+- This session (2026-06-30): **client reply reopens a completed task** (→ `pending`, back to "פתוחות",
+  `reopenIfCompleted` on both inbound paths); fixed **TicketForm draft re-saving a just-created task**
+  (unmount-flush `skipFlush` ref); fixed **assignee select reverting on consecutive edits without a
+  refresh** (close the edit modal on the `editState` object, not sticky `editState.ok`).
+- Prior session (2026-06-24): **task correspondence routes to the opener** (`tickets.created_by` +
   `taskRecipient`, with a "פתח/ה" indicator on the tasks table); **"הערות מהסטודיו"** per-task notes +
   files (admin CRUD, client-visible read-only, never emailed, download-all) on a shared `NotesPanel`;
   **manual time on an existing open task** (no new task/project, no email); **redesigned per-row timer**
@@ -284,7 +302,7 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   client's login email** (Auth + profiles); **row buttons** finalized to 40px circles + 26px icons +
   **green running state**; **download-all → single ZIP** (`lib/download-files.ts`, JSZip); **new-task
   modal** no longer closes on backdrop click + **localStorage draft auto-save** (`TicketForm`).
-- Prior session (2026-06-20): full mobile-native pass (grid-cols-1 fix, stacked cards, min-width:0);
+- Session 2026-06-20: full mobile-native pass (grid-cols-1 fix, stacked cards, min-width:0);
   **Stripe switched to LIVE**; client portal rebuilt as a routed NavBar menu w/ multi-project
   dashboard; **admin centralized inbox** (beep, cross-device reads, realtime); **3rd project type
   "build"**; **admin project notes** (cards + files); **set-password link fix** (token_hash) +
