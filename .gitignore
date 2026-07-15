@@ -9,6 +9,8 @@ next-env.d.ts
 .open-next/
 .dev.vars
 .wrangler/
+# Claude Code local settings
+.claude/settings.local.json
 # Google Drive duplicate files (e.g. "page 2.tsx", "package 2.json")
 * 2.*
 * 2
