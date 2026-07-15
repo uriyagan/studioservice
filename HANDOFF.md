@@ -326,7 +326,10 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   was wrong and is now corrected; **added the favicon / app icons** (`icon.svg` + hand-built
   `favicon.ico` + `apple-icon.png`, `scripts/gen-icons.js`, §6) — verified end-to-end in prod;
   documented the **deploy propagation lag** (§6) after a fresh deploy's 404s were briefly
-  misread as a routing bug.
+  misread as a routing bug; **bumped the deploy workflow** to `actions/checkout@v7` +
+  `actions/setup-node@v6`, clearing GitHub's Node 20 EOL warning (v5/v6/v7 all run node24, so
+  the minimum bump would have held just as long — going current was hygiene, not urgency;
+  setup-node stays at v6 on purpose, see the comment in `deploy.yml`).
 - Prior session (2026-06-30): **client reply reopens a completed task** (→ `pending`, back to "פתוחות",
   `reopenIfCompleted` on both inbound paths); fixed **TicketForm draft re-saving a just-created task**
   (unmount-flush `skipFlush` ref); fixed **assignee select reverting on consecutive edits without a
