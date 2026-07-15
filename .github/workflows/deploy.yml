@@ -15,9 +15,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      # v6, not v7: v7 landed 2026-07-14 and this pipeline deploys straight to
+      # prod. v6 is on the same node24 runtime, so it clears the Node 20 EOL
+      # just as well, and GitHub still ships v6 minors alongside v7.
+      # v6's one breaking change limits automatic caching to npm — `cache: npm`
+      # below is explicit, so it doesn't reach us.
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
