@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-06-30.
+> Full context to resume work in a fresh conversation. Last updated: 2026-07-15.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -10,14 +10,26 @@ projects/tasks, and message back and forth. Live at **https://service.uriyaganor
 
 ## 0. Working agreement (read first)
 
-- **Reply in English, shortest possible answers.**
-- **Always deploy straight to production** (push to `main` → auto-deploys).
-- **Work only from the git repo:** `/Users/uriyaganor/code/studioservice`
-  (an older Google Drive copy exists and is **abandoned** — never edit there; the Drive mount
-  zeroes files and creates `" 2"` duplicates).
-- **The user runs all SQL migrations** in the Supabase SQL Editor — the assistant cannot reach the
-  DB. Hand over SQL to paste; never assume a migration ran without a check query.
+> Owned and maintained by **Sam** since 2026-07-15. Everything below reflects that handover —
+> earlier instructions in this file that assumed a macOS setup or English replies are gone.
+
+- **Reply in Hebrew**, shortest possible answers. Start a new line before Hebrew text so RTL
+  doesn't break.
+- **Pushing to `main` deploys to production immediately** (GitHub Actions → Cloudflare, ~1–2 min).
+  There is no staging, so a bad push reaches real clients.
+  - **Docs, static assets, tooling:** push freely once `tsc` passes — no need to ask.
+  - **Code, logic, or anything touching the DB:** ask Sam before pushing.
+- **Work only from the git repo** (`github.com/uriyagan/studioservice`), never from a copy. An
+  older Google Drive copy exists on the previous maintainer's machine and is **abandoned** — the
+  Drive mount zeroes files and creates `" 2"` duplicates, which is why `.gitignore` carries the
+  `* 2.*` rules.
+- **Sam runs all SQL migrations** in the Supabase SQL Editor. Hand over SQL to paste; never assume
+  a migration ran without a check query. (The assistant *can* read the DB — `.env.local` holds a
+  working service-role key — but does not run migrations.)
 - Run `npx tsc --noEmit` before every commit (and a full build for big changes).
+- **The local env points at the production Supabase.** Every local action touches real client data.
+  `RESEND_API_KEY` is deliberately left empty so no test mail reaches a real client, and Stripe is
+  test-mode locally. Don't undo either without a reason.
 
 ---
 
@@ -36,13 +48,14 @@ projects/tasks, and message back and forth. Live at **https://service.uriyaganor
 ## 2. Run / build / deploy
 
 ```bash
-cd /Users/uriyaganor/code/studioservice
 npx tsc --noEmit         # typecheck (always before commit)
 npm run build            # full Next build (for big changes)
 git add -A && git commit && git push origin main   # → GitHub Actions → Cloudflare (prod)
 ```
 
 Deploy takes ~1–2 min. Stale-chunk errors after deploy self-heal (see §6).
+Watch a deploy with `gh run list` / `gh run watch`; confirm it landed by polling `/api/version`
+until it reports the pushed SHA — but see the propagation caveat in §6 before judging a deploy.
 
 ---
 
@@ -221,6 +234,23 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
 - **Stale chunks after deploy:** `app/error.tsx` + `app/global-error.tsx` auto-reload once on any
   error; `components/VersionWatcher.tsx` + `/api/version` + `NEXT_PUBLIC_BUILD_ID` (= `github.sha`)
   show a "new version" banner.
+- **Deploy propagation lag — don't misdiagnose it:** `/api/version` flips to the new SHA *before*
+  static assets finish propagating. Observed 2026-07-15: ~80s after a deploy the version endpoint
+  already reported the new SHA while `/favicon.ico` and `/icon.svg` still 404'd and
+  `/apple-icon.png` served fine; all three were 200 a minute later with no code change. The Worker
+  swaps over faster than the assets binding fills, and the two serving paths propagate on
+  different clocks. Wait and re-test before concluding a deploy is broken. The `x-opennext: 1`
+  header marks assets served through the Worker; assets from the Cloudflare binding show
+  `CF-Cache-Status` and no `x-opennext`.
+- **Favicon / app icons** (`app/icon.svg`, `app/favicon.ico`, `app/apple-icon.png`): App Router
+  file conventions — Next emits the `<link>` tags itself, so **nothing references them in
+  `layout.tsx`**; renaming or moving them silently drops the icons. All three derive from one
+  brand asset (black disc, white "U") and are **committed binaries — they do not regenerate from
+  the SVG**. If the brand asset changes, re-run `scripts/gen-icons.js` (`node scripts/gen-icons.js`,
+  uses the `sharp` that ships transitively with Next). Notes for whoever touches them: `sharp`
+  cannot write ICO, so the script hand-builds the ICO container around PNG payloads (16/32/48, for
+  Safari and older browsers, which don't accept SVG favicons); `apple-icon.png` is flattened onto
+  black because iOS discards alpha and would otherwise paint the transparent corners itself.
 - **Fire-and-forget:** `lib/after.ts` `runAfter()` → `waitUntil` with inline-await fallback (email
   dispatch, so actions don't block).
 - **Resilience:** code touching newer columns/tables retries-without / fails-closed so the app keeps
@@ -253,6 +283,7 @@ app/
   api/stripe/webhook/route.ts    Stripe webhook (idempotent)
   set-password/page.tsx          token_hash + verify-on-submit
   globals.css                    125% root font, min-width:0 on form controls, #f5f5f5
+  icon.svg / favicon.ico / apple-icon.png   app icons — App Router conventions, auto-linked (§6)
 components/
   NavBar.tsx                     responsive nav (rootHref prop; admin + portal)
   icons.tsx                      custom black icon set
@@ -278,6 +309,7 @@ lib/
   email-log-shared.ts            EMAIL_LOG_PAGE + EmailLogRow type
   download-files.ts              fetch+zip (JSZip) one-click "download all" for signed-URL files
   format.ts / supabase/{server,admin,middleware}.ts / after.ts
+scripts/gen-icons.js             regenerates favicon.ico + apple-icon.png from app/icon.svg (§6)
 supabase/migrations/*.sql        DDL (run manually in Supabase)
 ```
 
@@ -286,12 +318,20 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 ## 8. Current state / open items
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
-  **No known open bugs. Nothing pending the user.**
-- This session (2026-06-30): **client reply reopens a completed task** (→ `pending`, back to "פתוחות",
+  **No known open bugs. Nothing pending Sam.**
+- This session (2026-07-15) — first under Sam's ownership: **project handed over** (§0 rewritten:
+  Hebrew replies, no macOS path, confirm before pushing); **verified the service-role key** in
+  `.env.local` works (payload `role: service_role`, `ref` matches the project, signature accepted by
+  both PostgREST and `/auth/v1/admin/*`) — so §0's old claim that the assistant can't reach the DB
+  was wrong and is now corrected; **added the favicon / app icons** (`icon.svg` + hand-built
+  `favicon.ico` + `apple-icon.png`, `scripts/gen-icons.js`, §6) — verified end-to-end in prod;
+  documented the **deploy propagation lag** (§6) after a fresh deploy's 404s were briefly
+  misread as a routing bug.
+- Prior session (2026-06-30): **client reply reopens a completed task** (→ `pending`, back to "פתוחות",
   `reopenIfCompleted` on both inbound paths); fixed **TicketForm draft re-saving a just-created task**
   (unmount-flush `skipFlush` ref); fixed **assignee select reverting on consecutive edits without a
   refresh** (close the edit modal on the `editState` object, not sticky `editState.ok`).
-- Prior session (2026-06-24): **task correspondence routes to the opener** (`tickets.created_by` +
+- Session 2026-06-24: **task correspondence routes to the opener** (`tickets.created_by` +
   `taskRecipient`, with a "פתח/ה" indicator on the tasks table); **"הערות מהסטודיו"** per-task notes +
   files (admin CRUD, client-visible read-only, never emailed, download-all) on a shared `NotesPanel`;
   **manual time on an existing open task** (no new task/project, no email); **redesigned per-row timer**
@@ -319,6 +359,8 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 ## 9. How to start the next conversation
 
-> Continue work on the Studio Service App. Repo: `/Users/uriyaganor/code/studioservice`. Read
-> `HANDOFF.md` first. Reply in English, shortest answers, deploy straight to prod (push to main).
-> Then: <your task>.
+> המשך עבודה על ה-Studio Service App. הריפו: `C:\Users\f5f5\code\studioservice`.
+> קרא קודם את `HANDOFF.md` — הוא מקור האמת לארכיטקטורה, פיצ'רים ומלכודות
+> (`README.md` מכסה הקמה ופריסה בלבד). ענה בעברית, תשובות קצרות.
+> `npx tsc --noEmit` לפני כל קומיט; דחיפה ל-`main` = פריסה מיידית לפרודקשן, אז אשר לפני.
+> שים לב: הסביבה המקומית מצביעה על מסד הפרודקשן. ואז: <המשימה שלך>.

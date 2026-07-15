@@ -158,6 +158,9 @@ npm run cf:deploy    # build + deploy ישיר
 ```
 app/
   page.tsx                    ניתוב שורש לפי תפקיד
+  icon.svg  favicon.ico  apple-icon.png
+                              אייקוני האפליקציה — קונבנציית App Router, Next מקשר אותם
+                              אוטומטית. בינאריים מקומפלים; ראה HANDOFF.md §6
   login/  set-password/       כניסה + הגדרת סיסמה (token_hash, scanner-safe)
   admin/                      אזור ניהול (layout מגן role=admin)
     page.tsx                  דשבורד משימות + טיימר פר-שורה
@@ -184,6 +187,8 @@ lib/
   supabase/                   client / server / admin / middleware
   email/                      dispatch, render, send, notifications, thread
   auth-links  portal-data  download-files  format  after  stripe  types
+scripts/
+  gen-icons.js                יצירה מחדש של favicon.ico + apple-icon.png מ-app/icon.svg
 supabase/
   schema.sql                  סכמה בסיסית + RLS
   migrations/                 DDL מצטבר — מורץ ידנית לפי סדר תאריכים
