@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { PlusCircle } from "@/components/icons";
+import type { AdminOption } from "@/lib/types";
 
 interface ProjectOption {
   id: string;
@@ -12,12 +13,15 @@ interface ProjectOption {
 }
 
 // Admin "new task" — same rich form as the client portal (title, free
-// text, multiple links, file upload) plus a project picker.
+// text, multiple links, file upload) plus a project picker and an
+// optional assignee.
 export function CreateTaskForm({
   projects = [],
+  admins = [],
   fixedProjectId,
 }: {
   projects?: ProjectOption[];
+  admins?: AdminOption[];
   fixedProjectId?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -32,6 +36,7 @@ export function CreateTaskForm({
           <TicketForm
             mode="admin"
             projects={projects}
+            admins={admins}
             projectId={fixedProjectId}
             onDone={() => setOpen(false)}
           />

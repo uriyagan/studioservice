@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createTicket, attachFile } from "@/app/actions/tickets";
 import { createAdminTicket } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
+import type { AdminOption } from "@/lib/types";
 
 interface ProjectOption {
   id: string;
@@ -53,11 +54,13 @@ function loadDraft(mode: string): TaskDraft | null {
 export function TicketForm({
   projectId,
   projects,
+  admins,
   mode = "client",
   onDone,
 }: {
   projectId?: string;
   projects?: ProjectOption[];
+  admins?: AdminOption[];
   mode?: "client" | "admin";
   onDone?: () => void;
 }) {
@@ -253,6 +256,23 @@ export function TicketForm({
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Assignee at creation time — admin only, and optional: leaving it empty
+          keeps the old behaviour of an unassigned task. Picking someone here
+          emails them exactly as assigning from the tasks table does. */}
+      {mode === "admin" && admins && admins.length > 0 && (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">אחראי</label>
+          <select name="assignee_id" className={inputCls} defaultValue="">
+            <option value="">ללא אחראי</option>
+            {admins.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
               </option>
             ))}
           </select>

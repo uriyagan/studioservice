@@ -12,8 +12,9 @@ import { Modal } from "@/components/ui/Modal";
 import { RowTimerControl } from "@/components/admin/RowTimerControl";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
 import { getReadState, markTicketRead } from "@/app/actions/messages";
-import { Ticket, TimeLog } from "@/lib/types";
+import { Ticket, TimeLog, AdminOption } from "@/lib/types";
 import { formatDate, formatDuration, sumLoggedSeconds } from "@/lib/format";
+import { useLoggedSeconds } from "@/lib/use-logged-seconds";
 
 const initial = { ok: false, error: undefined as string | undefined };
 
@@ -30,7 +31,6 @@ export interface TaskRow extends Ticket {
   assigneeName?: string;
 }
 
-type Admin = { id: string; name: string };
 
 const READS_KEY = "studio.threadReads";
 
@@ -57,13 +57,7 @@ const PAGE_SIZE = 25;
 
 function LiveTime({ logs }: { logs: TimeLog[] }) {
   const hasActive = logs.some((l) => l.end_time === null);
-  const [s, setS] = useState(() => sumLoggedSeconds(logs));
-  useEffect(() => {
-    setS(sumLoggedSeconds(logs));
-    if (!hasActive) return;
-    const t = setInterval(() => setS(sumLoggedSeconds(logs)), 1000);
-    return () => clearInterval(t);
-  }, [hasActive, logs]);
+  const s = useLoggedSeconds(logs);
   return (
     <span className={`font-mono tabular-nums ${hasActive ? "font-semibold text-emerald-600" : ""}`}>
       {formatDuration(s)}
@@ -79,7 +73,7 @@ export function TasksTable({
 }: {
   tasks: TaskRow[];
   projects: { id: string; name: string }[];
-  admins?: Admin[];
+  admins?: AdminOption[];
   currentUserId?: string;
 }) {
   const [visible, setVisible] = useState<Record<ColKey, boolean>>({
@@ -547,7 +541,7 @@ export function TasksTable({
           description={detailsFor.description}
           link={detailsFor.link}
           status={detailsFor.status}
-          seconds={sumLoggedSeconds(detailsFor.time_logs)}
+          logs={detailsFor.time_logs}
           onClose={() => setDetailsFor(null)}
         />
       )}
@@ -577,7 +571,7 @@ function EditForm({
 }: {
   task: TaskRow;
   projects: { id: string; name: string }[];
-  admins: Admin[];
+  admins: AdminOption[];
   action: (formData: FormData) => void;
   error?: string;
   onCancel: () => void;

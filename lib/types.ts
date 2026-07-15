@@ -1,5 +1,9 @@
 export type Role = "admin" | "client";
 
+// An admin as the assignee pickers need them — the new-task form, the tasks
+// table's edit modal and its assignee filter all show the same list.
+export type AdminOption = { id: string; name: string };
+
 export type TicketStatus = "pending" | "in_progress" | "paused" | "completed";
 
 export interface Profile {

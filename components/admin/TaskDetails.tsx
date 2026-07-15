@@ -15,9 +15,11 @@ import {
   addTicketNoteFile,
   deleteTicketNoteFile,
 } from "@/app/actions/ticket-notes";
-import { completeTask, addManualTimeToTask } from "@/app/actions/timer";
+import { completeTask, adjustTaskTime } from "@/app/actions/timer";
 import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDuration } from "@/lib/format";
+import { useLoggedSeconds } from "@/lib/use-logged-seconds";
+import type { TimeLog } from "@/lib/types";
 
 // Read view of what a client submitted + the (irreversible) "complete task"
 // action, gated behind a confirmation that shows the total logged time.
@@ -27,7 +29,7 @@ export function TaskDetails({
   description,
   link,
   status,
-  seconds,
+  logs,
   onClose,
 }: {
   ticketId: string;
@@ -35,7 +37,7 @@ export function TaskDetails({
   description: string | null;
   link: string | null;
   status: string;
-  seconds: number;
+  logs: TimeLog[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -43,33 +45,49 @@ export function TaskDetails({
   const [confirming, setConfirming] = useState(false);
   const [completionNote, setCompletionNote] = useState("");
   const [completing, startComplete] = useTransition();
-  // Manual time added in this modal — tracked locally so the total updates
+  // Time corrections made in this modal — tracked locally so the total updates
   // immediately, on top of the time that was already logged when it opened.
-  const [addedSeconds, setAddedSeconds] = useState(0);
+  const [adjustedSeconds, setAdjustedSeconds] = useState(0);
+  const [adjustMode, setAdjustMode] = useState<"add" | "subtract">("add");
   const [addH, setAddH] = useState("");
   const [addM, setAddM] = useState("");
-  const [adding, startAdd] = useTransition();
-  const [addError, setAddError] = useState<string | null>(null);
-  const totalSeconds = seconds + addedSeconds;
+  const [adjusting, startAdjust] = useTransition();
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  // Ticks while a timer is running, so the preview and the guard below track
+  // the same total the server will see. `logs` is the snapshot taken when the
+  // modal opened and isn't refetched, so corrections made here are layered on
+  // top locally rather than read back.
+  const totalSeconds = useLoggedSeconds(logs) + adjustedSeconds;
   const links = (link ?? "")
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
 
-  const addTime = () => {
-    setAddError(null);
-    const extra = Math.round(((Number(addH) || 0) * 60 + (Number(addM) || 0)) * 60);
-    if (extra <= 0) {
-      setAddError("יש להזין זמן גדול מאפס");
+  // Signed delta the form currently describes, and the total it would produce.
+  // Previewing the result is what makes the direction unambiguous — the admin
+  // reads the number they're aiming for instead of doing the arithmetic.
+  const magnitude = Math.round(((Number(addH) || 0) * 60 + (Number(addM) || 0)) * 60);
+  const delta = adjustMode === "add" ? magnitude : -magnitude;
+  const previewSeconds = totalSeconds + delta;
+  const overdrawn = previewSeconds < 0;
+
+  const applyAdjustment = () => {
+    setAdjustError(null);
+    if (magnitude <= 0) {
+      setAdjustError("יש להזין זמן גדול מאפס");
       return;
     }
-    startAdd(async () => {
-      const r = await addManualTimeToTask(ticketId, extra);
+    if (overdrawn) {
+      setAdjustError(`לא ניתן להפחית יותר מהזמן שתועד (${formatDuration(totalSeconds)})`);
+      return;
+    }
+    startAdjust(async () => {
+      const r = await adjustTaskTime(ticketId, delta);
       if (!r.ok) {
-        setAddError(r.error ?? "הוספת הזמן נכשלה");
+        setAdjustError(r.error ?? "עדכון הזמן נכשל");
         return;
       }
-      setAddedSeconds((s) => s + extra);
+      setAdjustedSeconds((s) => s + delta);
       setAddH("");
       setAddM("");
       router.refresh();
@@ -185,55 +203,116 @@ export function TaskDetails({
           )}
         </Section>
 
-        {/* Work time: shows the logged total and lets the admin add time
-            manually (e.g. forgot to start the timer). Adding time does NOT
-            complete the task and never emails the client. */}
+        {/* Work time: the logged total, plus a correction control that goes both
+            ways — add time the timer never caught, or take back time it counted
+            while nobody was working. Either way the task's status is untouched,
+            so it doesn't complete and the client gets no email. */}
         <div className="border-t border-slate-100 pt-4">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">זמן עבודה</h4>
           <p className="mt-1 text-sm text-slate-700">
             סה״כ תועד:{" "}
             <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
           </p>
-          {status !== "completed" && (
-            <div className="mt-2 space-y-2">
-              <p className="text-xs text-slate-400">
-                הוספת זמן ידנית למשימה זו (ללא סיום המשימה וללא מייל ללקוח).
-              </p>
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="flex items-center gap-1.5 text-sm text-slate-500">
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={addH}
-                    onChange={(e) => setAddH(e.target.value)}
-                    placeholder="0"
-                    aria-label="שעות"
-                    className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                  שעות
-                </label>
-                <label className="flex items-center gap-1.5 text-sm text-slate-500">
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    step="1"
-                    value={addM}
-                    onChange={(e) => setAddM(e.target.value)}
-                    placeholder="0"
-                    aria-label="דקות"
-                    className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  />
-                  דקות
-                </label>
-                <Button onClick={addTime} disabled={adding}>
-                  {adding ? "מוסיף…" : "הוספת זמן"}
-                </Button>
+
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-slate-400">
+              עדכון הזמן של המשימה — ללא סיום המשימה וללא מייל ללקוח.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Direction first: it decides what the numbers mean, so it reads
+                  before them in RTL. */}
+              <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
+                {(
+                  [
+                    ["add", "הוספה"],
+                    ["subtract", "הפחתה"],
+                  ] as const
+                ).map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setAdjustMode(m);
+                      setAdjustError(null);
+                    }}
+                    aria-pressed={adjustMode === m}
+                    className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                      adjustMode === m
+                        ? "bg-primary text-white"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-              {addError && <p className="text-sm text-red-600">{addError}</p>}
+
+              <label className="flex items-center gap-1.5 text-sm text-slate-500">
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={addH}
+                  onChange={(e) => setAddH(e.target.value)}
+                  placeholder="0"
+                  aria-label="שעות"
+                  className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                />
+                שעות
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-slate-500">
+                <input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value={addM}
+                  onChange={(e) => setAddM(e.target.value)}
+                  placeholder="0"
+                  aria-label="דקות"
+                  className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+                />
+                דקות
+              </label>
+              <Button onClick={applyAdjustment} disabled={adjusting || magnitude <= 0 || overdrawn}>
+                {adjusting ? "מעדכן…" : "עדכון זמן"}
+              </Button>
             </div>
-          )}
+
+            {/* Result preview — turns "subtract 45m from 5:30" into the number
+                the admin actually cares about, and makes an over-reduction
+                obvious before the click rather than as an error after it.
+                `min="0"` on the inputs only blocks submission, not typing, so a
+                negative entry gets its own line: it disables the button, and
+                without this the admin would face a dead control and no reason. */}
+            {magnitude < 0 ? (
+              <p className="text-sm text-red-600">יש להזין מספרים חיוביים ולבחור הוספה או הפחתה.</p>
+            ) : (
+              magnitude > 0 &&
+              (overdrawn ? (
+                <p className="text-sm text-red-600">
+                  לא ניתן להפחית יותר מהזמן שתועד ({formatDuration(totalSeconds)}).
+                </p>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  סה״כ אחרי העדכון:{" "}
+                  <b className="font-mono tabular-nums text-slate-900">
+                    {formatDuration(previewSeconds)}
+                  </b>
+                </p>
+              ))
+            )}
+
+            {status === "completed" && (
+              <p className="text-xs text-amber-700">
+                המשימה כבר הושלמה — הלקוח קיבל מייל עם הזמן המקורי, ועדכון כאן ישנה את
+                ניצול השעות בפרויקט מבלי ליידע אותו.
+              </p>
+            )}
+
+            {adjustError && <p className="text-sm text-red-600">{adjustError}</p>}
+          </div>
         </div>
 
         {/* Studio notes + files: shown to the client in their portal (read-only),

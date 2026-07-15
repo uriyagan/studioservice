@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { TasksTable, TaskRow } from "@/components/admin/TasksTable";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
+import { toAdminOptions } from "@/lib/admins";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { QuickStartButton } from "@/components/admin/QuickStartButton";
 import { AutoRefresh } from "@/components/admin/AutoRefresh";
@@ -45,9 +46,7 @@ export default async function AdminDashboard() {
   const profileList = (profiles ?? []) as (Pick<Profile, "id" | "name"> & { role: string })[];
   const nameById = new Map<string, string>(profileList.map((p) => [p.id, p.name ?? ""]));
   const roleById = new Map<string, string>(profileList.map((p) => [p.id, p.role]));
-  const admins = profileList
-    .filter((p) => p.role === "admin")
-    .map((p) => ({ id: p.id, name: p.name || "" }));
+  const admins = toAdminOptions(profileList);
 
   // Latest inbound (client) message time per ticket — the client compares it
   // against a locally-stored "read at" so the dot clears once it's opened.
@@ -112,7 +111,7 @@ export default async function AdminDashboard() {
           {projects.length > 0 ? (
             <>
               <ManualTimeForm projects={projects} />
-              <CreateTaskForm projects={projects} />
+              <CreateTaskForm projects={projects} admins={admins} />
             </>
           ) : (
             <p className="text-sm text-amber-600">צור פרויקט תחילה כדי להוסיף משימות.</p>

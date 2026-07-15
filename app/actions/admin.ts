@@ -201,6 +201,7 @@ export async function createAdminTicket(
     const projectId = String(formData.get("project_id") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
+    const assigneeId = String(formData.get("assignee_id") ?? "") || null;
     const link =
       formData
         .getAll("link")
@@ -211,15 +212,40 @@ export async function createAdminTicket(
     if (!projectId) return { ok: false, error: "יש לבחור פרויקט" };
     if (!title) return { ok: false, error: "כותרת נדרשת" };
 
-    const { data, error } = await supabase
+    const base = { project_id: projectId, title, description: description || null, link };
+    // Include assignee_id; retry without it if the column isn't there yet, the
+    // same way updateTicket does — an unassigned task beats no task at all.
+    let assigneeApplied = true;
+    let { data, error } = await supabase
       .from("tickets")
-      .insert({ project_id: projectId, title, description: description || null, link })
+      .insert({ ...base, assignee_id: assigneeId })
       .select("id")
       .single();
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      assigneeApplied = false;
+      ({ data, error } = await supabase.from("tickets").insert(base).select("id").single());
+    }
+    if (error || !data) return { ok: false, error: error?.message ?? "יצירת המשימה נכשלה" };
+    const ticketId = data.id;
+
+    // Assigning on creation notifies the assignee, exactly as assigning later
+    // from the tasks table does — minus the self-assign case, where the admin
+    // already knows. Best-effort: a failed email must not fail task creation.
+    if (assigneeApplied && assigneeId) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (assigneeId !== user?.id) {
+        const { runAfter } = await import("@/lib/after");
+        await runAfter(async () => {
+          const { notifyTaskAssigned } = await import("@/lib/email/notifications");
+          await notifyTaskAssigned(ticketId, assigneeId);
+        });
+      }
+    }
 
     revalidatePath("/admin");
-    return { ok: true, ticketId: data.id };
+    return { ok: true, ticketId };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

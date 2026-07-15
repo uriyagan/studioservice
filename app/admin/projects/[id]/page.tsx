@@ -10,6 +10,7 @@ import { ProjectMembers, MemberRow } from "@/components/admin/ProjectMembers";
 import { ProjectNotes } from "@/components/admin/ProjectNotes";
 import { ArrowRight } from "@/components/icons";
 import { formatHours } from "@/lib/format";
+import { toAdminOptions } from "@/lib/admins";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function ProjectPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: project }, { data: tickets }, { data: projectList }] =
+  const [{ data: project }, { data: tickets }, { data: projectList }, { data: adminList }] =
     await Promise.all([
       supabase.from("project_stats").select("*").eq("id", id).maybeSingle(),
       supabase
@@ -30,6 +31,7 @@ export default async function ProjectPage({
         .eq("project_id", id)
         .order("created_at", { ascending: false }),
       supabase.from("projects").select("id, name").order("name"),
+      supabase.from("profiles").select("id, name, role").eq("role", "admin").order("name"),
     ]);
 
   if (!project) notFound();
@@ -37,6 +39,9 @@ export default async function ProjectPage({
   const p = project as ProjectStats;
   const rows = (tickets ?? []) as TaskCardTicket[];
   const projects = (projectList ?? []) as { id: string; name: string }[];
+  const admins = toAdminOptions(
+    (adminList ?? []) as { id: string; name: string | null; role: string }[]
+  );
   const open = rows.filter((t) => t.status !== "completed");
   const done = rows.filter((t) => t.status === "completed");
 
@@ -87,7 +92,7 @@ export default async function ProjectPage({
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start [&_button]:w-full sm:[&_button]:w-auto">
             <ManualTimeForm fixedProjectId={id} />
-            <CreateTaskForm fixedProjectId={id} />
+            <CreateTaskForm fixedProjectId={id} admins={admins} />
           </div>
         </div>
       </div>

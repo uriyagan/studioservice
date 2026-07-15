@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { formatDuration, sumLoggedSeconds } from "@/lib/format";
 
 // All four actions are admin-only. RLS on `tickets`/`time_logs`
 // also enforces this at the database level (defense in depth).
@@ -106,32 +107,65 @@ export async function completeTask(ticketId: string, note?: string) {
   revalidatePath("/admin");
 }
 
-// Add a fixed block of time to an EXISTING task (e.g. the timer was never
-// started). Inserts a closed time_logs segment without touching the task's
-// status — so it stays open and the client gets no email (they're updated only
-// when the task is completed). Counts toward the project's usage like any log.
-export async function addManualTimeToTask(
+// Correct the time on an EXISTING task by `deltaSeconds` — positive to add
+// (e.g. the timer was never started), negative to take time back (e.g. the
+// timer was left running over a lunch break).
+//
+// Both directions are one closed time_logs segment; a reduction is simply a
+// row with a negative duration_seconds. Nothing needs to hunt down and rewrite
+// the original segments, and the correction stays visible as its own row.
+// `duration_seconds` is summed raw by the project_stats view and by
+// sumLoggedSeconds, so a negative genuinely subtracts everywhere.
+//
+// Task status is untouched, so the task stays open and the client gets no
+// email — they're only updated when it's completed.
+export async function adjustTaskTime(
   ticketId: string,
-  seconds: number
-): Promise<{ ok: boolean; error?: string }> {
+  deltaSeconds: number
+): Promise<{ ok: boolean; error?: string; totalSeconds?: number }> {
   try {
     const supabase = await assertAdmin();
     if (!ticketId) return { ok: false, error: "מזהה משימה חסר" };
-    if (!Number.isFinite(seconds) || seconds <= 0)
+    if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0)
       return { ok: false, error: "יש להזין זמן גדול מאפס" };
 
+    // A reduction must not drive the task's total below zero — the display
+    // helpers all clamp at 0, so it would look fine while quietly subtracting
+    // from the project's hours_used. Read the total the same way the UI does
+    // (a running segment counts as elapsed-so-far) so the check matches what
+    // the admin is looking at.
+    const { data: logs, error: readError } = await supabase
+      .from("time_logs")
+      .select("start_time, end_time, duration_seconds")
+      .eq("ticket_id", ticketId);
+    if (readError) return { ok: false, error: readError.message };
+
+    const current = sumLoggedSeconds(logs ?? []);
+    if (current + deltaSeconds < 0)
+      return {
+        // Same wording and same format as the client-side guard in TaskDetails —
+        // whichever one an admin trips, the stated limit reads identically.
+        ok: false,
+        error: `לא ניתן להפחית יותר מהזמן שתועד (${formatDuration(current)})`,
+      };
+
     const now = new Date();
-    const start = new Date(now.getTime() - seconds * 1000);
+    // An addition stands for work that just happened, so back-date its start.
+    // A reduction is a correction made right now — back-dating it by a negative
+    // delta would put start_time in the future, which would mis-bucket it in
+    // the dashboard's this-month rollup (that filter reads start_time).
+    const start = deltaSeconds > 0 ? new Date(now.getTime() - deltaSeconds * 1000) : now;
+
     const { error } = await supabase.from("time_logs").insert({
       ticket_id: ticketId,
       start_time: start.toISOString(),
       end_time: now.toISOString(),
-      duration_seconds: seconds,
+      duration_seconds: deltaSeconds,
     });
     if (error) return { ok: false, error: error.message };
 
     revalidatePath("/admin");
-    return { ok: true };
+    return { ok: true, totalSeconds: current + deltaSeconds };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
