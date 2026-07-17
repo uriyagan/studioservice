@@ -3,14 +3,20 @@
  *
  *   node scripts/gen-icons.js
  *
- * Outputs, all consumed by the App Router icon file conventions — Next emits the
+ * Browser/OS icons, consumed by the App Router file conventions — Next emits the
  * <link> tags itself, so nothing in layout.tsx references them:
  *
  *   app/icon.svg        source of truth, edited by hand (modern browsers)
  *   app/favicon.ico     16/32/48 — Safari + older browsers, which reject SVG favicons
  *   app/apple-icon.png  180x180 — iOS home screen
  *
- * The .ico and .png are committed binaries; they do NOT track icon.svg on their own.
+ * PWA icons, referenced by URL from app/manifest.ts:
+ *
+ *   public/icon-192.png           install prompt / Android launcher
+ *   public/icon-512.png           splash screen, high-DPI launchers
+ *   public/icon-maskable-512.png  Android adaptive icon (see maskableSvg below)
+ *
+ * All of these are committed binaries; they do NOT track icon.svg on their own.
  * Re-run this whenever the brand asset changes.
  *
  * `sharp` is not a direct dependency — it ships transitively with Next. If that ever
@@ -28,7 +34,12 @@ try {
 }
 
 const APP = path.join(__dirname, '..', 'app');
+const PUBLIC = path.join(__dirname, '..', 'public');
 const SRC = path.join(APP, 'icon.svg');
+
+// How much of a maskable icon is guaranteed visible: a centred circle of 80%
+// diameter. https://w3c.github.io/manifest/#icon-masks
+const SAFE_ZONE = 0.8;
 
 /** Rasterise the SVG at `size`, optionally flattening onto an opaque background. */
 const png = (svg, size, bg) => {
@@ -39,6 +50,47 @@ const png = (svg, size, bg) => {
   if (bg) s = s.flatten({ background: bg });
   return s.png({ compressionLevel: 9 }).toBuffer();
 };
+
+/**
+ * Rewrite the source icon into a maskable variant.
+ *
+ * Android crops an adaptive icon to a shape it picks (circle, squircle, teardrop)
+ * and the app has no say in which. Feeding it the source icon — a disc on a
+ * transparent square — means the crop bites into the disc and the corners show
+ * through as gaps. A maskable icon instead bleeds its background to all four
+ * edges and keeps the glyph inside the safe zone, so every mask shape comes out
+ * looking deliberate.
+ *
+ * Two edits, both derived from the viewBox so they survive an icon redraw:
+ *   - the background disc becomes a full-bleed rect
+ *   - the glyph is scaled to SAFE_ZONE about the centre
+ *
+ * On the scale: at full size the "U" reaches r≈74 in a 190 box, just inside the
+ * safe circle's r=76 — legal, but it would sit almost against the mask edge and
+ * lose the ring of black the brand icon has around it. Scaling by the safe-zone
+ * factor reproduces the source icon's proportions exactly under a circle mask.
+ */
+function maskableSvg(src) {
+  let s = src.toString();
+
+  const box = s.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+  if (!box) throw new Error('icon.svg: no viewBox="0 0 W H" to derive the canvas from');
+  const [w, h] = [Number(box[1]), Number(box[2])];
+
+  if (!/<circle\b[^>]*\/>/.test(s))
+    throw new Error('icon.svg: expected a <circle> background to swap for a full-bleed rect');
+  s = s.replace(/<circle\b[^>]*\/>/, `<rect width="${w}" height="${h}" fill="#000"/>`);
+
+  if (!/<path\b[^>]*\/>/.test(s)) throw new Error('icon.svg: expected a <path> glyph to inset');
+  const [cx, cy] = [w / 2, h / 2];
+  s = s.replace(
+    /<path\b[^>]*\/>/,
+    (glyph) =>
+      `<g transform="translate(${cx} ${cy}) scale(${SAFE_ZONE}) translate(${-cx} ${-cy})">${glyph}</g>`
+  );
+
+  return Buffer.from(s);
+}
 
 /**
  * Build a multi-size .ico around PNG payloads — sharp can't write ICO itself.
@@ -84,4 +136,18 @@ function buildIco(entries) {
   const apple = await png(svg, 180, { r: 0, g: 0, b: 0 });
   fs.writeFileSync(path.join(APP, 'apple-icon.png'), apple);
   console.log(`app/apple-icon.png ${apple.length} bytes (180x180)`);
+
+  // PWA icons. 192 and 512 are what Chrome wants for the install prompt and the
+  // splash screen; both are flattened because a launcher icon with holes in it
+  // renders against whatever the launcher's wallpaper happens to be.
+  const black = { r: 0, g: 0, b: 0 };
+  for (const size of [192, 512]) {
+    const buf = await png(svg, size, black);
+    fs.writeFileSync(path.join(PUBLIC, `icon-${size}.png`), buf);
+    console.log(`public/icon-${size}.png ${buf.length} bytes (${size}x${size})`);
+  }
+
+  const maskable = await png(maskableSvg(svg), 512, black);
+  fs.writeFileSync(path.join(PUBLIC, 'icon-maskable-512.png'), maskable);
+  console.log(`public/icon-maskable-512.png ${maskable.length} bytes (512x512)`);
 })();

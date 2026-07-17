@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-07-15.
+> Full context to resume work in a fresh conversation. Last updated: 2026-07-17.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -181,6 +181,15 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   idempotent (by `stripe_payment_intent`), credits hours, creates a project for first-time buyers,
   emails `hours_added`.
 - **Auth:** login with "remember me" (middleware strips cookie maxAge when unchecked).
+- **PWA (installable to a phone home screen)** — `app/manifest.ts` (typed; served at
+  `/manifest.webmanifest`), `public/sw.js` (**caches nothing — see §6 before touching it**),
+  `components/ServiceWorkerRegistrar.tsx` (mounted in the root layout, so the app is installable
+  from the login screen too). One install serves **both audiences**: `start_url` is `/`, which
+  `app/page.tsx` already dispatches by role (admin → `/admin`, client → `/portal`, logged out →
+  `/login`). `theme_color` is white to match the NavBar the status bar sits above; `background_color`
+  `#f5f5f5` is the splash. Icons come from `scripts/gen-icons.js` (§6). No offline support, by
+  choice. Note that an installed iOS web app gets its own cookie jar, separate from Safari — the
+  first launch always needs a fresh login, which is expected, not a bug.
 
 ---
 
@@ -234,6 +243,17 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
 - **Stale chunks after deploy:** `app/error.tsx` + `app/global-error.tsx` auto-reload once on any
   error; `components/VersionWatcher.tsx` + `/api/version` + `NEXT_PUBLIC_BUILD_ID` (= `github.sha`)
   show a "new version" banner.
+- **⚠️ The service worker must never cache — this is load-bearing.** `public/sw.js` exists only to
+  make the app installable (Chrome gates the automatic install prompt on a `fetch` handler being
+  present) and deliberately holds no caches; its fetch listener is empty so every request stays on
+  the browser's normal network path. Adding caching for `/_next/static/**` would break the
+  stale-chunk recovery directly above: the reload in `error.tsx` would be served the same stale
+  chunks, the 20s guard would read that as "reloaded and still broken → real bug", and a condition
+  that heals in one second becomes permanent — the manual refresh button can't fix it either.
+  Caching authenticated HTML would additionally outlive a logout and leak one client's data to the
+  next person holding the phone. Offline is a deliberate non-goal: every page is `force-dynamic`
+  over live Supabase data, so a cached view would show stale hours/task state, which is worse than
+  an honest error (Chrome supplies its own offline page). Full reasoning is in `public/sw.js`.
 - **Deploy propagation lag — don't misdiagnose it:** `/api/version` flips to the new SHA *before*
   static assets finish propagating. Observed 2026-07-15: ~80s after a deploy the version endpoint
   already reported the new SHA while `/favicon.ico` and `/icon.svg` still 404'd and
@@ -251,6 +271,14 @@ Migrations in `supabase/migrations/`. **All confirmed applied** (verified via SQ
   cannot write ICO, so the script hand-builds the ICO container around PNG payloads (16/32/48, for
   Safari and older browsers, which don't accept SVG favicons); `apple-icon.png` is flattened onto
   black because iOS discards alpha and would otherwise paint the transparent corners itself.
+  - The same script emits the **PWA icons** into `public/` (`icon-192`, `icon-512`,
+    `icon-maskable-512`), referenced by URL from `app/manifest.ts`. The maskable one is separate
+    art on purpose: Android crops adaptive icons to a shape *it* picks, and the plain icon clears
+    the 80% safe zone by only ~7px, so a circle mask leaves the "U" pressed against the edge with
+    none of the black ring the brand icon has. The script rebuilds it from the same SVG — disc
+    swapped for a full-bleed rect, glyph scaled to the safe zone — so there's still one source of
+    truth for the glyph. All PWA icons are flattened: a launcher icon with holes shows the user's
+    wallpaper through them.
 - **Fire-and-forget:** `lib/after.ts` `runAfter()` → `waitUntil` with inline-await fallback (email
   dispatch, so actions don't block).
 - **Resilience:** code touching newer columns/tables retries-without / fails-closed so the app keeps
@@ -284,7 +312,9 @@ app/
   set-password/page.tsx          token_hash + verify-on-submit
   globals.css                    125% root font, min-width:0 on form controls, #f5f5f5
   icon.svg / favicon.ico / apple-icon.png   app icons — App Router conventions, auto-linked (§6)
+  manifest.ts                    PWA manifest → /manifest.webmanifest (start_url "/" = role-aware)
 components/
+  ServiceWorkerRegistrar.tsx     registers /sw.js (root layout); sw.js caches NOTHING — §6
   NavBar.tsx                     responsive nav (rootHref prop; admin + portal)
   icons.tsx                      custom black icon set
   admin/TasksTable.tsx           tasks table (desktop) + mobile cards; פרויקט col links; פתח/ה indicator
@@ -309,7 +339,8 @@ lib/
   email-log-shared.ts            EMAIL_LOG_PAGE + EmailLogRow type
   download-files.ts              fetch+zip (JSZip) one-click "download all" for signed-URL files
   format.ts / supabase/{server,admin,middleware}.ts / after.ts
-scripts/gen-icons.js             regenerates favicon.ico + apple-icon.png from app/icon.svg (§6)
+scripts/gen-icons.js             regenerates favicon/apple/PWA icons from app/icon.svg (§6)
+public/sw.js                     minimal service worker — installability only, no caching (§6)
 supabase/migrations/*.sql        DDL (run manually in Supabase)
 ```
 
@@ -319,7 +350,16 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending Sam.**
-- This session (2026-07-15) — first under Sam's ownership: **project handed over** (§0 rewritten:
+- Session 2026-07-17: **PWA — the app installs to a phone home screen** for admins and clients
+  alike off a single manifest, since `start_url: "/"` rides the role dispatcher that `app/page.tsx`
+  already had (§5). Ships `app/manifest.ts`, a **deliberately no-op** `public/sw.js` (§6 explains
+  why caching would break deploys — read it before touching that file), and maskable PWA icons from
+  the existing `gen-icons.js`. Verified locally: manifest served as `application/manifest+json`,
+  `sw.js` as `application/javascript`, worker activates at scope `/` and controls the page while
+  holding zero caches, chunks and `/api/version` still come off the network with the worker in
+  control, and the middleware's auth guards still redirect `/admin` + `/portal` after the matcher
+  edit. Not verified: an actual iPhone/Android install — no device here.
+- Session 2026-07-15 — first under Sam's ownership: **project handed over** (§0 rewritten:
   Hebrew replies, no macOS path, confirm before pushing); **verified the service-role key** in
   `.env.local` works (payload `role: service_role`, `ref` matches the project, signature accepted by
   both PostgREST and `/auth/v1/admin/*`) — so §0's old claim that the assistant can't reach the DB
@@ -356,7 +396,11 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 ### Possible next steps (not requested yet)
 - Inbox: per-client grouping (collapse a client's tasks under one header) — discussed, deferred.
 - By-client filter on the tasks table (currently by-site/assignee).
-- Desktop/OS push notifications for new messages when the app isn't open (PWA / Notification API).
+- Desktop/OS push notifications for new messages when the app isn't open (Notification API). The
+  service worker this needs now exists (§6) — but it is a no-op by design, so this means adding
+  `push`/`notificationclick` handlers to it, **not** caching.
+- A custom in-app install button (`beforeinstallprompt`), if the browser's own prompt turns out to
+  be too easy for clients to miss.
 
 ---
 
