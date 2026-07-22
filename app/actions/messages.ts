@@ -295,6 +295,30 @@ export async function markTicketRead(ticketId: string): Promise<void> {
   }
 }
 
+// Client: mark one of MY task threads as read — drives the "new message"
+// red dot in the portal tasks list. Reuses the message_reads table: its RLS
+// only requires the row to belong to the caller (admin_id = auth.uid()), so
+// client rows live alongside admin rows without interfering (admin queries
+// always filter by their own id).
+export async function markMyTicketRead(ticketId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const db = supabase as unknown as { from: (t: string) => any };
+    await db
+      .from("message_reads")
+      .upsert(
+        { admin_id: user.id, ticket_id: ticketId, read_at: new Date().toISOString() },
+        { onConflict: "admin_id,ticket_id" }
+      );
+  } catch {
+    /* table not migrated yet — the dot just stays until it is */
+  }
+}
+
 export interface Conversation {
   ticketId: string;
   taskTitle: string;

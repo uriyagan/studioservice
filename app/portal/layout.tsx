@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { NavBar } from "@/components/NavBar";
 import { VersionWatcher } from "@/components/VersionWatcher";
+import { Toaster } from "@/components/ui/Toast";
 
 const LINKS = [
   { href: "/portal", label: "לוח בקרה" },
@@ -37,6 +38,7 @@ export default async function PortalLayout({
         rootHref="/portal"
       />
       <main className="mx-auto max-w-4xl px-4 py-8">{children}</main>
+      <Toaster />
       <VersionWatcher />
     </div>
   );

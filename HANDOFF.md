@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-07-17.
+> Full context to resume work in a fresh conversation. Last updated: 2026-07-22.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -350,6 +350,24 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending Sam.**
+- Session 2026-07-22: **client-portal UX pass** — green success **toasts** (new
+  `components/ui/Toast.tsx`: event-bus `showToast()` + one `<Toaster />` in the portal layout,
+  5s auto-dismiss): creating a task now closes the modal and toasts instead of the inline
+  "נוצרה בהצלחה" line, and sending a thread message toasts as the modal closes (new `onSent`
+  hook on `ConversationThread`); the tasks list's **conversation column adapts to content**
+  ("התחלת שיחה" / "צפייה בשיחה" / "קריאת הודעה חדשה" + red dot) off per-ticket message stats
+  computed in `portal/tasks/page.tsx`; **client read state reuses `message_reads`** — its RLS
+  only checks `admin_id = auth.uid()`, so client rows coexist with admin rows, **no migration
+  needed** — written by the new `markMyTicketRead` when a thread opens (dot clears instantly via
+  local state); **client-facing status collapses** to ממתין / בטיפול (amber) / הושלם
+  (`ClientStatusBadge`): "בטיפול" from the studio's first touch (any time log OR any admin
+  message) and it survives timer pauses until completion — internal statuses and all admin
+  screens unchanged; **task-modal separation** — "המשימה המקורית" heading with the title, no
+  chat background, then a divider captioned "תכתובת עם הסטודיו בנוגע למשימה זו" before the chat
+  bubbles. Verified end-to-end in the browser as a client (both toasts, all three labels, all
+  three statuses, instant dot clear). **Admin-side counterpart deliberately deferred** to the
+  next session. Leftover local test data on client "אוריה בדיקה": task "בדיקת טוסט יצירה" + a
+  "בדיקת שליחה עם טוסט" message on טסט1 — safe to delete.
 - Session 2026-07-17: **PWA — the app installs to a phone home screen** for admins and clients
   alike off a single manifest, since `start_url: "/"` rides the role dispatcher that `app/page.tsx`
   already had (§5). Ships `app/manifest.ts`, a **deliberately no-op** `public/sw.js` (§6 explains

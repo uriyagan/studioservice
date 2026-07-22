@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link2, FileText, Download } from "@/components/icons";
 import { ConversationThread } from "@/components/portal/ConversationThread";
+import { showToast } from "@/components/ui/Toast";
 import { getMyTicketMessages, sendClientReply, getMyTaskAttachments } from "@/app/actions/messages";
 import { getMyTicketNotes, type TicketNote } from "@/app/actions/ticket-notes";
 import { downloadAllAsZip } from "@/lib/download-files";
@@ -43,35 +44,40 @@ export function ClientTaskThread({
 
   const header = (
     <>
-      {hasDetails && (
-        <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">מה שהגשת</p>
-          {description && description.trim() && (
-            <p className="whitespace-pre-wrap text-sm text-slate-700">{description}</p>
-          )}
-          {links.length > 0 && (
-            <div className="mt-1.5 space-y-1">
-              {links.map((l, i) => (
-                <a key={i} href={l} target="_blank" rel="noopener noreferrer" dir="ltr" className="flex items-center gap-1.5 text-xs text-primary hover:underline">
-                  <Link2 className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{l}</span>
-                </a>
-              ))}
-            </div>
-          )}
-          {files.length > 0 && (
-            <div className="mt-1.5 space-y-1">
-              {files.map((f, i) => (
-                <a key={i} href={f.url} download={f.name} className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-primary">
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
-                  <span className="truncate">{f.name}</span>
-                  <span className="text-primary">הורדה</span>
-                </a>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* The original task — deliberately NOT styled like a chat bubble, so
+          it reads as the submitted task itself rather than a message. */}
+      <div className="mb-4">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">המשימה המקורית</p>
+        <p className="text-base font-semibold text-slate-900">{title || "ללא שם"}</p>
+        {hasDetails && (
+          <div className="mt-2 space-y-1.5">
+            {description && description.trim() && (
+              <p className="whitespace-pre-wrap text-sm text-slate-700">{description}</p>
+            )}
+            {links.length > 0 && (
+              <div className="space-y-1">
+                {links.map((l, i) => (
+                  <a key={i} href={l} target="_blank" rel="noopener noreferrer" dir="ltr" className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                    <Link2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{l}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="space-y-1">
+                {files.map((f, i) => (
+                  <a key={i} href={f.url} download={f.name} className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-primary">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
+                    <span className="truncate">{f.name}</span>
+                    <span className="text-primary">הורדה</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {notes.length > 0 && (
         <div className="mb-4 rounded-lg border border-primary/30 bg-primary-light/40 p-3">
@@ -107,6 +113,13 @@ export function ClientTaskThread({
           </div>
         </div>
       )}
+
+      {/* Visual break between the original task and the chat-styled thread. */}
+      <div className="mb-3 flex items-center gap-3">
+        <span className="h-px flex-1 bg-slate-200" />
+        <p className="shrink-0 text-xs font-medium text-slate-500">תכתובת עם הסטודיו בנוגע למשימה זו</p>
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
     </>
   );
 
@@ -122,6 +135,7 @@ export function ClientTaskThread({
       otherLabel="הסטודיו"
       placeholder="כתוב/י הודעה… (תישלח לצוות ותתועד כאן)"
       closeOnSend
+      onSent={() => showToast("ההודעה נשלחה בהצלחה")}
       header={header}
     />
   );

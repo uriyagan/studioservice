@@ -340,6 +340,7 @@ export function ConversationThread({
   otherLabel,
   placeholder,
   closeOnSend = false,
+  onSent,
   header,
 }: {
   ticketId: string;
@@ -352,6 +353,9 @@ export function ConversationThread({
   otherLabel: string;
   placeholder: string;
   closeOnSend?: boolean;
+  // Called after a successful send (before the modal closes, if closeOnSend) —
+  // e.g. to pop a confirmation toast.
+  onSent?: () => void;
   header?: React.ReactNode;
 }) {
   return (
@@ -366,7 +370,10 @@ export function ConversationThread({
         otherLabel={otherLabel}
         placeholder={placeholder}
         reloadOnSend={!closeOnSend}
-        onAfterSend={closeOnSend ? onClose : undefined}
+        onAfterSend={() => {
+          onSent?.();
+          if (closeOnSend) onClose();
+        }}
       />
     </Modal>
   );
