@@ -3,7 +3,8 @@
 import { useEffect, useId, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
-import { Paperclip, Loader2, FileText, Trash2, Pencil, X, Download } from "@/components/icons";
+import { Paperclip, Loader2, FileText, Trash2, Pencil, X, Download, Eye } from "@/components/icons";
+import { isImageFile, ImageViewerModal } from "@/components/ui/ImageViewer";
 import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDate } from "@/lib/format";
 
@@ -246,6 +247,7 @@ function NoteCard({
   const [body, setBody] = useState(note.body);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(0);
+  const [viewing, setViewing] = useState<{ name: string; url: string } | null>(null);
   const fileInputId = useId();
 
   const saveEdit = async () => {
@@ -321,11 +323,33 @@ function NoteCard({
         <ul className="mt-2 space-y-1.5">
           {note.files.map((f) => (
             <li key={f.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 px-2.5 py-1.5 text-sm">
-              <a href={f.url} download={f.name} className="flex min-w-0 items-center gap-2 text-slate-700 hover:text-primary">
-                <FileText className="h-4 w-4 shrink-0 text-black" />
-                <span className="truncate">{f.name}</span>
-              </a>
-              <button onClick={() => removeFile(f.id)} className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="מחק קובץ">
+              {isImageFile(f.name) ? (
+                // Image: name + צפייה open the viewer; הורדה downloads.
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <button
+                    onClick={() => setViewing(f)}
+                    className="flex min-w-0 items-center gap-2 text-start text-slate-700 hover:text-primary"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-black" />
+                    <span className="truncate">{f.name}</span>
+                  </button>
+                  <button
+                    onClick={() => setViewing(f)}
+                    className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> צפייה
+                  </button>
+                  <a href={f.url} download={f.name} className="ms-[10px] shrink-0 text-xs text-primary hover:underline">
+                    הורדה
+                  </a>
+                </span>
+              ) : (
+                <a href={f.url} download={f.name} className="flex min-w-0 items-center gap-2 text-slate-700 hover:text-primary">
+                  <FileText className="h-4 w-4 shrink-0 text-black" />
+                  <span className="truncate">{f.name}</span>
+                </a>
+              )}
+              <button onClick={() => removeFile(f.id)} className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="מחיקת קובץ">
                 <Trash2 className="h-4 w-4" />
               </button>
             </li>
@@ -346,6 +370,10 @@ function NoteCard({
           <Trash2 className="h-3.5 w-3.5" /> מחיקה
         </button>
       </div>
+
+      {viewing && (
+        <ImageViewerModal name={viewing.name} url={viewing.url} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

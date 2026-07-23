@@ -141,3 +141,43 @@ export const Pencil = mk(
   "0 0 682.66669 682.66669",
   `<g transform="matrix(1.3333333,0,0,-1.3333333,0,682.66667)"><g transform="translate(488.0801,424.4443)"><path d="m 0,0 -63.636,63.636 c -11.684,11.685 -30.737,11.693 -42.411,0.018 L -430.502,-260.801 -324.437,-366.867 0.019,-42.412 C 11.693,-30.737 11.685,-11.685 0,0 Z" style="fill:none;stroke:currentColor;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:22.926"/></g><g transform="translate(15.1509,15.1509)"><path d="M 0,0 42.427,148.492 148.492,42.427 Z" style="fill:none;stroke:currentColor;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:22.926"/></g><g transform="translate(445.6558,339.5898)"><path d="M 0,0 -106.066,106.066" style="fill:none;stroke:currentColor;stroke-width:30;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:22.926"/></g></g>`
 );
+
+// ─── stroke-based (inherit currentColor, no black-forcing) ─────────────
+// Matches the CSS select chevron in globals.css exactly, so button chevrons
+// and select chevrons read as one family.
+export function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M5 7.5 10 12.5 15 7.5" />
+    </svg>
+  );
+}
+
+export function Eye({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}

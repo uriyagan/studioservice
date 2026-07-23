@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useId } from "react";
-import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle } from "@/components/icons";
+import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle, Eye } from "@/components/icons";
+import { isImageFile, ImageViewerModal } from "@/components/ui/ImageViewer";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
@@ -47,6 +48,7 @@ export function ConversationThreadBody({
   fill?: boolean;
 }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
+  const [viewing, setViewing] = useState<{ name: string; url: string } | null>(null);
   const [text, setText] = useState("");
   const [links, setLinks] = useState<string[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
@@ -208,12 +210,34 @@ export function ConversationThreadBody({
                 )}
                 {m.attachments.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    {m.attachments.map((a, i) => (
-                      <a key={i} href={a.url} download={a.name} className="flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1 text-xs text-slate-700 hover:bg-white">
-                        <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
-                        <span className="truncate">{a.name}</span>
-                      </a>
-                    ))}
+                    {m.attachments.map((a, i) =>
+                      isImageFile(a.name) ? (
+                        // Image: name + צפייה open the viewer; הורדה downloads.
+                        <div key={i} className="flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1 text-xs text-slate-700">
+                          <button
+                            onClick={() => setViewing(a)}
+                            className="flex min-w-0 flex-1 items-center gap-1.5 text-start hover:text-primary"
+                          >
+                            <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
+                            <span className="truncate">{a.name}</span>
+                          </button>
+                          <button
+                            onClick={() => setViewing(a)}
+                            className="inline-flex shrink-0 items-center gap-1 text-primary hover:underline"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> צפייה
+                          </button>
+                          <a href={a.url} download={a.name} className="ms-[10px] shrink-0 text-primary hover:underline">
+                            הורדה
+                          </a>
+                        </div>
+                      ) : (
+                        <a key={i} href={a.url} download={a.name} className="flex items-center gap-1.5 rounded-md bg-white/70 px-2 py-1 text-xs text-slate-700 hover:bg-white">
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-black" />
+                          <span className="truncate">{a.name}</span>
+                        </a>
+                      )
+                    )}
                   </div>
                 )}
                 {!m.body_text && !m.links.length && !m.attachments.length && (
@@ -329,6 +353,10 @@ export function ConversationThreadBody({
           </label>
         </div>
       </div>
+
+      {viewing && (
+        <ImageViewerModal name={viewing.name} url={viewing.url} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

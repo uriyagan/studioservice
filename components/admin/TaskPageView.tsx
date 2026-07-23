@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { ArrowRight, Link2, FileText, Download, Trash2 } from "@/components/icons";
+import { ArrowRight, Link2, FileText, Download, Trash2, ChevronDown, Eye } from "@/components/icons";
+import { isImageFile, ImageViewerModal } from "@/components/ui/ImageViewer";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -160,6 +161,7 @@ export function TaskPageView({
 
   // ── client-submitted files ─────────────────────────────────
   const [files, setFiles] = useState<{ name: string; url: string }[] | null>(null);
+  const [viewing, setViewing] = useState<{ name: string; url: string } | null>(null);
   useEffect(() => {
     getTaskAttachments(task.id).then(setFiles);
   }, [task.id]);
@@ -294,9 +296,12 @@ export function TaskPageView({
               <button
                 onClick={() => setAdjustOpen((v) => !v)}
                 aria-expanded={adjustOpen}
-                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
               >
-                עריכת זמן ידנית {adjustOpen ? "▴" : "▾"}
+                עריכת זמן ידנית
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${adjustOpen ? "rotate-180" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -463,15 +468,42 @@ export function TaskPageView({
                       {zipError && <p className="mb-1 text-xs text-red-600">{zipError}</p>}
                     </>
                   )}
-                  {files.map((f, i) => (
-                    <a key={i} href={f.url} download={f.name} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-                      <FileText className="h-4 w-4 shrink-0 text-black" />
-                      <span className="truncate">{f.name}</span>
-                      <span className="ms-auto inline-flex shrink-0 items-center gap-1 text-xs text-primary">
-                        <Download className="h-3.5 w-3.5" /> הורדה
-                      </span>
-                    </a>
-                  ))}
+                  {files.map((f, i) =>
+                    isImageFile(f.name) ? (
+                      // Image: name + צפייה open the viewer; only הורדה downloads.
+                      <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                        <button
+                          onClick={() => setViewing(f)}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-start hover:text-primary"
+                        >
+                          <FileText className="h-4 w-4 shrink-0 text-black" />
+                          <span className="truncate">{f.name}</span>
+                        </button>
+                        <button
+                          onClick={() => setViewing(f)}
+                          className="inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> צפייה
+                        </button>
+                        <a
+                          href={f.url}
+                          download={f.name}
+                          className="ms-[10px] inline-flex shrink-0 items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <Download className="h-3.5 w-3.5" /> הורדה
+                        </a>
+                      </div>
+                    ) : (
+                      // Non-image: the whole row downloads.
+                      <a key={i} href={f.url} download={f.name} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                        <FileText className="h-4 w-4 shrink-0 text-black" />
+                        <span className="truncate">{f.name}</span>
+                        <span className="ms-auto inline-flex shrink-0 items-center gap-1 text-xs text-primary">
+                          <Download className="h-3.5 w-3.5" /> הורדה
+                        </span>
+                      </a>
+                    )
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-400">אין קבצים.</p>
@@ -514,6 +546,10 @@ export function TaskPageView({
           </div>
         </div>
       </div>
+
+      {viewing && (
+        <ImageViewerModal name={viewing.name} url={viewing.url} onClose={() => setViewing(null)} />
+      )}
 
       {/* Delete confirmation — irreversible, so an explicit modal. */}
       {confirmDelete && (
