@@ -377,6 +377,16 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   the manual-time accordion **closes itself** after a successful update; tasks-table typography
   unified — one face/size for every cell (LiveTime dropped `font-mono`, keeps `tabular-nums`),
   title black (bold only when unread), timer green only while running, the rest slate-600.
+  Later same day: **thread loading state** is a centered spinner + "בטעינה..." (shared
+  `ConversationThreadBody` → client modal, admin task page, inbox); **image viewer for
+  attachments** — new `components/ui/ImageViewer.tsx` (`isImageFile`, `inlineUrl` which strips
+  the signed URL's `?download=` so the browser renders inline, and a full-screen
+  `ImageViewerModal` at z-[80]); image rows show צפייה (name/צפייה → viewer, only הורדה
+  downloads, 10px gap between them) across the admin task page, client task modal, chat
+  bubbles and the internal log — non-images keep whole-row download; new stroke-based
+  **ChevronDown** icon (same path as the CSS select chevron) replaced the ▾ text arrow on
+  "עריכת זמן ידנית", plus a new **Eye** icon (both plain components in `icons.tsx`, not
+  `mk()`-wrapped, so they inherit currentColor).
 - Session 2026-07-23 (continuation of the UX pass): **client read-state reset** — one-off script
   seeded `message_reads` (read_at = now) for all 21 client users × their 73 tickets that had
   studio messages (96 rows), so the new red dot only fires for messages sent from now on;
