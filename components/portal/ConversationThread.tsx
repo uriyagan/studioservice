@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useId } from "react";
+import { useEffect, useRef, useState, useId } from "react";
 import { X, Paperclip, Link2, Loader2, FileText, CheckCircle2, AlertCircle, Eye } from "@/components/icons";
 import { isImageFile, ImageViewerModal } from "@/components/ui/ImageViewer";
-import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 import { ThreadMessage, recordMessageAttachment } from "@/app/actions/messages";
@@ -33,6 +32,7 @@ export function ConversationThreadBody({
   reloadOnSend = true,
   onAfterSend,
   fill = false,
+  topContent,
 }: {
   ticketId: string;
   load: (ticketId: string) => Promise<ThreadMessage[]>;
@@ -46,6 +46,9 @@ export function ConversationThreadBody({
   // fill = stretch to the parent's height (inbox pane). Otherwise natural
   // height capped at 42vh (modal).
   fill?: boolean;
+  // Rendered INSIDE the scroll area, above the messages — scrolls with them
+  // (e.g. the client modal's collapsible "original task" section).
+  topContent?: React.ReactNode;
 }) {
   const [messages, setMessages] = useState<ThreadMessage[] | null>(null);
   const [viewing, setViewing] = useState<{ name: string; url: string } | null>(null);
@@ -55,10 +58,18 @@ export function ConversationThreadBody({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputId = useId();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const didInitialScroll = useRef(false);
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
 
   const reload = () => load(ticketId).then(setMessages);
   useEffect(() => {
     setMessages(null);
+    didInitialScroll.current = false;
     reload();
     const id = setInterval(() => {
       if (document.visibilityState === "visible") reload();
@@ -66,6 +77,15 @@ export function ConversationThreadBody({
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketId]);
+
+  // Open at the bottom (latest message) once the thread first loads; later
+  // background reloads must not yank the reader's scroll position.
+  useEffect(() => {
+    if (messages !== null && !didInitialScroll.current) {
+      didInitialScroll.current = true;
+      scrollToBottom();
+    }
+  }, [messages]);
 
   const setUp = (id: string, patch: Partial<Upload>) =>
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -160,7 +180,7 @@ export function ConversationThreadBody({
     setLinks([]);
     setUploads([]);
     setBusy(false);
-    if (reloadOnSend) reload();
+    if (reloadOnSend) reload().then(scrollToBottom);
     onAfterSend?.();
   }
 
@@ -170,10 +190,12 @@ export function ConversationThreadBody({
   return (
     <div className={fill ? "flex min-h-0 flex-1 flex-col" : ""}>
       <div
+        ref={scrollRef}
         className={`space-y-3 overflow-y-auto ${
           fill ? "min-h-0 flex-1 p-4" : "mb-4 max-h-[42vh]"
         }`}
       >
+        {topContent}
         {messages === null && (
           <div className="flex flex-col items-center justify-center gap-2.5 py-10">
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -358,56 +380,5 @@ export function ConversationThreadBody({
         <ImageViewerModal name={viewing.name} url={viewing.url} onClose={() => setViewing(null)} />
       )}
     </div>
-  );
-}
-
-// Modal-wrapped conversation (portal task threads + admin TaskThread).
-export function ConversationThread({
-  ticketId,
-  title,
-  onClose,
-  load,
-  send,
-  mineDirection,
-  mineLabel,
-  otherLabel,
-  placeholder,
-  closeOnSend = false,
-  onSent,
-  header,
-}: {
-  ticketId: string;
-  title: string;
-  onClose: () => void;
-  load: (ticketId: string) => Promise<ThreadMessage[]>;
-  send: (prev: SendResult, formData: FormData) => Promise<SendResult>;
-  mineDirection: "in" | "out";
-  mineLabel: string;
-  otherLabel: string;
-  placeholder: string;
-  closeOnSend?: boolean;
-  // Called after a successful send (before the modal closes, if closeOnSend) —
-  // e.g. to pop a confirmation toast.
-  onSent?: () => void;
-  header?: React.ReactNode;
-}) {
-  return (
-    <Modal title={`שיחה — ${title || "ללא שם"}`} onClose={onClose}>
-      {header}
-      <ConversationThreadBody
-        ticketId={ticketId}
-        load={load}
-        send={send}
-        mineDirection={mineDirection}
-        mineLabel={mineLabel}
-        otherLabel={otherLabel}
-        placeholder={placeholder}
-        reloadOnSend={!closeOnSend}
-        onAfterSend={() => {
-          onSent?.();
-          if (closeOnSend) onClose();
-        }}
-      />
-    </Modal>
   );
 }

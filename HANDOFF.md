@@ -387,6 +387,21 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   **ChevronDown** icon (same path as the CSS select chevron) replaced the ▾ text arrow on
   "עריכת זמן ידנית", plus a new **Eye** icon (both plain components in `icons.tsx`, not
   `mk()`-wrapped, so they inherit currentColor).
+- Session 2026-07-23 (evening) — **client-portal task list + modal redesign** (wireframed and
+  approved first): the list gets **tabs** פתוחות/הושלמו/הכל (default open, red dot on הושלמו
+  for unread there), new **תאריך הגשה** and relative **עדכון אחרון** columns (`formatRelativeDay`
+  in `lib/format.ts` — "היום"/"אתמול"/date), unread = bold title + red dot, and the שיחה column
+  is now a **passive indicator** (💬 count / "· חדשה" / "אין הודעות") — the row is the single
+  entry point. The task modal was rebuilt on a new generic **`Modal fill` mode** (`titleAddon` +
+  `subtitle` props; fixed header, children own the scroll): status badge + meta line up top,
+  ONE scroll area holding a **collapsible "המשימה המקורית"** (open when no messages, collapsed
+  otherwise) + the thread (opens scrolled to the latest message — `ConversationThreadBody` got
+  `topContent` + auto-scroll-to-bottom on first load and after own send), composer pinned to
+  the bottom, modal width 50rem in fill mode. **Behaviour change: sending no longer closes the
+  modal** — the message appears in the thread + toast (chat paradigm). The unused
+  `ConversationThread` Modal-wrapper was deleted; `PortalTask` gained `created_at` +
+  `lastActivityAt`. Verified in the browser as the test client (tabs, columns, collapse both
+  ways, bottom-open scroll, pinned composer, send→bubble+toast).
 - Session 2026-07-23 (continuation of the UX pass): **client read-state reset** — one-off script
   seeded `message_reads` (read_at = now) for all 21 client users × their 73 tickets that had
   studio messages (96 rows), so the new red dot only fires for messages sent from now on;

@@ -47,6 +47,19 @@ export function formatDate(iso: string | null): string {
   });
 }
 
+// "היום" / "אתמול" for recent dates, otherwise the regular short date —
+// used for "last activity" style columns where recency is the point.
+export function formatRelativeDay(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const now = new Date();
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays <= 0) return "היום";
+  if (diffDays === 1) return "אתמול";
+  return formatDate(iso);
+}
+
 // Sum the duration of a set of time-log rows, counting an active
 // (end_time === null) segment up to `now`.
 export function sumLoggedSeconds(

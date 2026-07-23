@@ -17,4 +17,7 @@ export interface PortalTask {
   // and whether the latest studio message is newer than my last read.
   msgCount: number;
   unread: boolean;
+  created_at: string;
+  // Latest message in the thread (either side) — null when there are none.
+  lastActivityAt: string | null;
 }

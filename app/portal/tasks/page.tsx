@@ -41,8 +41,11 @@ export default async function PortalTasksPage() {
 
     const msgCount = new Map<string, number>();
     const lastOutAt = new Map<string, string>();
+    const lastAnyAt = new Map<string, string>();
     for (const m of (msgs ?? []) as { ticket_id: string; direction: "in" | "out"; created_at: string }[]) {
       msgCount.set(m.ticket_id, (msgCount.get(m.ticket_id) ?? 0) + 1);
+      const curAny = lastAnyAt.get(m.ticket_id);
+      if (!curAny || m.created_at > curAny) lastAnyAt.set(m.ticket_id, m.created_at);
       if (m.direction === "out") {
         const cur = lastOutAt.get(m.ticket_id);
         if (!cur || m.created_at > cur) lastOutAt.set(m.ticket_id, m.created_at);
@@ -72,6 +75,8 @@ export default async function PortalTasksPage() {
         projectName: nameById.get(t.project_id) ?? "",
         msgCount: msgCount.get(t.id) ?? 0,
         unread: !!lastOut && (!myRead || lastOut > myRead),
+        created_at: t.created_at,
+        lastActivityAt: lastAnyAt.get(t.id) ?? null,
       };
     });
   }
