@@ -78,7 +78,7 @@ export function PurchaseForm({
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" disabled={busy} className="flex-1">
-            {busy ? "מכין תשלום…" : "המשך לתשלום"}
+            {busy ? "מכינים תשלום…" : "המשך לתשלום"}
           </Button>
           <Button type="button" variant="ghost" onClick={onCancel}>
             ביטול
@@ -175,7 +175,7 @@ function PayStep({
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" disabled={busy || !stripe} className="flex-1">
-          {busy ? "מעבד…" : `תשלום €${Number(pkg.price_ils).toLocaleString("he-IL")}`}
+          {busy ? "מעבדים…" : `תשלום €${Number(pkg.price_ils).toLocaleString("he-IL")}`}
         </Button>
         <Button type="button" variant="ghost" onClick={onBack} className="flex items-center justify-center gap-1">
           <ArrowRight className="h-4 w-4" /> חזרה לפרטים

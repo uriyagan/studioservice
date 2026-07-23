@@ -221,7 +221,7 @@ export function TicketForm({
       }
     }
     if (failed > 0) {
-      setError(`המשימה נוצרה, אך ${failed} קבצים לא צורפו. נסה/י שוב או הסר/י אותם.`);
+      setError(`המשימה נוצרה, אך ${failed} קבצים לא צורפו. אפשר לנסות שוב או להסיר אותם.`);
       setStatus("idle");
       router.refresh();
       return;
@@ -251,7 +251,7 @@ export function TicketForm({
           <label className="mb-1.5 block text-sm font-medium text-slate-700">פרויקט</label>
           <select name="project_id" required className={inputCls} defaultValue="">
             <option value="" disabled>
-              בחר פרויקט...
+              בחירת פרויקט...
             </option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -329,7 +329,7 @@ export function TicketForm({
                   type="button"
                   onClick={() => setLinks((prev) => prev.filter((_, idx) => idx !== i))}
                   className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                  title="הסר"
+                  title="הסרה"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -375,7 +375,7 @@ export function TicketForm({
           }`}
         >
           <UploadCloud className="h-7 w-7 text-black" />
-          <p className="text-sm font-medium text-slate-700">גרור קבצים לכאן או לחץ להעלאה</p>
+          <p className="text-sm font-medium text-slate-700">אפשר לגרור קבצים לכאן או ללחוץ להעלאה</p>
           <p className="text-xs text-slate-400">הקבצים מתחילים לעלות מיד עם הבחירה</p>
         </label>
 
@@ -393,18 +393,18 @@ export function TicketForm({
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-slate-400">
-                      {u.status === "uploading" ? "מעלה…" : u.status === "done" ? "הועלה ✓" : "נכשל"}
+                      {u.status === "uploading" ? "בהעלאה…" : u.status === "done" ? "הועלה ✓" : "נכשל"}
                     </span>
                     {u.status === "error" && (
                       <button type="button" onClick={() => retry(u)} className="text-xs text-primary hover:underline">
-                        נסה שוב
+                        ניסיון חוזר
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => removeFile(u.id)}
                       className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                      title="הסר"
+                      title="הסרה"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -422,7 +422,7 @@ export function TicketForm({
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button type="submit" disabled={status === "saving" || uploading} className="w-full">
-          {status === "saving" ? "יוצר משימה…" : uploading ? "ממתין לסיום העלאת קבצים…" : "יצירת משימה"}
+          {status === "saving" ? "יוצרים משימה…" : uploading ? "ממתינים לסיום העלאת קבצים…" : "יצירת משימה"}
         </Button>
         <Button
           type="button"

@@ -133,7 +133,7 @@ export function ConversationThreadBody({
       return;
     }
     if (uploads.length && !res.messageId) {
-      setError("ההודעה נשלחה, אך לא ניתן לצרף כעת את הקבצים. נסה/י לשלוח אותם בהודעה נפרדת.");
+      setError("ההודעה נשלחה, אך לא ניתן לצרף כעת את הקבצים. אפשר לשלוח אותם בהודעה נפרדת.");
       setBusy(false);
       return;
     }
@@ -172,7 +172,7 @@ export function ConversationThreadBody({
           fill ? "min-h-0 flex-1 p-4" : "mb-4 max-h-[42vh]"
         }`}
       >
-        {messages === null && <p className="text-sm text-slate-400">טוען…</p>}
+        {messages === null && <p className="text-sm text-slate-400">בטעינה…</p>}
         {messages?.length === 0 && (
           <p className="text-sm text-slate-400">אין עדיין הודעות בשיחה זו.</p>
         )}
@@ -238,7 +238,7 @@ export function ConversationThreadBody({
               type="button"
               onClick={() => setLinks((p) => p.filter((_, idx) => idx !== i))}
               className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-              title="הסר"
+              title="הסרה"
             >
               <X className="h-4 w-4" />
             </button>
@@ -260,18 +260,18 @@ export function ConversationThreadBody({
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="text-xs text-slate-400">
-                      {u.status === "uploading" ? "מעלה…" : u.status === "done" ? "הועלה ✓" : "נכשל"}
+                      {u.status === "uploading" ? "בהעלאה…" : u.status === "done" ? "הועלה ✓" : "נכשל"}
                     </span>
                     {u.status === "error" && (
                       <button type="button" onClick={() => retry(u)} className="text-xs text-primary hover:underline">
-                        נסה שוב
+                        ניסיון חוזר
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => removeFile(u.id)}
                       className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600"
-                      title="הסר"
+                      title="הסרה"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -289,10 +289,10 @@ export function ConversationThreadBody({
             {busy ? (
               <span className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                שולח…
+                שולחים…
               </span>
             ) : uploading ? (
-              "ממתין לסיום העלאה…"
+              "ממתינים לסיום העלאה…"
             ) : (
               "שליחת הודעה"
             )}

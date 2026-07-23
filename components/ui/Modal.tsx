@@ -46,7 +46,7 @@ export function Modal({
       >
         <div className="mb-4 flex items-center justify-between gap-2">
           <h3 className="min-w-0 truncate text-lg font-semibold text-slate-900">{title}</h3>
-          <button onClick={onClose} className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="סגור">
+          <button onClick={onClose} className="shrink-0 rounded p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="סגירה">
             ✕
           </button>
         </div>

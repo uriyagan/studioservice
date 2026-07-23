@@ -21,7 +21,7 @@ export async function createInvoicePayment(input: {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "לא מחובר" };
+    if (!user) return { ok: false, error: "נדרשת התחברות" };
 
     const db = supabase as unknown as { from: (t: string) => any };
     const { data: pkg } = await db

@@ -215,7 +215,7 @@ export async function recordMessageAttachment(input: {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "לא מחובר" };
+    if (!user) return { ok: false, error: "נדרשת התחברות" };
     const db = supabase as unknown as { from: (t: string) => any };
 
     const { data: prof } = await db.from("profiles").select("role").eq("id", user.id).maybeSingle();
@@ -436,7 +436,7 @@ export async function sendClientReply(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "לא מחובר" };
+    if (!user) return { ok: false, error: "נדרשת התחברות" };
 
     const ticketId = String(formData.get("ticket_id") ?? "");
     const message = String(formData.get("message") ?? "").trim();

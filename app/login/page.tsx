@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   const sendReset = () => {
     if (!email) {
-      setError("הזן אימייל ואז לחץ על איפוס סיסמה");
+      setError("יש להזין אימייל ואז ללחוץ על איפוס סיסמה");
       return;
     }
     setError(null);
@@ -107,7 +107,7 @@ export default function LoginPage() {
                 onChange={(e) => setRemember(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 text-primary"
               />
-              זכור אותי
+              שמירת התחברות
             </label>
 
             {error && (
@@ -121,7 +121,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full"
             >
-              {loading ? "מתחבר..." : "כניסה"}
+              {loading ? "מתחברים..." : "כניסה"}
             </Button>
 
             <div className="text-center">
@@ -136,7 +136,7 @@ export default function LoginPage() {
                   disabled={resetting}
                   className="text-sm text-primary hover:underline disabled:opacity-50"
                 >
-                  {resetting ? "שולח..." : "שלח קישור לאיפוס לאימייל שמולא למעלה"}
+                  {resetting ? "שולחים..." : "שליחת קישור איפוס לאימייל שמולא למעלה"}
                 </button>
               ) : (
                 <button

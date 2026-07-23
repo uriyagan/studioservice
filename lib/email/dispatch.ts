@@ -83,6 +83,42 @@ const FALLBACK_SUBJECT: Record<EmailKey, string> = {
 
 type Vars = Record<string, string | number | undefined>;
 
+// Plain-text rendering of the CONTENT blocks (headings, paragraphs, html
+// notes) with merge tags substituted — logged as the message body so the
+// portal thread shows the actual email text instead of the old
+// "(הודעה מעוצבת — נשלחה במייל)" placeholder. Buttons, dividers, images and
+// footers are chrome, not content, and are skipped.
+function stripHtml(s: string): string {
+  return s
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+
+export function blocksToPlainText(
+  blocks: EmailBlock[],
+  vars: Vars,
+  rawVars: Record<string, string | undefined>
+): string {
+  const parts: string[] = [];
+  for (const b of blocks as Array<{ type: string; text?: string; html?: string }>) {
+    const raw =
+      b.type === "heading" || b.type === "text" ? b.text : b.type === "html" ? b.html : null;
+    if (!raw) continue;
+    const t = stripHtml(substituteTags(String(raw), vars, rawVars))
+      .replace(/[ \t]+\n/g, "\n")
+      .trim();
+    if (t) parts.push(t);
+  }
+  return parts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export async function dispatchEmail(
   key: EmailKey,
   to: string | string[],
@@ -155,6 +191,7 @@ export async function dispatchEmail(
         fromEmail: brand.fromEmail,
         toEmail: recipients.join(", "),
         subject,
+        bodyText: blocksToPlainText(blocks, allVars, rawVars) || null,
         bodyHtml: html,
       });
     }

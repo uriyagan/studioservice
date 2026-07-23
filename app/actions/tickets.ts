@@ -16,7 +16,7 @@ export async function createTicket(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "לא מחובר" };
+    if (!user) return { ok: false, error: "נדרשת התחברות" };
 
     const projectId = String(formData.get("project_id") ?? "");
     const title = String(formData.get("title") ?? "").trim();

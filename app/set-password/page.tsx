@@ -88,7 +88,7 @@ export default function SetPasswordPage() {
               </a>
             </div>
           ) : loading ? (
-            <p className="text-sm text-slate-500">טוען…</p>
+            <p className="text-sm text-slate-500">בטעינה…</p>
           ) : missing ? (
             <div className="space-y-3">
               <p className="text-sm text-red-600">הקישור אינו תקין או שפג תוקפו.</p>
@@ -102,7 +102,7 @@ export default function SetPasswordPage() {
               <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} placeholder="אימות סיסמה" className={inputCls} required />
               {error && <p className="text-sm text-red-600">{error}</p>}
               <Button type="submit" disabled={busy} className="w-full">
-                {busy ? "שומר…" : "שמירת סיסמה"}
+                {busy ? "שומרים…" : "שמירת סיסמה"}
               </Button>
             </form>
           )}

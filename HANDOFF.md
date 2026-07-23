@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-07-22.
+> Full context to resume work in a fresh conversation. Last updated: 2026-07-23.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -350,6 +350,18 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending Sam.**
+- Session 2026-07-23 (continuation of the UX pass): **client read-state reset** — one-off script
+  seeded `message_reads` (read_at = now) for all 21 client users × their 73 tickets that had
+  studio messages (96 rows), so the new red dot only fires for messages sent from now on;
+  **email text now logged as the message body** — `dispatchEmail` renders the template's content
+  blocks (headings/paragraphs/html notes, buttons and chrome skipped) to plain text via the new
+  exported `blocksToPlainText` and stores it as `body_text`, killing the
+  "(הודעה מעוצבת — נשלחה במייל)" placeholder for future sends; the 75 existing html-only out
+  messages were **backfilled** in prod by stripping their stored `body_html` (output verified
+  clean); **gender-neutral sweep of every client-facing string** (upload dropzone, thread
+  composer, retry/remove labels, busy states now plural "יוצרים/שולחים/ממתינים…", login +
+  set-password pages, "לא מחובר" → "נדרשת התחברות" in client actions). Both one-off scripts live
+  in the session scratchpad only — they are not in the repo.
 - Session 2026-07-22: **client-portal UX pass** — green success **toasts** (new
   `components/ui/Toast.tsx`: event-bus `showToast()` + one `<Toaster />` in the portal layout,
   5s auto-dismiss): creating a task now closes the modal and toasts instead of the inline

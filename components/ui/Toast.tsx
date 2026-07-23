@@ -41,7 +41,7 @@ export function Toaster() {
           <button
             onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
             className="-me-1 shrink-0 rounded p-1 text-white/80 hover:bg-white/15 hover:text-white"
-            aria-label="סגור"
+            aria-label="סגירה"
           >
             <X className="h-4 w-4" />
           </button>
