@@ -172,7 +172,12 @@ export function ConversationThreadBody({
           fill ? "min-h-0 flex-1 p-4" : "mb-4 max-h-[42vh]"
         }`}
       >
-        {messages === null && <p className="text-sm text-slate-400">בטעינה…</p>}
+        {messages === null && (
+          <div className="flex flex-col items-center justify-center gap-2.5 py-10">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+            <span className="text-sm text-slate-400">בטעינה...</span>
+          </div>
+        )}
         {messages?.length === 0 && (
           <p className="text-sm text-slate-400">אין עדיין הודעות בשיחה זו.</p>
         )}
