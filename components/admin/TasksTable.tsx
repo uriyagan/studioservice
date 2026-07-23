@@ -44,11 +44,13 @@ const STATUS_RANK: Record<string, number> = {
 const STORAGE_KEY = "studio.tasksTable.cols";
 const PAGE_SIZE = 25;
 
+// Same face and size as every other cell — only the color signals state
+// (green while the timer is running). tabular-nums keeps the digits steady.
 function LiveTime({ logs }: { logs: TimeLog[] }) {
   const hasActive = logs.some((l) => l.end_time === null);
   const s = useLoggedSeconds(logs);
   return (
-    <span className={`font-mono tabular-nums ${hasActive ? "font-semibold text-emerald-600" : ""}`}>
+    <span className={`tabular-nums ${hasActive ? "text-emerald-600" : ""}`}>
       {formatDuration(s)}
     </span>
   );
@@ -206,8 +208,10 @@ export function TasksTable({
   );
 
   // Mail-client-style unread title: bold + red dot. Read rows stay regular.
+  // Same size as every other cell — the title stands out by color (black)
+  // and, when unread, by weight.
   const TitleCell = ({ t }: { t: TaskRow }) => (
-    <span className={`inline-flex items-center gap-2 break-words ${isUnread(t) ? "font-bold text-slate-900" : "font-medium text-slate-800"}`}>
+    <span className={`inline-flex items-center gap-2 break-words text-slate-900 ${isUnread(t) ? "font-bold" : "font-medium"}`}>
       {t.title || <span className="italic font-normal text-slate-400">ללא שם</span>}
       {isUnread(t) && (
         <span title="הודעה חדשה מהלקוח" className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
@@ -343,7 +347,7 @@ export function TasksTable({
               </div>
               <div className="min-w-0">
                 <dt className="text-xs text-slate-400">זמן ביצוע</dt>
-                <dd className="text-slate-700"><LiveTime logs={t.time_logs} /></dd>
+                <dd className="text-slate-600"><LiveTime logs={t.time_logs} /></dd>
               </div>
             </dl>
             {t.status !== "completed" && (
@@ -413,9 +417,9 @@ export function TasksTable({
                     <StatusBadge status={t.status} />
                   </td>
                 )}
-                {visible.created && <td className="px-3 py-2 whitespace-nowrap text-slate-500">{formatDate(t.created_at)}</td>}
+                {visible.created && <td className="px-3 py-2 whitespace-nowrap text-slate-600">{formatDate(t.created_at)}</td>}
                 {visible.exec && (
-                  <td className="px-3 py-2 text-slate-700">
+                  <td className="px-3 py-2 text-slate-600">
                     <LiveTime logs={t.time_logs} />
                   </td>
                 )}

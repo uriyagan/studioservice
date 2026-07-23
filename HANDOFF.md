@@ -372,7 +372,11 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
   subset; Heebo kept as self-hosted fallback in the Tailwind stack). Verified in the browser
   end-to-end as admin (create→toast, assignee→toast, +30m→toast, internal note, send→bubble+
   toast, complete→toast, delete→confirm modal+toast) + mobile tabs; `tsc` and a full
-  `next build` pass.
+  `next build` pass. Polish round (same day): the ⋯ menu clipped under the header card's
+  `overflow-hidden` → replaced with a **direct trash icon** (confirm modal stays as the guard);
+  the manual-time accordion **closes itself** after a successful update; tasks-table typography
+  unified — one face/size for every cell (LiveTime dropped `font-mono`, keeps `tabular-nums`),
+  title black (bold only when unread), timer green only while running, the rest slate-600.
 - Session 2026-07-23 (continuation of the UX pass): **client read-state reset** — one-off script
   seeded `message_reads` (read_at = now) for all 21 client users × their 73 tickets that had
   studio messages (96 rows), so the new red dot only fires for messages sent from now on;
