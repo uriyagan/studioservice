@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-heebo)", "system-ui", "sans-serif"],
+        sans: ["Google Sans", "var(--font-heebo)", "system-ui", "sans-serif"],
       },
       colors: {
         primary: {

@@ -101,27 +101,10 @@ export async function getTicketNotes(ticketId: string): Promise<TicketNote[]> {
   }
 }
 
-// Portal-side: the studio's notes for a task, shown read-only to the client
-// who can see the task (owner or project member). Access is gated by reading
-// the ticket through the RLS client first; the notes themselves are then read
-// + signed via service role. Never includes anything the admin marked private
-// (there is no private flag — every studio note here is client-visible).
-export async function getMyTicketNotes(ticketId: string): Promise<TicketNote[]> {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
-    // RLS lets the caller see the ticket only if they own it / are a member.
-    const db = supabase as unknown as { from: (t: string) => any };
-    const { data: t } = await db.from("tickets").select("id").eq("id", ticketId).maybeSingle();
-    if (!t) return [];
-    return readNotes(ticketId);
-  } catch {
-    return [];
-  }
-}
+// NOTE: task notes used to be client-visible ("הערות מהסטודיו") via a
+// getMyTicketNotes action here. As of 2026-07-23 they are the admins-only
+// "תיעוד פנימי" — the client read path was removed on purpose. Client-facing
+// updates and files go through the conversation thread instead.
 
 export async function createTicketNote(
   ticketId: string,

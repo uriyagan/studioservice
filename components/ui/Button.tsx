@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary" | "success" | "warning" | "ghost";
+type Variant = "primary" | "secondary" | "success" | "warning" | "danger" | "ghost";
 
 const variants: Record<Variant, string> = {
   primary:
@@ -11,6 +11,8 @@ const variants: Record<Variant, string> = {
     "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-400",
   warning:
     "bg-amber-500 text-white hover:bg-amber-600 focus:ring-amber-300",
+  danger:
+    "bg-red-600 text-white hover:bg-red-700 focus:ring-red-400",
   ghost: "bg-transparent text-black hover:bg-slate-100",
 };
 

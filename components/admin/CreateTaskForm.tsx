@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { TicketForm } from "@/components/portal/TicketForm";
 import { PlusCircle } from "@/components/icons";
+import { showToast } from "@/components/ui/Toast";
 import type { AdminOption } from "@/lib/types";
 
 interface ProjectOption {
@@ -38,7 +39,10 @@ export function CreateTaskForm({
             projects={projects}
             admins={admins}
             projectId={fixedProjectId}
-            onDone={() => setOpen(false)}
+            onDone={() => {
+              setOpen(false);
+              showToast("המשימה נוצרה בהצלחה");
+            }}
           />
         </Modal>
       )}

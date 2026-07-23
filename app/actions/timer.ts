@@ -42,7 +42,7 @@ export async function quickStartTimer(): Promise<string> {
     .insert({ ticket_id: ticket.id });
   if (logError) throw new Error(logError.message);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   return ticket.id;
 }
 
@@ -66,7 +66,7 @@ export async function startTimer(ticketId: string) {
     .eq("id", ticketId);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // "Pause Timer" — close the active segment, store its duration,
@@ -81,7 +81,7 @@ export async function pauseTimer(ticketId: string) {
     .eq("id", ticketId);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // "Task Completed" — stop any running timer, save the final
@@ -104,7 +104,7 @@ export async function completeTask(ticketId: string, note?: string) {
     await notifyTaskCompleted(ticketId, trimmedNote);
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // Correct the time on an EXISTING task by `deltaSeconds` — positive to add
@@ -164,7 +164,7 @@ export async function adjustTaskTime(
     });
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     return { ok: true, totalSeconds: current + deltaSeconds };
   } catch (e) {
     return { ok: false, error: (e as Error).message };

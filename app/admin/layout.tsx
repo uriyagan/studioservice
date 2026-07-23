@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NavBar } from "@/components/NavBar";
 import { VersionWatcher } from "@/components/VersionWatcher";
 import { InboxWidget } from "@/components/admin/InboxWidget";
+import { Toaster } from "@/components/ui/Toast";
 
 const LINKS = [
   { href: "/admin", label: "מעקב משימות" },
@@ -42,6 +43,7 @@ export default async function AdminLayout({
       />
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       <InboxWidget />
+      <Toaster />
       <VersionWatcher />
     </div>
   );

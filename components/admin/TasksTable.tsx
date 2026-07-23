@@ -1,25 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useActionState } from "react";
-import { Pencil, Trash2, SlidersHorizontal, ArrowUp, ArrowDown, MessageSquare } from "@/components/icons";
-import { TaskThread } from "@/components/admin/TaskThread";
-import { TaskDetails } from "@/components/admin/TaskDetails";
+import { SlidersHorizontal, ArrowUp, ArrowDown } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { RowTimerControl } from "@/components/admin/RowTimerControl";
-import { updateTicket, deleteTicket } from "@/app/actions/admin";
-import { getReadState, markTicketRead } from "@/app/actions/messages";
+import { getReadState } from "@/app/actions/messages";
 import { Ticket, TimeLog, AdminOption } from "@/lib/types";
 import { formatDate, formatDuration, sumLoggedSeconds } from "@/lib/format";
 import { useLoggedSeconds } from "@/lib/use-logged-seconds";
-
-const initial = { ok: false, error: undefined as string | undefined };
-
-const inputCls =
-  "w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30";
 
 export interface TaskRow extends Ticket {
   projects: { name: string; is_retainer: boolean } | null;
@@ -30,7 +20,6 @@ export interface TaskRow extends Ticket {
   assignee_id?: string | null;
   assigneeName?: string;
 }
-
 
 const READS_KEY = "studio.threadReads";
 
@@ -65,6 +54,10 @@ function LiveTime({ logs }: { logs: TimeLog[] }) {
   );
 }
 
+// Rows are the single entry point: clicking anywhere on a row opens the task
+// page (/admin/tasks/[id]) where viewing, replying and managing all live.
+// The only in-row action left is the timer; an unread client message shows as
+// a bold title + red dot (mail-client style).
 export function TasksTable({
   tasks,
   projects,
@@ -76,6 +69,7 @@ export function TasksTable({
   admins?: AdminOption[];
   currentUserId?: string;
 }) {
+  const router = useRouter();
   const [visible, setVisible] = useState<Record<ColKey, boolean>>({
     title: true,
     project: true,
@@ -88,9 +82,6 @@ export function TasksTable({
   const [sortKey, setSortKey] = useState<ColKey>("created");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [showCols, setShowCols] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [threadFor, setThreadFor] = useState<TaskRow | null>(null);
-  const [detailsFor, setDetailsFor] = useState<TaskRow | null>(null);
   const [reads, setReads] = useState<Record<string, number>>({});
 
   // Filters
@@ -101,7 +92,8 @@ export function TasksTable({
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [page, setPage] = useState(1);
 
-  // Per-browser "read at" per thread — the unread dot clears on open.
+  // Per-browser "read at" per thread, merged with the cross-device server
+  // state. The task page writes both when opened, so dots clear on return.
   useEffect(() => {
     try {
       const raw = localStorage.getItem(READS_KEY);
@@ -109,8 +101,6 @@ export function TasksTable({
     } catch {
       /* noop */
     }
-    // Merge cross-device read state (server source of truth once migrated),
-    // keeping the newest read_at per ticket.
     getReadState().then((server) =>
       setReads((prev) => {
         const m = { ...prev };
@@ -121,22 +111,8 @@ export function TasksTable({
   }, []);
   const isUnread = (t: TaskRow) =>
     !!t.lastInboundAt && new Date(t.lastInboundAt).getTime() > (reads[t.id] ?? 0);
-  const openThread = (t: TaskRow) => {
-    setThreadFor(t);
-    setReads((prev) => {
-      const nv = { ...prev, [t.id]: Date.now() };
-      try {
-        localStorage.setItem(READS_KEY, JSON.stringify(nv));
-      } catch {
-        /* noop */
-      }
-      return nv;
-    });
-    markTicketRead(t.id);
-  };
 
-  const [editState, editAction] = useActionState(updateTicket, initial);
-  const [delState, delAction] = useActionState(deleteTicket, initial);
+  const openTask = (t: TaskRow) => router.push(`/admin/tasks/${t.id}`);
 
   // Persist column choice.
   useEffect(() => {
@@ -147,13 +123,6 @@ export function TasksTable({
       /* noop */
     }
   }, []);
-  // Depend on the editState object (a fresh object per submit), not editState.ok:
-  // ok stays `true` across consecutive edits, so keying on it would skip closing
-  // the modal on the 2nd+ assignment (leaving a React-19 form-reset to flip the
-  // assignee select back to its default while the DB write actually succeeded).
-  useEffect(() => {
-    if (editState.ok) setEditingId(null);
-  }, [editState]);
 
   // Reset to page 1 whenever the filters/sort change.
   useEffect(() => {
@@ -227,45 +196,6 @@ export function TasksTable({
   const cols = COLUMNS.filter((c) => visible[c.key]);
   const colspan = cols.length + 1;
 
-  // Guard the inline edit modal against a concurrently-deleted task.
-  const editingTask = editingId ? tasks.find((t) => t.id === editingId) ?? null : null;
-  useEffect(() => {
-    if (editingId && !tasks.some((t) => t.id === editingId)) setEditingId(null);
-  }, [tasks, editingId]);
-
-  // Shared action cluster (timer / thread / edit / delete) — used by the
-  // desktop table row and the mobile card.
-  const renderActions = (t: TaskRow) => (
-    <div className="flex items-center gap-1.5">
-      {t.status !== "completed" && <RowTimerControl ticket={t} />}
-      <button
-        onClick={() => openThread(t)}
-        title={isUnread(t) ? "הודעה חדשה מהלקוח" : "שיחה"}
-        className={`relative inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] hover:bg-slate-200 ${isUnread(t) ? "text-primary" : "text-slate-500 hover:text-slate-800"}`}
-      >
-        <MessageSquare className="h-[26px] w-[26px]" />
-        {isUnread(t) && (
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
-        )}
-      </button>
-      <button onClick={() => setEditingId(t.id)} title="עריכה" className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] text-slate-500 hover:bg-slate-200 hover:text-slate-800">
-        <Pencil className="h-[26px] w-[26px]" />
-      </button>
-      <form
-        action={delAction}
-        onSubmit={(e) => {
-          if (!confirm(`למחוק את המשימה "${t.title || "ללא שם"}"? הזמן שתועד יימחק לצמיתות.`)) e.preventDefault();
-        }}
-      >
-        <input type="hidden" name="id" value={t.id} />
-        <input type="hidden" name="project_id" value={t.project_id ?? ""} />
-        <button type="submit" title="מחק" className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] text-slate-500 hover:bg-red-100 hover:text-red-600">
-          <Trash2 className="h-[26px] w-[26px]" />
-        </button>
-      </form>
-    </div>
-  );
-
   const Th = ({ k, label }: { k: ColKey; label: string }) => (
     <th className="cursor-pointer select-none px-3 py-2 text-right font-semibold text-slate-600 hover:text-slate-900" onClick={() => onSort(k)}>
       <span className="inline-flex items-center gap-1">
@@ -273,6 +203,16 @@ export function TasksTable({
         {sortKey === k && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
       </span>
     </th>
+  );
+
+  // Mail-client-style unread title: bold + red dot. Read rows stay regular.
+  const TitleCell = ({ t }: { t: TaskRow }) => (
+    <span className={`inline-flex items-center gap-2 break-words ${isUnread(t) ? "font-bold text-slate-900" : "font-medium text-slate-800"}`}>
+      {t.title || <span className="italic font-normal text-slate-400">ללא שם</span>}
+      {isUnread(t) && (
+        <span title="הודעה חדשה מהלקוח" className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+      )}
+    </span>
   );
 
   // An unread client message can land on a completed task — flag it on the tab
@@ -295,12 +235,6 @@ export function TasksTable({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
-      {delState.error && (
-        <p className="border-b border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-          מחיקת המשימה נכשלה: {delState.error}
-        </p>
-      )}
-
       {/* Toolbar */}
       <div className="flex flex-col gap-3 border-b border-slate-100 p-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex items-center gap-1 self-start rounded-lg bg-slate-50 p-1">
@@ -372,14 +306,9 @@ export function TasksTable({
           <p className="px-4 py-6 text-center text-slate-400">אין משימות.</p>
         )}
         {paged.map((t) => (
-          <div key={t.id} className="p-4">
+          <div key={t.id} onClick={() => openTask(t)} className="cursor-pointer p-4 hover:bg-slate-50/70">
             <div className="flex items-start justify-between gap-3">
-              <button
-                onClick={() => setDetailsFor(t)}
-                className="min-w-0 break-words text-right font-semibold text-slate-800 hover:text-primary"
-              >
-                {t.title || <span className="italic text-slate-400">ללא שם</span>}
-              </button>
+              <TitleCell t={t} />
               <span className="shrink-0">
                 <StatusBadge status={t.status} />
               </span>
@@ -389,13 +318,7 @@ export function TasksTable({
                 <div className="col-span-2 min-w-0">
                   <dt className="text-xs text-slate-400">פרויקט</dt>
                   <dd className="break-words text-right text-slate-700" dir="ltr">
-                    {t.project_id ? (
-                      <Link href={`/admin/projects/${t.project_id}`} className="text-primary hover:underline">
-                        {t.projects.name}
-                      </Link>
-                    ) : (
-                      t.projects.name
-                    )}
+                    {t.projects.name}
                   </dd>
                 </div>
               )}
@@ -423,7 +346,11 @@ export function TasksTable({
                 <dd className="text-slate-700"><LiveTime logs={t.time_logs} /></dd>
               </div>
             </dl>
-            <div className="mt-3 border-t border-slate-100 pt-3">{renderActions(t)}</div>
+            {t.status !== "completed" && (
+              <div className="mt-3 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
+                <RowTimerControl ticket={t} />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -435,7 +362,7 @@ export function TasksTable({
               {cols.map((c) => (
                 <Th key={c.key} k={c.key} label={c.label} />
               ))}
-              <th className="px-3 py-2 text-left font-semibold text-slate-600">פעולות</th>
+              <th className="px-3 py-2 text-left font-semibold text-slate-600">טיימר</th>
             </tr>
           </thead>
           <tbody>
@@ -447,22 +374,24 @@ export function TasksTable({
               </tr>
             )}
             {paged.map((t) => (
-              <tr key={t.id} className="border-b border-slate-50 align-middle hover:bg-slate-50/50">
+              <tr
+                key={t.id}
+                onClick={() => openTask(t)}
+                className="cursor-pointer border-b border-slate-50 align-middle hover:bg-slate-50/50"
+              >
                 {visible.title && (
-                  <td className="px-3 py-2 font-medium text-slate-800">
-                    <button
-                      onClick={() => setDetailsFor(t)}
-                      title="צפייה בפרטי המשימה"
-                      className="text-right hover:text-primary hover:underline"
-                    >
-                      {t.title || <span className="italic text-slate-400">ללא שם</span>}
-                    </button>
+                  <td className="px-3 py-2">
+                    <TitleCell t={t} />
                   </td>
                 )}
                 {visible.project && (
                   <td className="px-3 py-2 text-slate-600">
                     {t.projects?.name && t.project_id ? (
-                      <Link href={`/admin/projects/${t.project_id}`} className="hover:text-primary hover:underline">
+                      <Link
+                        href={`/admin/projects/${t.project_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:text-primary hover:underline"
+                      >
                         {t.projects.name}
                       </Link>
                     ) : (
@@ -490,8 +419,10 @@ export function TasksTable({
                     <LiveTime logs={t.time_logs} />
                   </td>
                 )}
-                <td className="px-3 py-2">
-                  <div className="flex justify-end">{renderActions(t)}</div>
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-end">
+                    {t.status !== "completed" && <RowTimerControl ticket={t} />}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -530,92 +461,6 @@ export function TasksTable({
           </button>
         </div>
       </div>
-
-      {threadFor && (
-        <TaskThread ticketId={threadFor.id} title={threadFor.title ?? ""} onClose={() => setThreadFor(null)} />
-      )}
-      {detailsFor && (
-        <TaskDetails
-          ticketId={detailsFor.id}
-          title={detailsFor.title ?? ""}
-          description={detailsFor.description}
-          link={detailsFor.link}
-          status={detailsFor.status}
-          logs={detailsFor.time_logs}
-          onClose={() => setDetailsFor(null)}
-        />
-      )}
-      {editingTask && (
-        <Modal title={`עריכת משימה — ${editingTask.title || "ללא שם"}`} onClose={() => setEditingId(null)}>
-          <EditForm
-            task={editingTask}
-            projects={projects}
-            admins={admins}
-            action={editAction}
-            error={editState.error}
-            onCancel={() => setEditingId(null)}
-          />
-        </Modal>
-      )}
     </div>
-  );
-}
-
-function EditForm({
-  task,
-  projects,
-  admins,
-  action,
-  error,
-  onCancel,
-}: {
-  task: TaskRow;
-  projects: { id: string; name: string }[];
-  admins: AdminOption[];
-  action: (formData: FormData) => void;
-  error?: string;
-  onCancel: () => void;
-}) {
-  return (
-    <form action={action} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <input type="hidden" name="id" value={task.id} />
-      <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-slate-700">שם המשימה</label>
-        <input name="title" defaultValue={task.title ?? ""} placeholder="שם המשימה" className={inputCls} />
-      </div>
-      <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-slate-700">אתר / פרויקט</label>
-        <select name="project_id" defaultValue={task.project_id ?? ""} className={inputCls}>
-          <option value="">ללא פרויקט</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-slate-700">אחראי</label>
-        <select name="assignee_id" defaultValue={task.assignee_id ?? ""} className={inputCls}>
-          <option value="">ללא אחראי</option>
-          {admins.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="sm:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-slate-700">תיאור</label>
-        <textarea name="description" defaultValue={task.description ?? ""} rows={3} placeholder="תיאור (אופציונלי)" className={inputCls} />
-      </div>
-      {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}
-      <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit">שמור</Button>
-        <Button type="button" variant="ghost" onClick={onCancel}>
-          ביטול
-        </Button>
-      </div>
-    </form>
   );
 }

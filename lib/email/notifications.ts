@@ -197,7 +197,7 @@ export async function notifyTaskAssigned(ticketId: string, assigneeId: string) {
       project_name: projectName,
       task_title: ticket.title ?? "",
       task_description: ticket.description ?? "",
-      task_url: `${SITE}/admin`,
+      task_url: `${SITE}/admin/tasks/${ticketId}`,
       site_url: SITE,
       portal_url: `${SITE}/portal`,
     });
@@ -247,7 +247,7 @@ export async function notifyAdminsNewTask(ticketId: string) {
         project_name: projectName,
         task_title: ticket.title ?? "",
         task_description: ticket.description ?? "",
-        task_url: `${SITE}/admin`,
+        task_url: `${SITE}/admin/tasks/${ticketId}`,
         site_url: SITE,
         portal_url: `${SITE}/portal`,
       },

@@ -244,7 +244,7 @@ export async function createAdminTicket(
       }
     }
 
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     return { ok: true, ticketId };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -303,7 +303,7 @@ export async function addManualTime(
       await notifyTaskCompleted(ticket.id);
     });
 
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/projects");
     revalidatePath(`/admin/projects/${projectId}`);
     return { ok: true };
@@ -362,7 +362,7 @@ export async function updateTicket(
       });
     }
 
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/projects");
     if (projectId) revalidatePath(`/admin/projects/${projectId}`);
     return { ok: true };
@@ -387,7 +387,7 @@ export async function deleteTicket(
     const { error } = await admin.from("tickets").delete().eq("id", id);
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath("/admin");
+    revalidatePath("/admin", "layout");
     revalidatePath("/admin/projects");
     if (projectId) revalidatePath(`/admin/projects/${projectId}`);
     return { ok: true };

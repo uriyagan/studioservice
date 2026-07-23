@@ -497,7 +497,7 @@ export async function sendClientReply(
             project_name: ticket.projects?.name || "",
             client_name: clientName,
             full_name: clientName,
-            task_url: "https://service.uriyaganor.com/admin",
+            task_url: `https://service.uriyaganor.com/admin/tasks/${ticketId}`,
             site_url: "https://service.uriyaganor.com",
           },
           { message: messageHtml },

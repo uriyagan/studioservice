@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageSquare, X, ArrowRight } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { ConversationThreadBody } from "@/components/portal/ConversationThread";
+import { showToast } from "@/components/ui/Toast";
 import {
   getConversations,
   getReadState,
@@ -338,13 +339,19 @@ export function InboxWidget() {
                     <button onClick={() => setSelectedId(null)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100 sm:hidden" aria-label="חזרה">
                       <ArrowRight className="h-5 w-5" />
                     </button>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate font-semibold text-slate-900">{selected.clientName}</div>
                       <div className="truncate text-xs text-slate-500">
                         {selected.taskTitle}
                         {selected.projectName ? ` · ${selected.projectName}` : ""}
                       </div>
                     </div>
+                    <a
+                      href={`/admin/tasks/${selected.ticketId}`}
+                      className="shrink-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      פתיחת המשימה
+                    </a>
                   </div>
                   <ConversationThreadBody
                     key={selected.ticketId}
@@ -354,9 +361,12 @@ export function InboxWidget() {
                     mineDirection="out"
                     mineLabel="סטודיו"
                     otherLabel={selected.clientName}
-                    placeholder="כתוב תשובה ללקוח…"
+                    placeholder="כתיבת תשובה ללקוח…"
                     fill
-                    onAfterSend={load}
+                    onAfterSend={() => {
+                      showToast("ההודעה נשלחה ללקוח");
+                      load();
+                    }}
                   />
                 </>
               ) : (

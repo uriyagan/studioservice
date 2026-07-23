@@ -350,6 +350,29 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending Sam.**
+- Session 2026-07-23 (later) — **admin task-management redesign**: the three overlapping modals
+  (details / thread / edit) are GONE, replaced by a **dedicated task page**
+  `/admin/tasks/[id]` (`TaskPageView`): a static **info row** (title, status, project, client,
+  opener, date — deliberately not editable; task fields come from the client, so the whole edit
+  modal was dropped) over an interactive **work row** (assignee dropdown saving inline via
+  `updateTicket`, live timer + `RowTimerControl` — now play/pause ONLY — and a "עריכת זמן ידנית"
+  accordion holding the add/subtract control), then two columns: the task content + **"תיעוד
+  פנימי"** (right) beside the conversation (left); mobile gets a two-tab switcher. The tasks
+  table rows are the single entry point (whole row → task page; unread = bold title + red dot,
+  mail-style; per-row complete ✓ / edit / delete / chat icons removed — delete lives behind the
+  page's ⋯ menu with an in-app confirm Modal, new `danger` Button variant). **"הערות מהסטודיו"
+  became admins-only "תיעוד פנימי"** — `getMyTicketNotes` was deleted and the portal no longer
+  renders notes (existing 5 notes + 27 files kept, hidden from clients; Sam approved after
+  verifying every file was admin-uploaded via the storage-path uid prefix). Admin **green
+  toasts** on: task created, message sent (task page + inbox), task completed, task deleted,
+  time adjusted, assignee changed. Ticket-touching actions now revalidate `("/admin",
+  "layout")` so the nested page refreshes. Emails' `task_url` (new_task_admin, task_assigned,
+  client_reply_admin) now deep-link to `/admin/tasks/[id]`; the inbox thread header got a
+  "פתיחת המשימה" link. **Google Sans app-wide** (Google Fonts CDN `<link>`, has a Hebrew
+  subset; Heebo kept as self-hosted fallback in the Tailwind stack). Verified in the browser
+  end-to-end as admin (create→toast, assignee→toast, +30m→toast, internal note, send→bubble+
+  toast, complete→toast, delete→confirm modal+toast) + mobile tabs; `tsc` and a full
+  `next build` pass.
 - Session 2026-07-23 (continuation of the UX pass): **client read-state reset** — one-off script
   seeded `message_reads` (read_at = now) for all 21 client users × their 73 tickets that had
   studio messages (96 rows), so the new red dot only fires for messages sent from now on;
