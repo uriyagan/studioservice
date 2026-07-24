@@ -51,6 +51,28 @@ export async function quickStartTimer(): Promise<string> {
 export async function startTimer(ticketId: string) {
   const supabase = await assertAdmin();
 
+  // Hard limit: block starting the timer when the project has no active
+  // package with remaining hours. Fail-open on any read error so a stats
+  // hiccup never stops the studio from working.
+  const { data: t } = await supabase
+    .from("tickets")
+    .select("project_id")
+    .eq("id", ticketId)
+    .maybeSingle();
+  if (t?.project_id) {
+    try {
+      const { getActivePackageState } = await import("@/lib/packages");
+      const state = await getActivePackageState(t.project_id);
+      if (state.blocked)
+        throw new Error(
+          "אין חבילה פעילה עם יתרה בפרויקט — יש להקים או לרכוש חבילה חדשה לפני הפעלת טיימר."
+        );
+    } catch (e) {
+      // Re-throw our own block; swallow unexpected read errors (fail-open).
+      if ((e as Error).message.includes("חבילה פעילה")) throw e;
+    }
+  }
+
   // Guard: close any stray active segment first (shouldn't happen,
   // but keeps the one-active-per-ticket invariant safe).
   await closeActiveSegment(supabase, ticketId);
@@ -73,6 +95,9 @@ export async function startTimer(ticketId: string) {
 // mark the ticket paused.
 export async function pauseTimer(ticketId: string) {
   const supabase = await assertAdmin();
+  // Cap first: if this running segment already crossed the package limit,
+  // reconcile trims it to the boundary (and may pause the ticket itself).
+  await reconcileByTicketSafe(ticketId);
   await closeActiveSegment(supabase, ticketId);
 
   const { error } = await supabase
@@ -89,6 +114,8 @@ export async function pauseTimer(ticketId: string) {
 // the project_stats view (no manual deduction, no drift).
 export async function completeTask(ticketId: string, note?: string) {
   const supabase = await assertAdmin();
+  // Cap any over-limit running time to the package boundary before closing.
+  await reconcileByTicketSafe(ticketId);
   await closeActiveSegment(supabase, ticketId);
 
   const { error } = await supabase
@@ -129,6 +156,26 @@ export async function adjustTaskTime(
     if (!Number.isFinite(deltaSeconds) || deltaSeconds === 0)
       return { ok: false, error: "יש להזין זמן גדול מאפס" };
 
+    // Hard limit: an ADDITION can't push past the active package's remaining.
+    if (deltaSeconds > 0) {
+      const { data: t } = await supabase
+        .from("tickets")
+        .select("project_id")
+        .eq("id", ticketId)
+        .maybeSingle();
+      if (t?.project_id) {
+        const { getActivePackageState } = await import("@/lib/packages");
+        const state = await getActivePackageState(t.project_id);
+        if (state.blocked)
+          return { ok: false, error: "אין חבילה פעילה עם יתרה בפרויקט — יש להקים/לרכוש חבילה חדשה." };
+        if (deltaSeconds > state.remainingSeconds)
+          return {
+            ok: false,
+            error: `התוספת חורגת מיתרת החבילה (נותרו ${formatDuration(state.remainingSeconds)}).`,
+          };
+      }
+    }
+
     // A reduction must not drive the task's total below zero — the display
     // helpers all clamp at 0, so it would look fine while quietly subtracting
     // from the project's hours_used. Read the total the same way the UI does
@@ -168,6 +215,43 @@ export async function adjustTaskTime(
     return { ok: true, totalSeconds: current + deltaSeconds };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Live auto-stop: called by the timer UI the moment its countdown reaches
+// zero. Reconcile caps the running segment at the package boundary, marks
+// the package depleted, activates the next queued package, and notifies
+// the responsible admin. Returns the fresh blocked state for the UI.
+export async function enforcePackageLimit(
+  ticketId: string
+): Promise<{ ok: boolean; blocked?: boolean }> {
+  try {
+    await assertAdmin();
+    const { reconcileProjectByTicket, getActivePackageState } = await import("@/lib/packages");
+    await reconcileProjectByTicket(ticketId);
+    const supabase = await createClient();
+    const { data: t } = await supabase
+      .from("tickets")
+      .select("project_id")
+      .eq("id", ticketId)
+      .maybeSingle();
+    let blocked = false;
+    if (t?.project_id) blocked = (await getActivePackageState(t.project_id)).blocked;
+    revalidatePath("/admin", "layout");
+    return { ok: true, blocked };
+  } catch {
+    return { ok: false };
+  }
+}
+
+// Reconcile the ticket's project, swallowing errors so enforcement never
+// breaks the core pause/complete flow.
+async function reconcileByTicketSafe(ticketId: string) {
+  try {
+    const { reconcileProjectByTicket } = await import("@/lib/packages");
+    await reconcileProjectByTicket(ticketId);
+  } catch (e) {
+    console.error("reconcile failed:", (e as Error).message);
   }
 }
 

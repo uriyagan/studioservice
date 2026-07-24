@@ -77,7 +77,9 @@ export const EMAIL_DEFS = [
   { key: "task_completed", title: "משימה הושלמה", to: "client" },
   { key: "package_half", title: "50% מהחבילה נוצלו", to: "client" },
   { key: "package_depleted", title: "החבילה הסתיימה", to: "client" },
-  { key: "hours_added", title: "שעות נוספו לחבילה", to: "client" },
+  { key: "hours_added", title: "שעות נוספו לחבילה (רכישת Stripe)", to: "client" },
+  { key: "package_added_studio", title: "חבילה נוספה ע״י הצוות", to: "client" },
+  { key: "package_ended_admin", title: "חבילה נגמרה — טיימר נעצר (לאחראי)", to: "admin" },
   { key: "new_task_admin", title: "משימה חדשה מלקוח (למנהלים)", to: "admin" },
   { key: "task_assigned", title: "שיוך אחראי למשימה (לאחראי)", to: "admin" },
   { key: "ticket_reply", title: "התכתבות עם לקוח", to: "client" },
@@ -111,7 +113,7 @@ export const MERGE_TAGS: {
 }[] = [
   {
     group: "כללי",
-    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
+    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "package_added_studio", "package_ended_admin", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{first_name}", label: "שם פרטי" },
       { token: "{last_name}", label: "שם משפחה" },
@@ -140,7 +142,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "משימה",
-    emails: ["task_completed", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
+    emails: ["task_completed", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "package_ended_admin"],
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
@@ -165,7 +167,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "שעות חבילה",
-    emails: ["task_completed", "package_half", "package_depleted", "hours_added"],
+    emails: ["task_completed", "package_half", "package_depleted", "hours_added", "package_added_studio"],
     tags: [
       { token: "{hours_used}", label: "שעות שנוצלו" },
       { token: "{hours_remaining}", label: "זמן שנותר בחבילה" },

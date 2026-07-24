@@ -43,6 +43,17 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "t", type: "text", text: "היי {first_name}, נוספו {hours_added} לחבילת השירות שלך.", align: "right", size: "15" },
     { id: "t2", type: "text", text: "זמן שנותר בחבילה: {hours_remaining} מתוך {total_hours}.", align: "right", size: "15" },
   ],
+  package_added_studio: [
+    { id: "h", type: "heading", text: "נוספה לך חבילת שעות", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, הצוות הוסיף עבורך חבילת שירות חדשה של {hours_added}.", align: "right", size: "15" },
+    { id: "t2", type: "text", text: "זמן שנותר בחבילה הפעילה: {hours_remaining} מתוך {total_hours}.", align: "right", size: "15" },
+    { id: "b", type: "button", text: "צפייה בפורטל", href: "{portal_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
+  package_ended_admin: [
+    { id: "h", type: "heading", text: "חבילה נגמרה — הטיימר נעצר", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "החבילה של <b>{client_name}</b> בפרויקט {project_name} נוצלה במלואה. הטיימר במשימה <b>{task_title}</b> נעצר אוטומטית.", align: "right", size: "15" },
+    { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
   package_half: [
     { id: "h", type: "heading", text: "ניצלת 50% מהחבילה", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, ניצלת מחצית מחבילת השירות. נותרו {hours_remaining} מתוך {total_hours}.", align: "right", size: "15" },
@@ -75,6 +86,8 @@ const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   package_half: "ניצלת 50% מהחבילה",
   package_depleted: "החבילה הסתיימה",
   hours_added: "נוספו שעות לחבילה",
+  package_added_studio: "נוספה לך חבילת שעות",
+  package_ended_admin: "חבילה נגמרה — הטיימר נעצר",
   new_task_admin: "פנייה חדשה מלקוח",
   task_assigned: "שויכה אליך משימה: {task_title}",
   ticket_reply: "בנוגע למשימה: {task_title}",
