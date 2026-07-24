@@ -8,7 +8,7 @@ import { DEFAULT_BRAND, EmailBlock, EmailKey } from "./types";
 
 // Built-in fallback bodies used when an admin hasn't designed the
 // template yet (so e.g. the welcome email still carries its link).
-const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
+export const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
   welcome: [
     { id: "h", type: "heading", text: "ברוכים הבאים, {first_name}!", level: "h2", align: "right" },
     { id: "t", type: "text", text: "נוצר עבורך חשבון בפורטל השירות. לחצו על הכפתור כדי לבחור סיסמה ולהתחבר.", align: "right", size: "15" },
@@ -79,7 +79,7 @@ const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
   ],
 };
 
-const FALLBACK_SUBJECT: Record<EmailKey, string> = {
+export const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   welcome: "ברוכים הבאים",
   password_reset: "איפוס סיסמה",
   task_completed: "✓ המשימה הושלמה",
