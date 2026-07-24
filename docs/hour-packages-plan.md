@@ -70,5 +70,5 @@
 
 ## מיגרציה / backfill
 
-- לכל פרויקט־שעות: חבילה `active` אחת בגודל `total_hours_allocated`, `source='studio'`, `activated_at=created_at`. הקבלות ההיסטוריות (`purchases`) נשארות; לא משחזרים מהן חבילות.
+- לכל פרויקט־שעות: חבילה `active` אחת בגודל `total_hours_allocated`, `source='client_purchase'` (לפי בקשת המשתמש — חבילות מהוגרות מוצגות כאילו הלקוח רכש), `activated_at=created_at`. הקבלות ההיסטוריות (`purchases`) נשארות; לא משחזרים מהן חבילות.
 - **מקרה חריג יחיד — barak-188.com:** שילם חיצונית על 40 שעות. החבילה הישנה נסגרת (`depleted`) והיתרה העודפת עוברת אוטומטית לחבילת 40 השעות החדשה (`source='studio'`). מטופל במיגרציה נפרדת `2026-07-24_barak_external_package.sql`.

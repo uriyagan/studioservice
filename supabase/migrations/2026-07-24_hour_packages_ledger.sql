@@ -148,7 +148,7 @@ left join queued   q on q.project_id = p.id;
 insert into public.project_packages
   (project_id, client_id, source, hours, status, activated_at, note)
 select
-  p.id, p.client_id, 'studio', p.total_hours_allocated, 'active',
+  p.id, p.client_id, 'client_purchase', p.total_hours_allocated, 'active',
   p.created_at, 'העברת יתרה קיימת (מיגרציה)'
 from public.projects p
 where coalesce(p.is_retainer, false) = false
