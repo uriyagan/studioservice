@@ -6,17 +6,19 @@ import { Button } from "@/components/ui/Button";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
 import { formatHours, formatDate } from "@/lib/format";
 import { History, Download, ArrowLeft } from "@/components/icons";
-import { HourPackageRow, ProjectStats, Purchase } from "@/lib/types";
+import { HourPackageRow, ProjectPackage, ProjectStats, Purchase } from "@/lib/types";
 
 export function PurchaseView({
   projects,
   packages,
   purchases,
+  projectPackages = [],
   billing,
 }: {
   projects: ProjectStats[];
   packages: HourPackageRow[];
   purchases: Purchase[];
+  projectPackages?: ProjectPackage[];
   billing: BillingInfo;
 }) {
   const [selected, setSelected] = useState<HourPackageRow | null>(null);
@@ -24,6 +26,14 @@ export function PurchaseView({
   const buyable = projects.filter((p) => !p.is_build);
   const targets = buyable.length ? buyable : projects;
   const [targetId, setTargetId] = useState(targets[0]?.id ?? "");
+
+  const nameById = new Map(projects.map((p) => [p.id, p.name]));
+  const queued = projectPackages.filter((p) => p.status === "queued");
+  const history = projectPackages
+    .filter((p) => p.status === "depleted")
+    .sort((a, b) => (b.closed_at ?? b.created_at).localeCompare(a.closed_at ?? a.created_at));
+  const sourceLabel = (s: ProjectPackage["source"]) =>
+    s === "studio" ? 'נוספה ע"י הצוות' : "רכשת";
 
   return (
     <div className="space-y-8">
@@ -54,9 +64,28 @@ export function PurchaseView({
               const used = Math.max(0, total - remaining);
               const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
               const low = total > 0 && remaining / total <= 0.2;
+              if (!p.has_active) {
+                return (
+                  <div key={p.id}>
+                    <div className="mb-2 font-semibold text-slate-800">{p.name}</div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-sm">
+                      <p className="font-medium text-amber-700">אין חבילה פעילה — החבילה הסתיימה</p>
+                      <p className="mt-1 text-slate-500">כדי להמשיך יש לרכוש חבילה חדשה למטה.</p>
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <div key={p.id}>
-                  <div className="mb-2 font-semibold text-slate-800">{p.name}</div>
+                  <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-slate-800">{p.name}</span>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                      {p.active_source === "studio" ? 'נוספה ע"י הצוות' : "רכשת"}
+                    </span>
+                    {p.active_started_at && (
+                      <span className="text-xs text-slate-400">הופעלה {formatDate(p.active_started_at)}</span>
+                    )}
+                  </div>
                   <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
                       className={`h-full rounded-full transition-all ${low ? "bg-red-500" : "bg-primary"}`}
@@ -83,6 +112,33 @@ export function PurchaseView({
           </div>
         </Card>
       </div>
+
+      {/* Queued packages */}
+      {queued.length > 0 && (
+        <div>
+          <h2 className="mb-3 font-semibold text-slate-900">חבילות בתור</h2>
+          <Card>
+            <div className="space-y-3">
+              {queued.map((pk) => (
+                <div key={pk.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-600">
+                      ממתינה
+                    </span>
+                    <span className="font-medium text-slate-800">חבילת {formatHours(pk.hours)}</span>
+                    {projects.length > 1 && (
+                      <span className="text-sm text-slate-400">· {nameById.get(pk.project_id) ?? ""}</span>
+                    )}
+                  </div>
+                  <span className="text-sm text-slate-500">
+                    תופעל כשהחבילה הנוכחית תסתיים · {sourceLabel(pk.source)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Buy a new package */}
       <div>
@@ -135,6 +191,40 @@ export function PurchaseView({
           </div>
         )}
       </div>
+
+      {history.length > 0 && (
+        <div>
+          <h2 className="mb-3 font-semibold text-slate-900">היסטוריית חבילות</h2>
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[420px] text-sm" dir="rtl">
+                <thead className="border-b border-slate-100 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2 text-right font-semibold">התחלה</th>
+                    <th className="px-3 py-2 text-right font-semibold">סיום</th>
+                    <th className="px-3 py-2 text-right font-semibold">שעות</th>
+                    <th className="px-3 py-2 text-right font-semibold">מקור</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((pk) => (
+                    <tr key={pk.id} className="border-b border-slate-50 last:border-0">
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-500">
+                        {formatDate(pk.activated_at)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-500">
+                        {formatDate(pk.closed_at)}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-800">{formatHours(pk.hours)}</td>
+                      <td className="px-3 py-2 text-slate-600">{sourceLabel(pk.source)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <div>
         <h2 className="mb-3 flex items-center gap-1.5 font-semibold text-slate-900">
