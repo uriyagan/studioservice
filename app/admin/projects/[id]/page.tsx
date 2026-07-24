@@ -8,8 +8,10 @@ import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
 import { ProjectStats } from "@/lib/types";
 import { ProjectMembers, MemberRow } from "@/components/admin/ProjectMembers";
 import { ProjectNotes } from "@/components/admin/ProjectNotes";
+import { PackagesPanel } from "@/components/admin/PackagesPanel";
 import { ArrowRight } from "@/components/icons";
 import { formatHours } from "@/lib/format";
+import { listProjectPackages, reconcileProject } from "@/lib/packages";
 import { toAdminOptions } from "@/lib/admins";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,11 @@ export default async function ProjectPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+
+  // Enforce the package limit on load: caps a stale running timer to the
+  // package boundary (and activates the next queued package) before we read
+  // the stats, so the numbers shown are already reconciled.
+  await reconcileProject(id);
 
   const [{ data: project }, { data: tickets }, { data: projectList }, { data: adminList }] =
     await Promise.all([
@@ -37,6 +44,8 @@ export default async function ProjectPage({
   if (!project) notFound();
 
   const p = project as ProjectStats;
+  const isHoursProject = !p.is_retainer && !p.is_build;
+  const packages = isHoursProject ? await listProjectPackages(id) : [];
   const rows = (tickets ?? []) as TaskCardTicket[];
   const projects = (projectList ?? []) as { id: string; name: string }[];
   const admins = toAdminOptions(
@@ -80,14 +89,16 @@ export default async function ProjectPage({
               <span className="mt-1 inline-block rounded-full bg-primary-light px-2.5 py-1 text-xs font-medium text-primary">
                 ריטיינר · שעות בלתי מוגבלות
               </span>
-            ) : (
+            ) : p.has_active ? (
               <p className="mt-1 text-sm text-slate-500">
-                נוצלו {formatHours(p.hours_used)} מתוך{" "}
+                בחבילה הפעילה: נוצלו {formatHours(p.hours_used)} מתוך{" "}
                 {formatHours(p.total_hours_allocated)} ·{" "}
                 <span className="font-medium text-slate-700">
                   נותרו {formatHours(p.hours_remaining)}
                 </span>
               </p>
+            ) : (
+              <p className="mt-1 text-sm text-amber-600">אין חבילה פעילה — הטיימר חסום</p>
             )}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start [&_button]:w-full sm:[&_button]:w-auto">
@@ -96,6 +107,12 @@ export default async function ProjectPage({
           </div>
         </div>
       </div>
+
+      {isHoursProject && (
+        <Card>
+          <PackagesPanel projectId={id} stats={p} packages={packages} />
+        </Card>
+      )}
 
       <Card>
         <h2 className="mb-1 font-semibold text-slate-900">משתתפים בפרויקט</h2>
