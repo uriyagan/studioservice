@@ -46,7 +46,6 @@ async function processSuccess(opts: {
         name: prof?.name ? `${prof.name} — חבילת שירות` : "חבילת שירות",
         client_id: clientId,
         is_retainer: false,
-        total_hours_allocated: 0,
       })
       .select("id")
       .single();

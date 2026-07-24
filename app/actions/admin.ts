@@ -83,7 +83,6 @@ export async function createProject(
       name,
       client_id: clientId,
       is_retainer: isRetainer,
-      total_hours_allocated: totalHours,
     };
     let { data: created, error } = await supabase
       .from("projects")

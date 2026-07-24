@@ -27,7 +27,6 @@ export interface Project {
   name: string;
   is_retainer: boolean;
   is_build?: boolean;
-  total_hours_allocated: number;
   created_at: string;
 }
 
