@@ -46,6 +46,8 @@ export default async function ProjectPage({
   const p = project as ProjectStats;
   const isHoursProject = !p.is_retainer && !p.is_build;
   const packages = isHoursProject ? await listProjectPackages(id) : [];
+  // Block starting timers when the active package is exhausted (or absent).
+  const timerBlocked = isHoursProject && (!p.has_active || (Number(p.hours_remaining) || 0) <= 0);
   const rows = (tickets ?? []) as TaskCardTicket[];
   const projects = (projectList ?? []) as { id: string; name: string }[];
   const admins = toAdminOptions(
@@ -148,6 +150,7 @@ export default async function ProjectPage({
             ticket={ticket}
             projects={projects}
             showProject={false}
+            blocked={timerBlocked}
           />
         ))}
       </section>

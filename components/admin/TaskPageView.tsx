@@ -52,10 +52,12 @@ export function TaskPageView({
   task,
   admins,
   currentUserId,
+  timerBlocked = false,
 }: {
   task: TaskPageData;
   admins: AdminOption[];
   currentUserId: string;
+  timerBlocked?: boolean;
 }) {
   const router = useRouter();
   const completed = task.status === "completed";
@@ -292,7 +294,7 @@ export function TaskPageView({
               >
                 {formatDuration(totalSeconds)}
               </span>
-              {!completed && <RowTimerControl ticket={timerTicket} />}
+              {!completed && <RowTimerControl ticket={timerTicket} blocked={timerBlocked} />}
               <button
                 onClick={() => setAdjustOpen((v) => !v)}
                 aria-expanded={adjustOpen}

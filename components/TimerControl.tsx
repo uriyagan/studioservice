@@ -5,20 +5,27 @@ import { Ticket, TimeLog } from "@/lib/types";
 import { formatDuration, sumLoggedSeconds } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { showToast } from "@/components/ui/Toast";
 import { startTimer, pauseTimer, completeTask } from "@/app/actions/timer";
 
 // Live, refresh-safe timer. Elapsed time is derived entirely from
 // the time_logs rows in the DB — the active segment (end_time null)
 // is counted from its start_time, so a page refresh recomputes the
 // exact same value and keeps ticking.
+//
+// `blocked` = the project's active package is exhausted → starting/resuming is
+// disabled (pause + complete stay allowed). A server-rejected start surfaces
+// as a red toast.
 export function TimerControl({
   ticket,
   logs,
   showComplete = true,
+  blocked = false,
 }: {
   ticket: Ticket;
   logs: TimeLog[];
   showComplete?: boolean;
+  blocked?: boolean;
 }) {
   const hasActive = logs.some((l) => l.end_time === null);
   const [elapsed, setElapsed] = useState(() => sumLoggedSeconds(logs));
@@ -38,7 +45,8 @@ export function TimerControl({
     return () => clearInterval(id);
   }, [hasActive, logs]);
 
-  const run = (fn: () => Promise<void>) => startTransition(() => void fn());
+  const run = (fn: () => Promise<void>) =>
+    startTransition(() => void fn().catch((e) => showToast((e as Error)?.message || "הפעולה נכשלה", "error")));
 
   const running = ticket.status === "in_progress";
   const done = ticket.status === "completed";
@@ -61,7 +69,8 @@ export function TimerControl({
           {ticket.status === "pending" && (
             <Button
               variant="primary"
-              disabled={isPending}
+              disabled={isPending || blocked}
+              title={blocked ? "אין חבילה פעילה בפרויקט — הטיימר חסום" : undefined}
               onClick={() => run(() => startTimer(ticket.id))}
             >
               ▶ התחל טיפול
@@ -71,7 +80,8 @@ export function TimerControl({
           {ticket.status === "paused" && (
             <Button
               variant="primary"
-              disabled={isPending}
+              disabled={isPending || blocked}
+              title={blocked ? "אין חבילה פעילה בפרויקט — הטיימר חסום" : undefined}
               onClick={() => run(() => startTimer(ticket.id))}
             >
               ▶ המשך טיימר

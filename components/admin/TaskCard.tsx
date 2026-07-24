@@ -50,10 +50,12 @@ export function TaskCard({
   ticket,
   projects,
   showProject = true,
+  blocked = false,
 }: {
   ticket: TaskCardTicket;
   projects: { id: string; name: string }[];
   showProject?: boolean;
+  blocked?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [editState, editAction] = useActionState(updateTicket, initial);
@@ -137,7 +139,7 @@ export function TaskCard({
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <TimerControl ticket={ticket} logs={ticket.time_logs} />
+          <TimerControl ticket={ticket} logs={ticket.time_logs} blocked={blocked} />
           <div className="flex items-center gap-1">
             <Button variant="ghost" onClick={() => setEditing((v) => !v)}>
               {editing ? "ביטול" : "עריכה"}
