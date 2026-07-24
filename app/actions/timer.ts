@@ -47,48 +47,56 @@ export async function quickStartTimer(): Promise<string> {
 }
 
 // "Start Treatment" / "Resume Timer" — both open a fresh active
-// time-log segment and mark the ticket in_progress.
-export async function startTimer(ticketId: string) {
-  const supabase = await assertAdmin();
+// time-log segment and mark the ticket in_progress. Returns a structured
+// result (never throws for the block) — a thrown server-action error is
+// masked to a generic English string in production, so the friendly Hebrew
+// message would be lost.
+export async function startTimer(
+  ticketId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await assertAdmin();
 
-  // Hard limit: block starting the timer when the project has no active
-  // package with remaining hours. Fail-open on any read error so a stats
-  // hiccup never stops the studio from working.
-  const { data: t } = await supabase
-    .from("tickets")
-    .select("project_id")
-    .eq("id", ticketId)
-    .maybeSingle();
-  if (t?.project_id) {
-    try {
-      const { getActivePackageState } = await import("@/lib/packages");
-      const state = await getActivePackageState(t.project_id);
-      if (state.blocked)
-        throw new Error(
-          "אין חבילה פעילה עם יתרה בפרויקט — יש להקים או לרכוש חבילה חדשה לפני הפעלת טיימר."
-        );
-    } catch (e) {
-      // Re-throw our own block; swallow unexpected read errors (fail-open).
-      if ((e as Error).message.includes("חבילה פעילה")) throw e;
+    // Hard limit: block starting when the project has no active package with
+    // remaining hours. Fail-open on a stats read hiccup so it never stops work.
+    const { data: t } = await supabase
+      .from("tickets")
+      .select("project_id")
+      .eq("id", ticketId)
+      .maybeSingle();
+    if (t?.project_id) {
+      try {
+        const { getActivePackageState } = await import("@/lib/packages");
+        const state = await getActivePackageState(t.project_id);
+        if (state.blocked)
+          return {
+            ok: false,
+            error:
+              "אין חבילה פעילה עם יתרה בפרויקט — יש להקים או לרכוש חבילה חדשה לפני הפעלת טיימר.",
+          };
+      } catch {
+        /* fail-open */
+      }
     }
+
+    // Guard: close any stray active segment first (shouldn't happen,
+    // but keeps the one-active-per-ticket invariant safe).
+    await closeActiveSegment(supabase, ticketId);
+
+    const { error: logError } = await supabase.from("time_logs").insert({ ticket_id: ticketId });
+    if (logError) return { ok: false, error: logError.message };
+
+    const { error } = await supabase
+      .from("tickets")
+      .update({ status: "in_progress" })
+      .eq("id", ticketId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
   }
-
-  // Guard: close any stray active segment first (shouldn't happen,
-  // but keeps the one-active-per-ticket invariant safe).
-  await closeActiveSegment(supabase, ticketId);
-
-  const { error: logError } = await supabase
-    .from("time_logs")
-    .insert({ ticket_id: ticketId });
-  if (logError) throw new Error(logError.message);
-
-  const { error } = await supabase
-    .from("tickets")
-    .update({ status: "in_progress" })
-    .eq("id", ticketId);
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/admin", "layout");
 }
 
 // "Pause Timer" — close the active segment, store its duration,

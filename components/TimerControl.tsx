@@ -45,8 +45,15 @@ export function TimerControl({
     return () => clearInterval(id);
   }, [hasActive, logs]);
 
-  const run = (fn: () => Promise<void>) =>
-    startTransition(() => void fn().catch((e) => showToast((e as Error)?.message || "הפעולה נכשלה", "error")));
+  const run = (fn: () => Promise<{ ok: boolean; error?: string } | void>) =>
+    startTransition(async () => {
+      try {
+        const r = await fn();
+        if (r && r.ok === false) showToast(r.error || "הפעולה נכשלה", "error");
+      } catch (e) {
+        showToast((e as Error)?.message || "הפעולה נכשלה", "error");
+      }
+    });
 
   const running = ticket.status === "in_progress";
   const done = ticket.status === "completed";

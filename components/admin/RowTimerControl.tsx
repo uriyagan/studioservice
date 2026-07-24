@@ -20,8 +20,15 @@ export function RowTimerControl({ ticket, blocked = false }: { ticket: Ticket; b
 
   const running = ticket.status === "in_progress";
   const startBlocked = blocked && !running;
-  const run = (fn: () => Promise<void>) =>
-    start(() => void fn().catch((e) => showToast((e as Error)?.message || "הפעולה נכשלה", "error")));
+  const run = (fn: () => Promise<{ ok: boolean; error?: string } | void>) =>
+    start(async () => {
+      try {
+        const r = await fn();
+        if (r && r.ok === false) showToast(r.error || "הפעולה נכשלה", "error");
+      } catch (e) {
+        showToast((e as Error)?.message || "הפעולה נכשלה", "error");
+      }
+    });
 
   return (
     <button
