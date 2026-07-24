@@ -1,7 +1,7 @@
 import { getMyProjects } from "@/lib/portal-data";
 import { PurchaseView } from "@/components/portal/PurchaseView";
 import { BuyWelcome } from "@/components/portal/BuyWelcome";
-import { HourPackageRow, Purchase } from "@/lib/types";
+import { HourPackageRow, ProjectPackage, Purchase } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +33,25 @@ export default async function PortalPackagesPage() {
     return <BuyWelcome packages={packages} billing={billing} />;
   }
 
+  // Package instances for this client's projects (RLS scopes to their own).
+  const projectIds = projects.map((p) => p.id);
+  const { data: ppRows } = await supabase
+    .from("project_packages")
+    .select("*")
+    .in("project_id", projectIds)
+    .order("created_at", { ascending: true });
+  const projectPackages = (ppRows ?? []) as ProjectPackage[];
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-slate-900">חבילות שירות</h1>
-      <PurchaseView projects={projects} packages={packages} purchases={purchases} billing={billing} />
+      <PurchaseView
+        projects={projects}
+        packages={packages}
+        purchases={purchases}
+        projectPackages={projectPackages}
+        billing={billing}
+      />
     </div>
   );
 }

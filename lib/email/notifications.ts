@@ -87,32 +87,38 @@ export async function notifyTaskCompleted(ticketId: string, note?: string) {
   }
 }
 
-// Fire the 50% / depleted emails once each (gated by project flags).
+// Fire the 50% / depleted emails once each, gated by flags on the ACTIVE
+// package (each new package gets a fresh set of thresholds). Values come
+// from project_stats, which is scoped to the active package.
 export async function checkUsageThresholds(projectId: string) {
   try {
     const d = db();
-    const { data: proj } = await d
-      .from("projects")
-      .select("is_retainer, total_hours_allocated, client_id, notified_half, notified_depleted, name")
-      .eq("id", projectId)
-      .maybeSingle();
-    if (!proj || proj.is_retainer || !proj.client_id) return;
-
-    const total = Number(proj.total_hours_allocated) || 0;
-    if (total <= 0) return;
-
     const { data: stats } = await d
       .from("project_stats")
-      .select("hours_used, hours_remaining, total_hours_allocated, name")
+      .select(
+        "client_id, name, is_retainer, has_active, active_package_id, total_hours_allocated, hours_used, hours_remaining"
+      )
       .eq("id", projectId)
       .maybeSingle();
-    const used = Number(stats?.hours_used) || 0;
-    const remaining = Number(stats?.hours_remaining) || 0;
+    if (!stats || stats.is_retainer || !stats.client_id || !stats.has_active) return;
+
+    const total = Number(stats.total_hours_allocated) || 0;
+    if (total <= 0) return;
+    const used = Number(stats.hours_used) || 0;
+    const remaining = Number(stats.hours_remaining) || 0;
+
+    const { data: pkg } = await d
+      .from("project_packages")
+      .select("notified_half, notified_depleted")
+      .eq("id", stats.active_package_id)
+      .maybeSingle();
+    const notifiedHalf = !!pkg?.notified_half;
+    const notifiedDepleted = !!pkg?.notified_depleted;
 
     const { data: client } = await d
       .from("profiles")
       .select("email, name, first_name, last_name")
-      .eq("id", proj.client_id)
+      .eq("id", stats.client_id)
       .maybeSingle();
     if (!client?.email) return;
 
@@ -121,7 +127,7 @@ export async function checkUsageThresholds(projectId: string) {
       last_name: client.last_name ?? "",
       full_name: client.name ?? "",
       client_name: client.name ?? "",
-      project_name: stats?.name ?? proj.name ?? "",
+      project_name: stats.name ?? "",
       hours_used: formatHours(used),
       hours_remaining: formatHours(remaining),
       total_hours: formatHours(total),
@@ -130,7 +136,7 @@ export async function checkUsageThresholds(projectId: string) {
       site_url: SITE,
     };
 
-    if (used >= total && !proj.notified_depleted) {
+    if (used >= total && !notifiedDepleted) {
       const { data: tix } = await d
         .from("tickets")
         .select("title, time_logs(duration_seconds)")
@@ -143,16 +149,109 @@ export async function checkUsageThresholds(projectId: string) {
       await dispatchEmail("package_depleted", client.email, vars, {
         tasks_summary: renderTasksSummary(rows),
       });
-      await d.from("projects").update({ notified_depleted: true, notified_half: true }).eq("id", projectId);
+      await d
+        .from("project_packages")
+        .update({ notified_depleted: true, notified_half: true })
+        .eq("id", stats.active_package_id);
       return;
     }
 
-    if (used < total && used >= total * 0.5 && !proj.notified_half) {
+    if (used < total && used >= total * 0.5 && !notifiedHalf) {
       await dispatchEmail("package_half", client.email, vars);
-      await d.from("projects").update({ notified_half: true }).eq("id", projectId);
+      await d
+        .from("project_packages")
+        .update({ notified_half: true })
+        .eq("id", stats.active_package_id);
     }
   } catch (e) {
     console.error("checkUsageThresholds failed:", (e as Error).message);
+  }
+}
+
+// Email the client that the studio added a new package for them.
+export async function notifyPackageAdded(projectId: string, hoursAdded: number) {
+  try {
+    const d = db();
+    const { data: stats } = await d
+      .from("project_stats")
+      .select("client_id, name, hours_remaining, total_hours_allocated")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!stats?.client_id) return;
+
+    const { data: client } = await d
+      .from("profiles")
+      .select("email, name, first_name, last_name")
+      .eq("id", stats.client_id)
+      .maybeSingle();
+    if (!client?.email) return;
+
+    await dispatchEmail("package_added_studio", client.email, {
+      first_name: client.first_name ?? "",
+      last_name: client.last_name ?? "",
+      full_name: client.name ?? "",
+      client_name: client.name ?? "",
+      project_name: stats.name ?? "",
+      hours_added: formatHours(hoursAdded),
+      hours_remaining: formatHours(stats.hours_remaining ?? 0),
+      total_hours: formatHours(stats.total_hours_allocated ?? 0),
+      portal_url: `${SITE}/portal`,
+      site_url: SITE,
+    });
+  } catch (e) {
+    console.error("notifyPackageAdded failed:", (e as Error).message);
+  }
+}
+
+// Email the responsible admin (the task's assignee, falling back to all
+// admins) when a package is exhausted and a running timer is auto-stopped.
+export async function notifyPackageEnded(ticketId: string, projectId: string) {
+  try {
+    const d = db();
+    const { data: ticket } = await d
+      .from("tickets")
+      .select("title, assignee_id")
+      .eq("id", ticketId)
+      .maybeSingle();
+
+    let recipients: string[] = [];
+    if (ticket?.assignee_id) {
+      const { data: a } = await d
+        .from("profiles")
+        .select("email")
+        .eq("id", ticket.assignee_id)
+        .maybeSingle();
+      if (a?.email) recipients = [a.email];
+    }
+    if (!recipients.length) {
+      const { data: admins } = await d.from("profiles").select("email").eq("role", "admin");
+      recipients = ((admins ?? []) as { email: string | null }[])
+        .map((x) => x.email)
+        .filter(Boolean) as string[];
+    }
+    if (!recipients.length) return;
+
+    const { data: proj } = await d
+      .from("projects")
+      .select("name, client_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    let clientName = "";
+    if (proj?.client_id) {
+      const { data: c } = await d.from("profiles").select("name").eq("id", proj.client_id).maybeSingle();
+      clientName = c?.name ?? "";
+    }
+
+    await dispatchEmail("package_ended_admin", recipients, {
+      project_name: proj?.name ?? "",
+      client_name: clientName,
+      task_title: ticket?.title ?? "",
+      task_url: `${SITE}/admin/tasks/${ticketId}`,
+      site_url: SITE,
+      portal_url: `${SITE}/portal`,
+    });
+  } catch (e) {
+    console.error("notifyPackageEnded failed:", (e as Error).message);
   }
 }
 

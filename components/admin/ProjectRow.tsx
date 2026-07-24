@@ -148,15 +148,17 @@ export function ProjectRow({
           </select>
 
           {type === "hours" && (
-            <input
-              name="total_hours"
-              type="number"
-              step="0.5"
-              min="0"
-              defaultValue={project.total_hours_allocated}
-              placeholder="סך שעות בחבילה"
-              className={inputCls}
-            />
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2.5 text-sm ring-1 ring-slate-200">
+              <span className="text-slate-500">
+                שעות מנוהלות כחבילות בעמוד הפרויקט
+              </span>
+              <Link
+                href={`/admin/projects/${project.id}`}
+                className="font-medium text-primary hover:underline"
+              >
+                לניהול חבילות ←
+              </Link>
+            </div>
           )}
 
           {editState.error && <p className="text-sm text-red-600">{editState.error}</p>}

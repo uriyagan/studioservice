@@ -27,9 +27,11 @@ export interface Project {
   name: string;
   is_retainer: boolean;
   is_build?: boolean;
-  total_hours_allocated: number;
   created_at: string;
 }
+
+export type PackageSource = "client_purchase" | "studio";
+export type PackageStatus = "queued" | "active" | "depleted";
 
 export interface ProjectStats {
   id: string;
@@ -37,9 +39,33 @@ export interface ProjectStats {
   name: string;
   is_retainer: boolean;
   is_build?: boolean;
+  // Re-pointed to the ACTIVE package: allocated → active hours,
+  // used → consumed on active, remaining → remaining on active.
   total_hours_allocated: number;
   hours_used: number;
   hours_remaining: number;
+  // Active-package metadata (null when no active package exists).
+  active_package_id?: string | null;
+  active_source?: PackageSource | null;
+  active_started_at?: string | null;
+  queued_count?: number;
+  has_active?: boolean;
+}
+
+// A discrete package instance on a project (its lifecycle bucket).
+export interface ProjectPackage {
+  id: string;
+  project_id: string;
+  client_id: string | null;
+  source: PackageSource;
+  hours: number;
+  status: PackageStatus;
+  activated_at: string | null;
+  closed_at: string | null;
+  activated_by: string | null;
+  purchase_id: string | null;
+  note: string | null;
+  created_at: string;
 }
 
 export interface Ticket {

@@ -121,12 +121,26 @@ export async function createClientFull(
       if (wantProject && projectName) {
         const isRetainer = formData.get("is_retainer") === "on";
         const totalHours = isRetainer ? 0 : Number(formData.get("total_hours") ?? 0);
-        await db.from("projects").insert({
-          name: projectName,
-          client_id: id,
-          is_retainer: isRetainer,
-          total_hours_allocated: totalHours,
-        });
+        const { data: proj } = await db
+          .from("projects")
+          .insert({
+            name: projectName,
+            client_id: id,
+            is_retainer: isRetainer,
+          })
+          .select("id")
+          .single();
+        // Seed the initial package from the starting allocation (hours plans).
+        if (proj?.id && !isRetainer && totalHours > 0) {
+          const { addPackage } = await import("@/lib/packages");
+          await addPackage({
+            projectId: proj.id,
+            clientId: id,
+            hours: totalHours,
+            source: "studio",
+            note: "חבילה ראשונית",
+          });
+        }
       }
     }
 

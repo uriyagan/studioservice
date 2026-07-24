@@ -46,7 +46,6 @@ async function processSuccess(opts: {
         name: prof?.name ? `${prof.name} — חבילת שירות` : "חבילת שירות",
         client_id: clientId,
         is_retainer: false,
-        total_hours_allocated: 0,
       })
       .select("id")
       .single();
@@ -54,33 +53,34 @@ async function processSuccess(opts: {
   }
   if (!projectId) return;
 
-  const { data: project } = await db
-    .from("projects")
-    .select("total_hours_allocated")
-    .eq("id", projectId)
+  // Record the receipt first so the package can link back to it.
+  const { data: purchase } = await db
+    .from("purchases")
+    .insert({
+      project_id: projectId,
+      client_id: clientId ?? null,
+      package_name: opts.packageName ?? null,
+      hours,
+      amount_ils: opts.amount,
+      currency: opts.currency,
+      stripe_session_id: opts.sessionId,
+      stripe_payment_intent: opts.paymentIntentId,
+      receipt_url: opts.receiptUrl,
+      status: "paid",
+    })
+    .select("id")
     .single();
-  if (project) {
-    await db
-      .from("projects")
-      .update({
-        total_hours_allocated: Number(project.total_hours_allocated) + hours,
-        notified_half: false,
-        notified_depleted: false,
-      })
-      .eq("id", projectId);
-  }
 
-  await db.from("purchases").insert({
-    project_id: projectId,
-    client_id: clientId ?? null,
-    package_name: opts.packageName ?? null,
+  // Create a discrete package — active if the project has none active,
+  // otherwise queued (FIFO). This replaces bumping the old scalar.
+  const { addPackage } = await import("@/lib/packages");
+  await addPackage({
+    projectId,
+    clientId: clientId ?? null,
     hours,
-    amount_ils: opts.amount,
-    currency: opts.currency,
-    stripe_session_id: opts.sessionId,
-    stripe_payment_intent: opts.paymentIntentId,
-    receipt_url: opts.receiptUrl,
-    status: "paid",
+    source: "client_purchase",
+    purchaseId: purchase?.id ?? null,
+    note: opts.packageName ?? null,
   });
 
   if (clientId) {

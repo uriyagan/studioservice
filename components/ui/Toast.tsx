@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, X } from "@/components/icons";
+import { CheckCircle2, AlertCircle, X } from "@/components/icons";
 
 // Tiny event-bus toast: showToast() can be called from any client component;
-// the single <Toaster /> mounted in the layout renders the stack. Green
-// success style, auto-dismisses after 5s.
-type Toast = { id: string; message: string };
+// the single <Toaster /> mounted in the layout renders the stack. Success
+// (green) or error (red) style, auto-dismisses after 5s.
+type ToastVariant = "success" | "error";
+type Toast = { id: string; message: string; variant: ToastVariant };
 
 let listener: ((t: Toast) => void) | null = null;
 
-export function showToast(message: string) {
-  listener?.({ id: crypto.randomUUID(), message });
+export function showToast(message: string, variant: ToastVariant = "success") {
+  listener?.({ id: crypto.randomUUID(), message, variant });
 }
 
 export function Toaster() {
@@ -34,9 +35,15 @@ export function Toaster() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="pointer-events-auto flex items-center gap-2.5 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg"
+          className={`pointer-events-auto flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg ${
+            t.variant === "error" ? "bg-red-600" : "bg-emerald-600"
+          }`}
         >
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-white" />
+          {t.variant === "error" ? (
+            <AlertCircle className="h-5 w-5 shrink-0 text-white" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-white" />
+          )}
           <span>{t.message}</span>
           <button
             onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}

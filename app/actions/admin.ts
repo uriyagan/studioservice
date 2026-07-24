@@ -83,14 +83,34 @@ export async function createProject(
       name,
       client_id: clientId,
       is_retainer: isRetainer,
-      total_hours_allocated: totalHours,
     };
-    let { error } = await supabase.from("projects").insert({ ...base, is_build: isBuild });
+    let { data: created, error } = await supabase
+      .from("projects")
+      .insert({ ...base, is_build: isBuild })
+      .select("id")
+      .single();
     // Fall back if the is_build column isn't migrated yet.
     if (error && /is_build/.test(error.message)) {
-      ({ error } = await supabase.from("projects").insert(base));
+      ({ data: created, error } = await supabase.from("projects").insert(base).select("id").single());
     }
     if (error) return { ok: false, error: error.message };
+
+    // Convenience first package: an hours project created with a starting
+    // allocation gets one active package seeded from it.
+    if (created?.id && projectType === "hours" && totalHours > 0) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { addPackage } = await import("@/lib/packages");
+      await addPackage({
+        projectId: created.id,
+        clientId,
+        hours: totalHours,
+        source: "studio",
+        activatedBy: user?.id ?? null,
+        note: "חבילה ראשונית",
+      });
+    }
 
     revalidatePath("/admin/projects");
     return { ok: true };
@@ -272,6 +292,21 @@ export async function addManualTime(
     if (!Number.isFinite(seconds) || seconds <= 0)
       return { ok: false, error: "יש להזין זמן גדול מאפס" };
 
+    // Hard limit: manual time can't exceed the active package's remaining.
+    {
+      const { getActivePackageState } = await import("@/lib/packages");
+      const state = await getActivePackageState(projectId);
+      if (state.blocked)
+        return { ok: false, error: "אין חבילה פעילה עם יתרה — יש להקים/לרכוש חבילה חדשה." };
+      if (seconds > state.remainingSeconds) {
+        const { formatHours } = await import("@/lib/format");
+        return {
+          ok: false,
+          error: `הזמן שהוזן חורג מיתרת החבילה (נותרו ${formatHours(state.remainingSeconds / 3600)}).`,
+        };
+      }
+    }
+
     const now = new Date();
     const start = new Date(now.getTime() - seconds * 1000);
 
@@ -412,26 +447,16 @@ export async function updateProject(
     );
     const isRetainer = projectType === "retainer";
     const isBuild = projectType === "build";
-    const totalHours = projectType === "hours" ? Number(formData.get("total_hours") ?? 0) : 0;
 
     if (!projectId) return { ok: false, error: "מזהה פרויקט חסר" };
     if (!name) return { ok: false, error: "שם פרויקט נדרש" };
 
-    // If the admin tops up hours here (not via Stripe), re-arm the usage
-    // threshold emails so 50%/depleted can fire again.
-    const { data: cur } = await supabase
-      .from("projects")
-      .select("total_hours_allocated")
-      .eq("id", projectId)
-      .maybeSingle();
-    const toppedUp = projectType === "hours" && totalHours > Number(cur?.total_hours_allocated ?? 0);
-
+    // Hours are NO LONGER edited here — they're managed as discrete packages
+    // on the project page. This edit only touches name / client / type.
     const base = {
       name,
       client_id: clientId,
       is_retainer: isRetainer,
-      total_hours_allocated: totalHours,
-      ...(toppedUp ? { notified_half: false, notified_depleted: false } : {}),
     };
     let { error } = await supabase
       .from("projects")

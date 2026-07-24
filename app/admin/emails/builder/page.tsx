@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { EmailBuilder } from "@/components/email-builder/EmailBuilder";
 import { defaultTemplate } from "@/components/email-builder/blocks";
+import { DEFAULT_BLOCKS, FALLBACK_SUBJECT } from "@/lib/email/dispatch";
 import {
   DEFAULT_DESIGN,
   EMAIL_DEFS,
@@ -25,9 +26,18 @@ export default async function EmailBuilderPage({
   for (const r of (rows ?? []) as any[]) byKey[r.template_key] = r;
 
   const data = byKey[key];
-  const blocks = Array.isArray(data?.blocks) && data.blocks.length ? data.blocks : defaultTemplate();
+  // When nothing is saved yet, seed the canvas with the ACTUAL fallback that
+  // gets sent for this template (so e.g. "hours_added" isn't a blank slate),
+  // falling back to the generic starter only when there's no default.
+  const fallbackBlocks = DEFAULT_BLOCKS[key];
+  const blocks =
+    Array.isArray(data?.blocks) && data.blocks.length
+      ? data.blocks
+      : fallbackBlocks && fallbackBlocks.length
+        ? fallbackBlocks
+        : defaultTemplate();
   const design = { ...DEFAULT_DESIGN, ...(data?.design ?? {}) };
-  const subject = data?.subject ?? "";
+  const subject = data?.subject ?? FALLBACK_SUBJECT[key] ?? "";
   const enabled = data?.enabled ?? true;
 
   // Other templates that have already been designed — offered as "copy from".

@@ -1,0 +1,18 @@
+{
+  // Standalone Cloudflare Cron worker — separate from the main app worker
+  // (the OpenNext worker only exports a fetch handler, so it can't host a
+  // scheduled() handler itself). This worker fires every minute and pokes
+  // the app's reconcile endpoint so idle running timers are capped at their
+  // package boundary and the next queued package activates promptly.
+  "name": "studioservice-reconcile-cron",
+  "main": "src/index.js",
+  "compatibility_date": "2025-03-01",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "RECONCILE_URL": "https://service.uriyaganor.com/api/cron/reconcile"
+  }
+  // Set the shared secret with:  wrangler secret put CRON_SECRET
+  // (must match the CRON_SECRET set on the main `studioservice` worker).
+}
