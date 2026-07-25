@@ -46,16 +46,21 @@ export default async function AdminTaskPage({
   const openerIsMember =
     !!openerId && roleById.get(openerId) === "client" && openerId !== t.projects?.client_id;
 
-  // Disable starting the timer when the task's project package is exhausted.
+  // Disable starting the timer when the task's project package is exhausted,
+  // and feed the live auto-stop the remaining seconds on the active package.
   let timerBlocked = false;
+  let activeRemainingSeconds: number | null = null;
   if (t.project_id) {
     const { getActivePackageState } = await import("@/lib/packages");
-    timerBlocked = (await getActivePackageState(t.project_id)).blocked;
+    const st = await getActivePackageState(t.project_id);
+    timerBlocked = st.blocked;
+    activeRemainingSeconds = st.isRetainer || st.isBuild ? null : st.remainingSeconds;
   }
 
   return (
     <TaskPageView
       timerBlocked={timerBlocked}
+      activeRemainingSeconds={activeRemainingSeconds}
       task={{
         id: t.id,
         title: t.title,

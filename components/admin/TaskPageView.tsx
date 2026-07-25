@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowRight, Link2, FileText, Download, Trash2, ChevronDown, Eye } from "@/components/icons";
 import { isImageFile, ImageViewerModal } from "@/components/ui/ImageViewer";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -22,7 +22,7 @@ import {
   deleteTicketNoteFile,
 } from "@/app/actions/ticket-notes";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
-import { completeTask, adjustTaskTime } from "@/app/actions/timer";
+import { completeTask, adjustTaskTime, enforcePackageLimit } from "@/app/actions/timer";
 import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDate, formatDuration } from "@/lib/format";
 import { useLoggedSeconds } from "@/lib/use-logged-seconds";
@@ -53,16 +53,38 @@ export function TaskPageView({
   admins,
   currentUserId,
   timerBlocked = false,
+  activeRemainingSeconds = null,
 }: {
   task: TaskPageData;
   admins: AdminOption[];
   currentUserId: string;
   timerBlocked?: boolean;
+  activeRemainingSeconds?: number | null;
 }) {
   const router = useRouter();
   const completed = task.status === "completed";
   const totalSeconds = useLoggedSeconds(task.time_logs);
   const running = task.time_logs.some((l) => l.end_time === null);
+
+  // Live auto-stop: when a running timer crosses the active package's limit,
+  // cap it server-side (exact boundary) and refresh — no waiting on the cron.
+  const limitRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const prevActiveRef = useRef(false);
+  useEffect(() => {
+    if (running && !prevActiveRef.current && activeRemainingSeconds != null) {
+      limitRef.current = totalSeconds + activeRemainingSeconds;
+      firedRef.current = false;
+    }
+    prevActiveRef.current = running;
+  }, [running, activeRemainingSeconds, totalSeconds]);
+  useEffect(() => {
+    if (!running || limitRef.current === null || firedRef.current) return;
+    if (totalSeconds >= limitRef.current) {
+      firedRef.current = true;
+      enforcePackageLimit(task.id).then(() => router.refresh());
+    }
+  }, [totalSeconds, running, task.id, router]);
 
   // Entering the page = reading the conversation. Server state (cross-device)
   // + the local cache the tasks table and inbox read for their dots.

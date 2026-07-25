@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal, ArrowUp, ArrowDown } from "@/components/icons";
 import { StatusBadge } from "@/components/ui/Badge";
 import { RowTimerControl } from "@/components/admin/RowTimerControl";
 import { getReadState } from "@/app/actions/messages";
+import { enforcePackageLimit } from "@/app/actions/timer";
 import { Ticket, TimeLog, AdminOption } from "@/lib/types";
 import { formatDate, formatDuration, sumLoggedSeconds } from "@/lib/format";
 import { useLoggedSeconds } from "@/lib/use-logged-seconds";
@@ -46,9 +47,46 @@ const PAGE_SIZE = 25;
 
 // Same face and size as every other cell — only the color signals state
 // (green while the timer is running). tabular-nums keeps the digits steady.
-function LiveTime({ logs }: { logs: TimeLog[] }) {
+//
+// When `remainingSeconds` is provided (the ticket's project active-package
+// remaining at load), the clock also auto-stops the timer the instant it
+// crosses the package limit: it caps server-side at the exact boundary and
+// refreshes, so we don't wait on Cloudflare's best-effort cron.
+function LiveTime({
+  logs,
+  ticketId,
+  remainingSeconds,
+  onAutoStop,
+}: {
+  logs: TimeLog[];
+  ticketId?: string;
+  remainingSeconds?: number | null;
+  onAutoStop?: () => void;
+}) {
   const hasActive = logs.some((l) => l.end_time === null);
   const s = useLoggedSeconds(logs);
+  const limitRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const prevActive = useRef(false);
+
+  // On the transition to running (or if already running at mount), record the
+  // elapsed value at which the active package is exhausted.
+  useEffect(() => {
+    if (hasActive && !prevActive.current && remainingSeconds != null) {
+      limitRef.current = s + remainingSeconds;
+      firedRef.current = false;
+    }
+    prevActive.current = hasActive;
+  }, [hasActive, remainingSeconds, s]);
+
+  useEffect(() => {
+    if (!hasActive || !ticketId || limitRef.current === null || firedRef.current) return;
+    if (s >= limitRef.current) {
+      firedRef.current = true;
+      enforcePackageLimit(ticketId).then(() => onAutoStop?.());
+    }
+  }, [s, hasActive, ticketId, onAutoStop]);
+
   return (
     <span className={`tabular-nums ${hasActive ? "text-emerald-600" : ""}`}>
       {formatDuration(s)}
@@ -65,11 +103,15 @@ export function TasksTable({
   projects,
   admins = [],
   currentUserId,
+  pkgRemaining = {},
 }: {
   tasks: TaskRow[];
   projects: { id: string; name: string }[];
   admins?: AdminOption[];
   currentUserId?: string;
+  // project_id → active-package remaining seconds (null = no limit: retainer /
+  // build / no active package). Drives the live auto-stop.
+  pkgRemaining?: Record<string, number | null>;
 }) {
   const router = useRouter();
   const [visible, setVisible] = useState<Record<ColKey, boolean>>({
@@ -347,7 +389,14 @@ export function TasksTable({
               </div>
               <div className="min-w-0">
                 <dt className="text-xs text-slate-400">זמן ביצוע</dt>
-                <dd className="text-slate-600"><LiveTime logs={t.time_logs} /></dd>
+                <dd className="text-slate-600">
+                  <LiveTime
+                    logs={t.time_logs}
+                    ticketId={t.id}
+                    remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
+                    onAutoStop={() => router.refresh()}
+                  />
+                </dd>
               </div>
             </dl>
             {t.status !== "completed" && (
@@ -420,7 +469,12 @@ export function TasksTable({
                 {visible.created && <td className="px-3 py-2 whitespace-nowrap text-slate-600">{formatDate(t.created_at)}</td>}
                 {visible.exec && (
                   <td className="px-3 py-2 text-slate-600">
-                    <LiveTime logs={t.time_logs} />
+                    <LiveTime
+                      logs={t.time_logs}
+                      ticketId={t.id}
+                      remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
+                      onAutoStop={() => router.refresh()}
+                    />
                   </td>
                 )}
                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>

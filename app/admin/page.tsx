@@ -39,7 +39,9 @@ export default async function AdminDashboard() {
       .order("created_at", { ascending: false }),
     supabase.from("projects").select("id, name").order("name"),
     supabase.from("profiles").select("id, name, role"),
-    supabase.from("project_stats").select("client_id, is_retainer, hours_remaining"),
+    supabase
+      .from("project_stats")
+      .select("id, client_id, is_retainer, is_build, has_active, hours_remaining"),
   ]);
 
   const projects = (projectList ?? []) as { id: string; name: string }[];
@@ -86,8 +88,24 @@ export default async function AdminDashboard() {
   const openCount = rows.filter((r) => r.status !== "completed").length;
 
   const activeClientSet = new Set<string>();
-  for (const ps of (statsRows ?? []) as { client_id: string | null; is_retainer: boolean; hours_remaining: number | null }[]) {
+  // project_id → active-package remaining seconds for the live auto-stop
+  // (null = no limit: retainer / build; 0 = exhausted / no active package).
+  const pkgRemaining: Record<string, number | null> = {};
+  for (const ps of (statsRows ?? []) as {
+    id: string;
+    client_id: string | null;
+    is_retainer: boolean;
+    is_build?: boolean;
+    has_active?: boolean;
+    hours_remaining: number | null;
+  }[]) {
     if (ps.client_id && (ps.is_retainer || Number(ps.hours_remaining) > 0)) activeClientSet.add(ps.client_id);
+    pkgRemaining[ps.id] =
+      ps.is_retainer || ps.is_build
+        ? null
+        : ps.has_active
+          ? Math.max(0, Math.round((Number(ps.hours_remaining) || 0) * 3600))
+          : 0;
   }
 
   const now = new Date();
@@ -125,7 +143,13 @@ export default async function AdminDashboard() {
         <StatCard label="שעות שעבדנו החודש" value={formatHours(monthSeconds / 3600)} />
       </div>
 
-      <TasksTable tasks={rows} projects={projects} admins={admins} currentUserId={user?.id} />
+      <TasksTable
+        tasks={rows}
+        projects={projects}
+        admins={admins}
+        currentUserId={user?.id}
+        pkgRemaining={pkgRemaining}
+      />
       <AutoRefresh seconds={45} />
     </div>
   );
