@@ -445,8 +445,12 @@ export function TaskPageView({
       </div>
 
       {/* ── content columns: task (right) · conversation (left) ── */}
+      {/* min-w-0 on both grid items: grid tracks default to min-width:auto, so
+          a wide descendant (a long filename, an unbreakable string) would force
+          the column past the viewport and get clipped by the layout's
+          overflow-x-hidden instead of letting children truncate. */}
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className={`space-y-4 ${tab === "task" ? "" : "hidden"} lg:block`}>
+        <div className={`min-w-0 space-y-4 ${tab === "task" ? "" : "hidden"} lg:block`}>
           {/* What the client submitted — read-only. */}
           <div className="space-y-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
             <h2 className="text-sm font-bold text-slate-900">המשימה</h2>
@@ -550,7 +554,7 @@ export function TaskPageView({
         </div>
 
         {/* Conversation — always beside the task on desktop. */}
-        <div className={`rounded-xl border border-slate-200 bg-white ${tab === "chat" ? "" : "hidden"} lg:block`}>
+        <div className={`min-w-0 rounded-xl border border-slate-200 bg-white ${tab === "chat" ? "" : "hidden"} lg:block`}>
           <h2 className="border-b border-slate-100 p-4 text-sm font-bold text-slate-900 sm:px-5">
             שיחה עם הלקוח
             <span className="ms-2 text-xs font-normal text-slate-400">הודעות נשלחות ללקוח במייל ומתועדות כאן</span>
