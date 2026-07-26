@@ -501,7 +501,7 @@ export function TaskPageView({
                           className="flex min-w-0 flex-1 items-center gap-2 text-start hover:text-primary"
                         >
                           <FileText className="h-4 w-4 shrink-0 text-black" />
-                          <span className="truncate">{f.name}</span>
+                          <span className="min-w-0 truncate">{f.name}</span>
                         </button>
                         <button
                           onClick={() => setViewing(f)}
@@ -521,8 +521,8 @@ export function TaskPageView({
                       // Non-image: the whole row downloads.
                       <a key={i} href={f.url} download={f.name} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
                         <FileText className="h-4 w-4 shrink-0 text-black" />
-                        <span className="truncate">{f.name}</span>
-                        <span className="ms-auto inline-flex shrink-0 items-center gap-1 text-xs text-primary">
+                        <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-primary">
                           <Download className="h-3.5 w-3.5" /> הורדה
                         </span>
                       </a>

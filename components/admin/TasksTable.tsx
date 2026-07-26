@@ -488,10 +488,12 @@ export function TasksTable({
         </table>
       </div>
 
-      {/* Footer: count + pagination */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 p-3 text-sm text-slate-600">
-        <span>{sorted.length} משימות</span>
-        <div className="flex items-center gap-2">
+      {/* Footer: count + page-size on one row, the paginator on its own row
+          (they stay side by side from sm up). Splitting avoids a cramped
+          4-control line on mobile. */}
+      <div className="flex flex-col gap-3 border-t border-slate-100 p-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3 sm:justify-start">
+          <span>{sorted.length} משימות</span>
           <select
             value={pageSize}
             onChange={(e) => setPageSize(Number(e.target.value))}
@@ -500,6 +502,8 @@ export function TasksTable({
             <option value={25}>25 בעמוד</option>
             <option value={50}>50 בעמוד</option>
           </select>
+        </div>
+        <div className="flex items-center justify-center gap-2 sm:justify-end">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={safePage <= 1}

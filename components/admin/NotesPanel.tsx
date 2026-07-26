@@ -331,7 +331,7 @@ function NoteCard({
                     className="flex min-w-0 items-center gap-2 text-start text-slate-700 hover:text-primary"
                   >
                     <FileText className="h-4 w-4 shrink-0 text-black" />
-                    <span className="truncate">{f.name}</span>
+                    <span className="min-w-0 truncate">{f.name}</span>
                   </button>
                   <button
                     onClick={() => setViewing(f)}
@@ -344,9 +344,9 @@ function NoteCard({
                   </a>
                 </span>
               ) : (
-                <a href={f.url} download={f.name} className="flex min-w-0 items-center gap-2 text-slate-700 hover:text-primary">
+                <a href={f.url} download={f.name} className="flex min-w-0 flex-1 items-center gap-2 text-slate-700 hover:text-primary">
                   <FileText className="h-4 w-4 shrink-0 text-black" />
-                  <span className="truncate">{f.name}</span>
+                  <span className="min-w-0 truncate">{f.name}</span>
                 </a>
               )}
               <button onClick={() => removeFile(f.id)} className="shrink-0 rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600" title="מחיקת קובץ">
