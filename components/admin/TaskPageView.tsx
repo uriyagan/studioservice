@@ -22,7 +22,7 @@ import {
   deleteTicketNoteFile,
 } from "@/app/actions/ticket-notes";
 import { updateTicket, deleteTicket } from "@/app/actions/admin";
-import { completeTask, adjustTaskTime, enforcePackageLimit } from "@/app/actions/timer";
+import { completeTask, adjustTaskTime, enforcePackageLimit, setTaskStatus } from "@/app/actions/timer";
 import { downloadAllAsZip } from "@/lib/download-files";
 import { formatDate, formatDuration } from "@/lib/format";
 import { useLoggedSeconds } from "@/lib/use-logged-seconds";
@@ -54,12 +54,16 @@ export function TaskPageView({
   currentUserId,
   timerBlocked = false,
   activeRemainingSeconds = null,
+  noTimer = false,
 }: {
   task: TaskPageData;
   admins: AdminOption[];
   currentUserId: string;
   timerBlocked?: boolean;
   activeRemainingSeconds?: number | null;
+  // Build / retainer project → no hours package, so no timer at all: the
+  // status dropdown is the only relevant control.
+  noTimer?: boolean;
 }) {
   const router = useRouter();
   const completed = task.status === "completed";
@@ -152,16 +156,34 @@ export function TaskPageView({
     });
   };
 
+  // ── manual status (task-page dropdown) ─────────────────────
+  // Collapse the internal "paused" onto "in_progress" for the picker — the
+  // three options the admin manages are ממתין / בטיפול / הושלם.
+  const selectStatus = task.status === "paused" ? "in_progress" : task.status;
+  const [savingStatus, startStatus] = useTransition();
+  const changeStatus = (value: string) => {
+    startStatus(async () => {
+      const r = await setTaskStatus(task.id, value as TicketStatus);
+      if (r.ok) {
+        showToast("סטטוס המשימה עודכן");
+        router.refresh();
+      } else {
+        showToast(r.error ?? "עדכון הסטטוס נכשל", "error");
+      }
+    });
+  };
+
   // ── complete task ──────────────────────────────────────────
   const [confirming, setConfirming] = useState(false);
   const [completionNote, setCompletionNote] = useState("");
   const [completing, startComplete] = useTransition();
-  const confirmComplete = () =>
+  const finishTask = (notify: boolean) =>
     startComplete(async () => {
-      await completeTask(task.id, completionNote);
+      await completeTask(task.id, completionNote, notify);
       setConfirming(false);
       setCompletionNote("");
-      showToast("המשימה הושלמה והלקוח עודכן במייל");
+      showToast(notify ? "המשימה הושלמה והלקוח עודכן במייל" : "המשימה הושלמה");
+      router.refresh();
     });
 
   // ── delete (trash icon → in-app confirm modal) ─────────────
@@ -289,6 +311,23 @@ export function TaskPageView({
         {/* Row 2 — the work row: everything interactive, visually distinct. */}
         <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            {/* Status — manual control; also re-buckets the open/completed tabs
+                on both sides (and lets an admin re-open a closed task). */}
+            <label className="flex items-center gap-2 text-sm text-slate-500">
+              סטטוס
+              <select
+                value={selectStatus}
+                onChange={(e) => changeStatus(e.target.value)}
+                disabled={savingStatus}
+                dir="rtl"
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-800 outline-none focus:border-primary disabled:opacity-60"
+              >
+                <option value="pending">ממתין</option>
+                <option value="in_progress">בטיפול</option>
+                <option value="completed">הושלם</option>
+              </select>
+            </label>
+
             <label className="flex items-center gap-2 text-sm text-slate-500">
               אחראי
               <select
@@ -307,40 +346,45 @@ export function TaskPageView({
               </select>
             </label>
 
-            <span className="hidden h-6 w-px bg-slate-200 sm:block" />
-
-            <div className="flex items-center gap-2.5">
-              <span className="text-sm text-slate-500">טיימר</span>
-              <span
-                className={`text-base font-bold tabular-nums ${running ? "text-emerald-600" : "text-slate-800"}`}
-              >
-                {formatDuration(totalSeconds)}
-              </span>
-              {!completed && <RowTimerControl ticket={timerTicket} blocked={timerBlocked} />}
-              <button
-                onClick={() => setAdjustOpen((v) => !v)}
-                aria-expanded={adjustOpen}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              >
-                עריכת זמן ידנית
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${adjustOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-            </div>
+            {/* Timer cluster — hours-package projects only. Build / retainer
+                projects have no timer; the status dropdown is enough. */}
+            {!noTimer && (
+              <>
+                <span className="hidden h-6 w-px bg-slate-200 sm:block" />
+                <div className="flex items-center gap-2.5">
+                  <span className="text-sm text-slate-500">טיימר</span>
+                  <span
+                    className={`text-base font-bold tabular-nums ${running ? "text-emerald-600" : "text-slate-800"}`}
+                  >
+                    {formatDuration(totalSeconds)}
+                  </span>
+                  {!completed && <RowTimerControl ticket={timerTicket} blocked={timerBlocked} running={running} />}
+                  <button
+                    onClick={() => setAdjustOpen((v) => !v)}
+                    aria-expanded={adjustOpen}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    עריכת זמן ידנית
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${adjustOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {completed ? (
             <p className="text-sm font-medium text-emerald-600">המשימה הושלמה ✓</p>
           ) : (
             <Button variant="success" onClick={() => setConfirming(true)}>
-              ✓ סיום ועדכון לקוח
+              סיום משימה
             </Button>
           )}
         </div>
 
         {/* Manual time accordion — status untouched, no client email. */}
-        {adjustOpen && (
+        {!noTimer && adjustOpen && (
           <div className="space-y-2 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5">
@@ -600,13 +644,20 @@ export function TaskPageView({
         </Modal>
       )}
 
-      {/* Complete-task confirmation (irreversible → modal + optional note). */}
+      {/* Complete-task confirmation — the admin chooses whether to email the
+          client (some tasks the studio opened itself, or already answered in
+          the thread, need no update). */}
       {confirming && (
-        <Modal title="סיום המשימה ועדכון הלקוח" onClose={() => setConfirming(false)} closeOnBackdrop={false}>
+        <Modal title="סיום המשימה" onClose={() => setConfirming(false)} closeOnBackdrop={false}>
           <div className="space-y-3">
             <p className="text-sm text-slate-700">
-              המשימה תסומן כהושלמה והלקוח יקבל עדכון במייל. זמן המשימה הכולל:{" "}
-              <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
+              המשימה תסומן כהושלמה — נא לבחור אם לשלוח מייל ללקוח.
+              {!noTimer && (
+                <>
+                  {" "}זמן המשימה הכולל:{" "}
+                  <b className="font-mono tabular-nums">{formatDuration(totalSeconds)}</b>
+                </>
+              )}
             </p>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">הערה למייל ללקוח (אופציונלי)</label>
@@ -618,9 +669,12 @@ export function TaskPageView({
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
               />
             </div>
-            <div className="flex gap-2">
-              <Button variant="success" disabled={completing} onClick={confirmComplete}>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="success" disabled={completing} onClick={() => finishTask(true)}>
                 {completing ? "מסיימים…" : "סיום ועדכון לקוח"}
+              </Button>
+              <Button variant="secondary" disabled={completing} onClick={() => finishTask(false)}>
+                סיום מבלי לעדכן את הלקוח
               </Button>
               <Button variant="ghost" onClick={() => setConfirming(false)} disabled={completing}>
                 ביטול

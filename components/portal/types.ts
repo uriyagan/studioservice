@@ -20,4 +20,6 @@ export interface PortalTask {
   created_at: string;
   // Latest message in the thread (either side) — null when there are none.
   lastActivityAt: string | null;
+  // Build / retainer project → no time tracking, so "זמן ביצוע" is hidden.
+  noTimer: boolean;
 }

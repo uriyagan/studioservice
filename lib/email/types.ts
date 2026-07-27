@@ -75,6 +75,7 @@ export const EMAIL_DEFS = [
   { key: "welcome", title: "ברוך הבא (משתמש חדש)", to: "client" },
   { key: "password_reset", title: "איפוס סיסמה (יזום ע״י הלקוח)", to: "client" },
   { key: "task_completed", title: "משימה הושלמה", to: "client" },
+  { key: "task_completed_flat", title: "משימה הושלמה (פרויקט ללא חבילת שעות)", to: "client" },
   { key: "package_half", title: "50% מהחבילה נוצלו", to: "client" },
   { key: "package_depleted", title: "החבילה הסתיימה", to: "client" },
   { key: "hours_added", title: "שעות נוספו לחבילה (רכישת Stripe)", to: "client" },
@@ -113,7 +114,7 @@ export const MERGE_TAGS: {
 }[] = [
   {
     group: "כללי",
-    emails: ["welcome", "password_reset", "task_completed", "package_half", "package_depleted", "hours_added", "package_added_studio", "package_ended_admin", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
+    emails: ["welcome", "password_reset", "task_completed", "task_completed_flat", "package_half", "package_depleted", "hours_added", "package_added_studio", "package_ended_admin", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
     tags: [
       { token: "{first_name}", label: "שם פרטי" },
       { token: "{last_name}", label: "שם משפחה" },
@@ -142,7 +143,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "משימה",
-    emails: ["task_completed", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "package_ended_admin"],
+    emails: ["task_completed", "task_completed_flat", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "package_ended_admin"],
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
@@ -157,7 +158,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "סיום משימה",
-    emails: ["task_completed"],
+    emails: ["task_completed", "task_completed_flat"],
     tags: [{ token: "{completion_note}", label: "הערת סיכום מהסטודיו (כולל עיצוב)" }],
   },
   {

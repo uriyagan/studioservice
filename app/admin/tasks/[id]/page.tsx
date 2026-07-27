@@ -50,17 +50,21 @@ export default async function AdminTaskPage({
   // and feed the live auto-stop the remaining seconds on the active package.
   let timerBlocked = false;
   let activeRemainingSeconds: number | null = null;
+  // Build / retainer projects have no hours package → no timer at all.
+  let noTimer = false;
   if (t.project_id) {
     const { getActivePackageState } = await import("@/lib/packages");
     const st = await getActivePackageState(t.project_id);
     timerBlocked = st.blocked;
-    activeRemainingSeconds = st.isRetainer || st.isBuild ? null : st.remainingSeconds;
+    noTimer = st.isRetainer || st.isBuild;
+    activeRemainingSeconds = noTimer ? null : st.remainingSeconds;
   }
 
   return (
     <TaskPageView
       timerBlocked={timerBlocked}
       activeRemainingSeconds={activeRemainingSeconds}
+      noTimer={noTimer}
       task={{
         id: t.id,
         title: t.title,

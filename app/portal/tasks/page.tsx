@@ -11,6 +11,8 @@ export default async function PortalTasksPage() {
   if (!user) return null;
 
   const nameById = new Map(projects.map((p) => [p.id, p.name]));
+  // Build / retainer projects don't track time — hide "זמן ביצוע" for their tasks.
+  const noTimerById = new Map(projects.map((p) => [p.id, p.is_retainer || !!p.is_build]));
   const ids = projects.map((p) => p.id);
 
   let tasks: PortalTask[] = [];
@@ -58,15 +60,21 @@ export default async function PortalTasksPage() {
     tasks = rows.map((t) => {
       const lastOut = lastOutAt.get(t.id);
       const myRead = readAt.get(t.id);
-      // Client-facing status: "in care" from the studio's first touch (any
-      // timer log OR any studio message) until completion — pausing the timer
-      // does NOT drop it back to "ממתין".
-      const touched = t.time_logs.length > 0 || !!lastOut;
+      // Client-facing status: "in care" once the task is actually being handled
+      // — the admin set it to בטיפול (in_progress/paused), the timer ran, or a
+      // studio message was sent. Manual admin status changes flow straight
+      // through `t.status`, so re-opening a completed task shows "בטיפול" and
+      // moves it back to the client's open list.
+      const active =
+        t.status === "in_progress" ||
+        t.status === "paused" ||
+        t.time_logs.length > 0 ||
+        !!lastOut;
       return {
         id: t.id,
         title: t.title ?? "—",
         status: t.status,
-        clientStatus: t.status === "completed" ? "completed" : touched ? "active" : "pending",
+        clientStatus: t.status === "completed" ? "completed" : active ? "active" : "pending",
         completed_at: t.completed_at,
         seconds: sumLoggedSeconds(t.time_logs),
         description: t.description ?? null,
@@ -77,6 +85,7 @@ export default async function PortalTasksPage() {
         unread: !!lastOut && (!myRead || lastOut > myRead),
         created_at: t.created_at,
         lastActivityAt: lastAnyAt.get(t.id) ?? null,
+        noTimer: noTimerById.get(t.project_id) ?? false,
       };
     });
   }

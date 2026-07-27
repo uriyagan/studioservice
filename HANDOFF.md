@@ -1,6 +1,6 @@
 # Studio Service App — Handoff Document
 
-> Full context to resume work in a fresh conversation. Last updated: 2026-07-23.
+> Full context to resume work in a fresh conversation. Last updated: 2026-07-27.
 
 A Hebrew, RTL client portal + time-tracking system for **Uriya Ganor Studio / ULISSES DIGITAL LTD**.
 It replaces Toggl: admins track time on client tasks, clients buy hour-packages, see their
@@ -350,6 +350,35 @@ supabase/migrations/*.sql        DDL (run manually in Supabase)
 
 - All migrations applied (re-verified via SQL 2026-06-24); everything below is **live in prod**.
   **No known open bugs. Nothing pending Sam.**
+- Session 2026-07-27 — **task-status controls + non-hours projects + flexible completion**:
+  the task page work row gained a **manual status dropdown** (ממתין/בטיפול/הושלם) right of the
+  assignee — `setTaskStatus` server action (banks any running segment, sets/clears completed_at,
+  no email, revalidates /admin + /portal), so an admin can **re-open a completed task** and it
+  re-buckets in the open/completed tabs on both sides. Client `clientStatus` now keys off the
+  real status (in_progress/paused → "בטיפול") so manual changes reflect to the client.
+  **Build / retainer projects (no hours package) = `noTimer`**: the tasks-table play button
+  calls `toggleFlatTaskStatus` (ממתין⇄בטיפול, stays black, never green, no time_logs); the task
+  page hides the whole timer cluster (clock + play + עריכת זמן ידנית), leaving just the status
+  dropdown; a separate **`task_completed_flat` email template** (no time / package line) is
+  chosen in `notifyTaskCompleted` when `is_retainer||is_build`. **Completion flow**: button is
+  now "סיום משימה"; the modal says "…נא לבחור אם לשלוח מייל ללקוח" and offers **two** finish
+  buttons — "סיום ועדכון לקוח" and **"סיום מבלי לעדכן את הלקוח"** (`completeTask(id, note,
+  notify)`; notify=false skips the email). `RowTimerControl` gained `noTimer` + an explicit
+  `running` prop (real open-segment, not status, so a manually-set in_progress shows black play
+  not false green). Verified end-to-end as admin (reopen via dropdown, no-timer page + toast,
+  both completion buttons, flat template listed in email admin, table toggle black both ways);
+  `tsc` + full `next build` pass. **Follow-up (same session, cross-cutting cleanup):** the
+  project-detail page (`/admin/projects/[id]`) task list was the last divergent task UI — its
+  embedded `TaskCard`/`TimerControl` (timer + inline edit + old single-button completion) is
+  **gone**, replaced by compact `ProjectTaskLink` cards that just link to `/admin/tasks/[id]`
+  (both `components/admin/TaskCard.tsx` and `components/TimerControl.tsx` deleted). "הזנת זמן
+  ידנית" is now hidden for build/retainer projects (main page filters the select to hours-only;
+  project-detail page gates the button on `isHoursProject`). "זמן ביצוע" is hidden for no-timer
+  tasks everywhere — admin table shows "—", client list "—", client modal meta drops the line,
+  task page already hid the cluster (`PortalTask.noTimer` added, derived from project type).
+  Known non-blocking edges left as-is (per review): reopening a completed hours task returns its
+  time to `hours_used`/balance until re-close; setting "הושלם" via the dropdown completes
+  silently (no email) vs the button's email choice.
 - Session 2026-07-23 (later) — **admin task-management redesign**: the three overlapping modals
   (details / thread / edit) are GONE, replaced by a **dedicated task page**
   `/admin/tasks/[id]` (`TaskPageView`): a static **info row** (title, status, project, client,

@@ -129,8 +129,12 @@ export function TasksView({
                     {t.lastActivityAt && <> · עדכון אחרון {formatRelativeDay(t.lastActivityAt)}</>}
                   </span>
                   <span className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="tabular-nums">{formatDurationShort(t.seconds)}</span>
-                    <span className="text-slate-300">·</span>
+                    {!t.noTimer && (
+                      <>
+                        <span className="tabular-nums">{formatDurationShort(t.seconds)}</span>
+                        <span className="text-slate-300">·</span>
+                      </>
+                    )}
                     <ConversationInfo t={t} />
                   </span>
                 </button>
@@ -165,7 +169,7 @@ export function TasksView({
                         {t.lastActivityAt ? formatRelativeDay(t.lastActivityAt) : "—"}
                       </td>
                       <td className="px-4 py-3 tabular-nums text-slate-600">
-                        {formatDurationShort(t.seconds)}
+                        {t.noTimer ? <span className="text-slate-400">—</span> : formatDurationShort(t.seconds)}
                       </td>
                       <td className="px-4 py-3">
                         <ConversationInfo t={t} />

@@ -39,8 +39,13 @@ export function ClientTaskThread({
   const meta = (
     <>
       {multiProject && task.projectName && <>{task.projectName} · </>}
-      הוגשה {formatDate(task.created_at)} · זמן ביצוע{" "}
-      <span className="tabular-nums">{formatDurationShort(task.seconds)}</span>
+      הוגשה {formatDate(task.created_at)}
+      {!task.noTimer && (
+        <>
+          {" "}· זמן ביצוע{" "}
+          <span className="tabular-nums">{formatDurationShort(task.seconds)}</span>
+        </>
+      )}
       {task.lastActivityAt && <> · עדכון אחרון {formatRelativeDay(task.lastActivityAt)}</>}
     </>
   );

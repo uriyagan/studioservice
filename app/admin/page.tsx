@@ -22,7 +22,7 @@ interface RawTicket {
   completed_at: string | null;
   assignee_id?: string | null;
   created_by?: string | null;
-  projects: { name: string; is_retainer: boolean; client_id: string | null } | null;
+  projects: { name: string; is_retainer: boolean; is_build: boolean; client_id: string | null } | null;
   time_logs: TaskRow["time_logs"];
 }
 
@@ -35,16 +35,27 @@ export default async function AdminDashboard() {
   const [{ data: tickets }, { data: projectList }, { data: profiles }, { data: statsRows }] = await Promise.all([
     supabase
       .from("tickets")
-      .select("*, projects(name, is_retainer, client_id), time_logs(*)")
+      .select("*, projects(name, is_retainer, is_build, client_id), time_logs(*)")
       .order("created_at", { ascending: false }),
-    supabase.from("projects").select("id, name").order("name"),
+    supabase.from("projects").select("id, name, is_retainer, is_build").order("name"),
     supabase.from("profiles").select("id, name, role"),
     supabase
       .from("project_stats")
       .select("id, client_id, is_retainer, is_build, has_active, hours_remaining"),
   ]);
 
-  const projects = (projectList ?? []) as { id: string; name: string }[];
+  const projectRows = (projectList ?? []) as {
+    id: string;
+    name: string;
+    is_retainer: boolean;
+    is_build: boolean;
+  }[];
+  const projects = projectRows.map((p) => ({ id: p.id, name: p.name }));
+  // Manual time only applies to hours-package projects (build / retainer have
+  // no time tracking).
+  const hoursProjects = projectRows
+    .filter((p) => !p.is_retainer && !p.is_build)
+    .map((p) => ({ id: p.id, name: p.name }));
   const profileList = (profiles ?? []) as (Pick<Profile, "id" | "name"> & { role: string })[];
   const nameById = new Map<string, string>(profileList.map((p) => [p.id, p.name ?? ""]));
   const roleById = new Map<string, string>(profileList.map((p) => [p.id, p.role]));
@@ -76,6 +87,7 @@ export default async function AdminDashboard() {
     return {
       ...t,
       projects: t.projects ? { name: t.projects.name, is_retainer: t.projects.is_retainer } : null,
+      noTimer: !!t.projects && (t.projects.is_retainer || t.projects.is_build),
       clientName: t.projects?.client_id ? nameById.get(t.projects.client_id) ?? "" : "",
       openedByName: openerIsMember ? nameById.get(openerId) ?? "" : "",
       lastInboundAt: lastInbound[t.id] ?? null,
@@ -128,7 +140,7 @@ export default async function AdminDashboard() {
           <QuickStartButton />
           {projects.length > 0 ? (
             <>
-              <ManualTimeForm projects={projects} />
+              {hoursProjects.length > 0 && <ManualTimeForm projects={hoursProjects} />}
               <CreateTaskForm projects={projects} admins={admins} />
             </>
           ) : (

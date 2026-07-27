@@ -20,6 +20,9 @@ export interface TaskRow extends Ticket {
   lastInboundAt?: string | null;
   assignee_id?: string | null;
   assigneeName?: string;
+  // Build / retainer project → no hours package, so the row's play button
+  // toggles status instead of running a timer.
+  noTimer?: boolean;
 }
 
 const READS_KEY = "studio.threadReads";
@@ -387,21 +390,23 @@ export function TasksTable({
                 <dt className="text-xs text-slate-400">תאריך בקשה</dt>
                 <dd className="text-slate-600">{formatDate(t.created_at)}</dd>
               </div>
-              <div className="min-w-0">
-                <dt className="text-xs text-slate-400">זמן ביצוע</dt>
-                <dd className="text-slate-600">
-                  <LiveTime
-                    logs={t.time_logs}
-                    ticketId={t.id}
-                    remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
-                    onAutoStop={() => router.refresh()}
-                  />
-                </dd>
-              </div>
+              {!t.noTimer && (
+                <div className="min-w-0">
+                  <dt className="text-xs text-slate-400">זמן ביצוע</dt>
+                  <dd className="text-slate-600">
+                    <LiveTime
+                      logs={t.time_logs}
+                      ticketId={t.id}
+                      remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
+                      onAutoStop={() => router.refresh()}
+                    />
+                  </dd>
+                </div>
+              )}
             </dl>
             {t.status !== "completed" && (
               <div className="mt-3 border-t border-slate-100 pt-3" onClick={(e) => e.stopPropagation()}>
-                <RowTimerControl ticket={t} />
+                <RowTimerControl ticket={t} noTimer={t.noTimer} running={t.time_logs.some((l) => l.end_time === null)} />
               </div>
             )}
           </div>
@@ -469,17 +474,21 @@ export function TasksTable({
                 {visible.created && <td className="px-3 py-2 whitespace-nowrap text-slate-600">{formatDate(t.created_at)}</td>}
                 {visible.exec && (
                   <td className="px-3 py-2 text-slate-600">
-                    <LiveTime
-                      logs={t.time_logs}
-                      ticketId={t.id}
-                      remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
-                      onAutoStop={() => router.refresh()}
-                    />
+                    {t.noTimer ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <LiveTime
+                        logs={t.time_logs}
+                        ticketId={t.id}
+                        remainingSeconds={t.project_id ? pkgRemaining[t.project_id] ?? null : null}
+                        onAutoStop={() => router.refresh()}
+                      />
+                    )}
                   </td>
                 )}
                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end">
-                    {t.status !== "completed" && <RowTimerControl ticket={t} />}
+                    {t.status !== "completed" && <RowTimerControl ticket={t} noTimer={t.noTimer} running={t.time_logs.some((l) => l.end_time === null)} />}
                   </div>
                 </td>
               </tr>

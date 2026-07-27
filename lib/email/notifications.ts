@@ -53,12 +53,15 @@ export async function notifyTaskCompleted(ticketId: string, note?: string) {
       .maybeSingle();
 
     if (stats?.client_id) {
+      // Build / retainer projects aren't billed by the hour, so they use a
+      // separate template with no time / package-balance line.
+      const flat = !!stats.is_retainer || !!stats.is_build;
       // Notify whoever opened the task (a project member), falling back to the
       // project's primary client.
       const client = await taskRecipient(ticketId);
       if (client?.email) {
         await dispatchEmail(
-          "task_completed",
+          flat ? "task_completed_flat" : "task_completed",
           client.email,
           {
             first_name: client.first_name ?? "",

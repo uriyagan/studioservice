@@ -38,6 +38,14 @@ export const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "t2", type: "text", text: "זמן ביצוע: {task_time}<br>זמן שנותר בחבילה: {hours_remaining}", align: "right", size: "15" },
     { id: "note", type: "html", html: "{completion_note}" },
   ],
+  // Same as task_completed but for build / retainer projects — no time or
+  // package-balance line, since those projects aren't billed by the hour.
+  task_completed_flat: [
+    { id: "badge", type: "html", html: `<div style="text-align:center;margin-bottom:12px;"><span style="display:inline-block;width:56px;height:56px;line-height:56px;border-radius:50%;background:#10b981;color:#ffffff;font-size:30px;font-weight:bold;text-align:center;">&#10003;</span></div>` },
+    { id: "h", type: "heading", text: "המשימה הושלמה", level: "h2", align: "right" },
+    { id: "t", type: "text", text: "היי {first_name}, המשימה <b>{task_title}</b> בפרויקט {project_name} הושלמה.", align: "right", size: "15" },
+    { id: "note", type: "html", html: "{completion_note}" },
+  ],
   hours_added: [
     { id: "h", type: "heading", text: "נוספו שעות לחבילה", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, נוספו {hours_added} לחבילת השירות שלך.", align: "right", size: "15" },
@@ -83,6 +91,7 @@ export const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   welcome: "ברוכים הבאים",
   password_reset: "איפוס סיסמה",
   task_completed: "✓ המשימה הושלמה",
+  task_completed_flat: "✓ המשימה הושלמה",
   package_half: "ניצלת 50% מהחבילה",
   package_depleted: "החבילה הסתיימה",
   hours_added: "נוספו שעות לחבילה",

@@ -120,7 +120,11 @@ export async function pauseTimer(ticketId: string) {
 // "Task Completed" — stop any running timer, save the final
 // segment, mark completed. hours_used updates automatically via
 // the project_stats view (no manual deduction, no drift).
-export async function completeTask(ticketId: string, note?: string) {
+//
+// `notify` (default true) controls whether the client gets the completion
+// email — an admin can close a task silently (e.g. one the studio opened
+// on the client's behalf, or when the last thread reply already said it all).
+export async function completeTask(ticketId: string, note?: string, notify: boolean = true) {
   const supabase = await assertAdmin();
   // Cap any over-limit running time to the package boundary before closing.
   await reconcileByTicketSafe(ticketId);
@@ -132,14 +136,73 @@ export async function completeTask(ticketId: string, note?: string) {
     .eq("id", ticketId);
   if (error) throw new Error(error.message);
 
-  const trimmedNote = note?.trim() || undefined;
-  const { runAfter } = await import("@/lib/after");
-  await runAfter(async () => {
-    const { notifyTaskCompleted } = await import("@/lib/email/notifications");
-    await notifyTaskCompleted(ticketId, trimmedNote);
-  });
+  if (notify) {
+    const trimmedNote = note?.trim() || undefined;
+    const { runAfter } = await import("@/lib/after");
+    await runAfter(async () => {
+      const { notifyTaskCompleted } = await import("@/lib/email/notifications");
+      await notifyTaskCompleted(ticketId, trimmedNote);
+    });
+  }
 
   revalidatePath("/admin", "layout");
+  revalidatePath("/portal", "layout");
+}
+
+// Manually set a task's status (the task-page status dropdown). Lets an admin
+// re-open a completed task, or move it between ממתין / בטיפול / הושלם by hand —
+// which also re-buckets it in the open/completed tabs on both sides. Never
+// sends any email (completion emails go only through completeTask). Any running
+// timer segment is banked first, so a manual change never leaves a phantom
+// running clock.
+export async function setTaskStatus(
+  ticketId: string,
+  status: "pending" | "in_progress" | "paused" | "completed"
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await assertAdmin();
+    if (!ticketId) return { ok: false, error: "מזהה משימה חסר" };
+    await closeActiveSegment(supabase, ticketId);
+
+    const { error } = await supabase
+      .from("tickets")
+      .update({
+        status,
+        completed_at: status === "completed" ? new Date().toISOString() : null,
+      })
+      .eq("id", ticketId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin", "layout");
+    revalidatePath("/portal", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+// Toggle a NON-hours task (build / retainer project) between ממתין and בטיפול.
+// These projects have no timer, so the tasks-table play button just flips the
+// status instead of opening a time-log segment.
+export async function toggleFlatTaskStatus(
+  ticketId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await assertAdmin();
+    const { data: t } = await supabase
+      .from("tickets")
+      .select("status")
+      .eq("id", ticketId)
+      .maybeSingle();
+    const next = t?.status === "in_progress" ? "pending" : "in_progress";
+    const { error } = await supabase.from("tickets").update({ status: next }).eq("id", ticketId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin", "layout");
+    revalidatePath("/portal", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }
 
 // Correct the time on an EXISTING task by `deltaSeconds` — positive to add

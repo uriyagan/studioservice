@@ -2,15 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/Card";
-import { TaskCard, TaskCardTicket } from "@/components/admin/TaskCard";
 import { CreateTaskForm } from "@/components/admin/CreateTaskForm";
 import { ManualTimeForm } from "@/components/admin/ManualTimeForm";
-import { ProjectStats } from "@/lib/types";
+import { StatusBadge } from "@/components/ui/Badge";
+import { ProjectStats, Ticket, TimeLog } from "@/lib/types";
 import { ProjectMembers, MemberRow } from "@/components/admin/ProjectMembers";
 import { ProjectNotes } from "@/components/admin/ProjectNotes";
 import { PackagesPanel } from "@/components/admin/PackagesPanel";
 import { ArrowRight } from "@/components/icons";
-import { formatHours } from "@/lib/format";
+import { formatHours, formatDate, formatDuration, sumLoggedSeconds } from "@/lib/format";
+
+type ProjectTaskRow = Ticket & { time_logs: TimeLog[] };
 import { listProjectPackages, reconcileProject } from "@/lib/packages";
 import { toAdminOptions } from "@/lib/admins";
 
@@ -29,27 +31,22 @@ export default async function ProjectPage({
   // the stats, so the numbers shown are already reconciled.
   await reconcileProject(id);
 
-  const [{ data: project }, { data: tickets }, { data: projectList }, { data: adminList }] =
-    await Promise.all([
-      supabase.from("project_stats").select("*").eq("id", id).maybeSingle(),
-      supabase
-        .from("tickets")
-        .select("*, projects(name, is_retainer), time_logs(*)")
-        .eq("project_id", id)
-        .order("created_at", { ascending: false }),
-      supabase.from("projects").select("id, name").order("name"),
-      supabase.from("profiles").select("id, name, role").eq("role", "admin").order("name"),
-    ]);
+  const [{ data: project }, { data: tickets }, { data: adminList }] = await Promise.all([
+    supabase.from("project_stats").select("*").eq("id", id).maybeSingle(),
+    supabase
+      .from("tickets")
+      .select("*, time_logs(*)")
+      .eq("project_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id, name, role").eq("role", "admin").order("name"),
+  ]);
 
   if (!project) notFound();
 
   const p = project as ProjectStats;
   const isHoursProject = !p.is_retainer && !p.is_build;
   const packages = isHoursProject ? await listProjectPackages(id) : [];
-  // Block starting timers when the active package is exhausted (or absent).
-  const timerBlocked = isHoursProject && (!p.has_active || (Number(p.hours_remaining) || 0) <= 0);
-  const rows = (tickets ?? []) as TaskCardTicket[];
-  const projects = (projectList ?? []) as { id: string; name: string }[];
+  const rows = (tickets ?? []) as ProjectTaskRow[];
   const admins = toAdminOptions(
     (adminList ?? []) as { id: string; name: string | null; role: string }[]
   );
@@ -104,7 +101,8 @@ export default async function ProjectPage({
             )}
           </div>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start [&_button]:w-full sm:[&_button]:w-auto">
-            <ManualTimeForm fixedProjectId={id} />
+            {/* Manual time only makes sense for hours-package projects. */}
+            {isHoursProject && <ManualTimeForm fixedProjectId={id} />}
             <CreateTaskForm fixedProjectId={id} admins={admins} />
           </div>
         </div>
@@ -135,41 +133,74 @@ export default async function ProjectPage({
         <ProjectNotes projectId={id} />
       </Card>
 
-      <section className="space-y-4">
+      <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
           פעילות ({open.length})
         </h2>
-        {open.length === 0 && (
+        {open.length === 0 ? (
           <Card>
             <p className="text-sm text-slate-400">אין משימות פעילות בפרויקט זה.</p>
           </Card>
+        ) : (
+          <div className="space-y-2">
+            {open.map((t) => (
+              <ProjectTaskLink key={t.id} t={t} showTime={isHoursProject} />
+            ))}
+          </div>
         )}
-        {open.map((ticket) => (
-          <TaskCard
-            key={ticket.id}
-            ticket={ticket}
-            projects={projects}
-            showProject={false}
-            blocked={timerBlocked}
-          />
-        ))}
       </section>
 
       {done.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-2">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
             הושלמו ({done.length})
           </h2>
-          {done.map((ticket) => (
-            <TaskCard
-              key={ticket.id}
-              ticket={ticket}
-              projects={projects}
-              showProject={false}
-            />
-          ))}
+          <div className="space-y-2">
+            {done.map((t) => (
+              <ProjectTaskLink key={t.id} t={t} showTime={isHoursProject} done />
+            ))}
+          </div>
         </section>
       )}
     </div>
+  );
+}
+
+// Compact clickable task row → opens the unified task page. Replaces the old
+// embedded TaskCard (timer + edit + complete), so a project's tasks are managed
+// in one place, consistently with the main tasks table.
+function ProjectTaskLink({
+  t,
+  showTime,
+  done = false,
+}: {
+  t: ProjectTaskRow;
+  showTime: boolean;
+  done?: boolean;
+}) {
+  return (
+    <Link
+      href={`/admin/tasks/${t.id}`}
+      className={`flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50 ${done ? "opacity-80" : ""}`}
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="break-words font-medium text-slate-900">
+            {t.title || <span className="italic text-slate-400">ללא שם</span>}
+          </span>
+          <StatusBadge status={t.status} />
+        </div>
+        <p className="mt-0.5 text-sm text-slate-500">
+          {formatDate(done ? t.completed_at : t.created_at)}
+          {showTime && (
+            <>
+              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="tabular-nums">{formatDuration(sumLoggedSeconds(t.time_logs))}</span>
+            </>
+          )}
+        </p>
+      </div>
+      <span className="shrink-0 text-sm font-medium text-primary">פתיחה ←</span>
+    </Link>
   );
 }
