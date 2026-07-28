@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
 import { logMessage, replyAddress, reopenIfCompleted, taskRecipient } from "@/lib/email/thread";
+import { safeMessageHtml } from "@/lib/email/sanitize";
 
 // Append the download flag so the signed URL serves the file as an attachment
 // (forces a download) with its original name, instead of opening in the tab.
@@ -483,10 +484,7 @@ export async function sendClientReply(
     if (emails.length) {
       const { data: me } = await adb.from("profiles").select("name").eq("id", user.id).maybeSingle();
       const clientName = (me?.name as string) || user.email || "";
-      const linksHtml = links.length
-        ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
-        : "";
-      const messageHtml = (message ? message.replace(/\n/g, "<br>") : "") + linksHtml;
+      const messageHtml = safeMessageHtml(message, links);
       const { runAfter } = await import("@/lib/after");
       await runAfter(() =>
         dispatchEmail(
@@ -549,10 +547,6 @@ export async function sendTicketReply(
     const fullName = (client.name || "").trim();
     const [firstName, ...rest] = fullName.split(/\s+/);
 
-    // Append any links to the message body that goes into the email template.
-    const linksHtml = links.length
-      ? `<br><br>לינקים:<br>${links.map((l) => `<a href="${l.replace(/"/g, "")}">${l.replace(/</g, "&lt;")}</a>`).join("<br>")}`
-      : "";
 
     // Attach the actual files to the email (Resend fetches each signed URL at
     // send time). Stay under Resend's ~40MB email cap; anything over the budget
@@ -593,7 +587,7 @@ export async function sendTicketReply(
       : !filePaths.length && fileCount
         ? `<br><br>📎 צורפו ${fileCount} קבצים — זמינים לצפייה והורדה בפורטל השירות.`
         : "";
-    const messageHtml = message.replace(/\n/g, "<br>") + linksHtml + filesHtml;
+    const messageHtml = safeMessageHtml(message, links) + filesHtml;
 
     // Log the outbound message FIRST so the returned messageId is reliable
     // (file attachments depend on it) and a logging failure doesn't happen

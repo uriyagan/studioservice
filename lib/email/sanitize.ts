@@ -167,3 +167,28 @@ export function sanitizeEmailHtml(input: unknown): string {
 
   return html.replace(PLACEHOLDER_RE, (_, i: string) => placeholders[Number(i)] ?? "");
 }
+
+// Escape plain text for safe interpolation into HTML.
+export function escapeHtml(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// Build safe HTML for a user-typed message + user-provided links, for the
+// {message} merge tag in notification emails. The text is fully escaped (no
+// HTML the user typed survives as markup), newlines become <br>, and each link
+// is scheme-validated and escaped.
+export function safeMessageHtml(message: string, links: string[] = []): string {
+  const text = escapeHtml(message).replace(/\n/g, "<br>");
+  const safeLinks = (links ?? [])
+    .map((l) => {
+      const href = safeUrl(String(l));
+      return href ? `<a href="${escAttr(href)}">${escapeHtml(l)}</a>` : "";
+    })
+    .filter(Boolean);
+  const linksHtml = safeLinks.length ? `<br><br>לינקים:<br>${safeLinks.join("<br>")}` : "";
+  return text + linksHtml;
+}
