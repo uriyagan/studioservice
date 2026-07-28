@@ -258,6 +258,58 @@ export async function notifyPackageEnded(ticketId: string, projectId: string) {
   }
 }
 
+// When an admin replies in a task thread, notify the admin who OPENED the task
+// (so a collaborator sees the response) — but never the replier themselves, and
+// only when the opener is an admin (a client opener already gets the reply as
+// the client-facing email).
+export async function notifyOpenerOfAdminReply(
+  ticketId: string,
+  senderId: string,
+  messageHtml: string
+) {
+  try {
+    const d = db();
+    const { data: ticket } = await d
+      .from("tickets")
+      .select("title, created_by, project_id")
+      .eq("id", ticketId)
+      .maybeSingle();
+    const openerId = (ticket?.created_by as string | null) ?? null;
+    if (!openerId || openerId === senderId) return;
+
+    const { data: opener } = await d
+      .from("profiles")
+      .select("email, role")
+      .eq("id", openerId)
+      .maybeSingle();
+    if (!opener || opener.role !== "admin" || !opener.email) return;
+
+    const { data: sender } = await d.from("profiles").select("name").eq("id", senderId).maybeSingle();
+    let projectName = "";
+    if (ticket?.project_id) {
+      const { data: proj } = await d.from("projects").select("name").eq("id", ticket.project_id).maybeSingle();
+      projectName = proj?.name ?? "";
+    }
+
+    await dispatchEmail(
+      "admin_reply_opener",
+      opener.email,
+      {
+        task_title: ticket?.title ?? "",
+        project_name: projectName,
+        replier_name: sender?.name ?? "",
+        task_url: `${SITE}/admin/tasks/${ticketId}`,
+        site_url: SITE,
+        portal_url: `${SITE}/portal`,
+      },
+      { message: messageHtml },
+      { replyTo: replyAddress(ticketId) }
+    );
+  } catch (e) {
+    console.error("notifyOpenerOfAdminReply failed:", (e as Error).message);
+  }
+}
+
 // Email the assignee (a studio team member) when a task is assigned to them.
 export async function notifyTaskAssigned(ticketId: string, assigneeId: string) {
   try {

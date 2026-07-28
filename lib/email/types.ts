@@ -85,6 +85,7 @@ export const EMAIL_DEFS = [
   { key: "task_assigned", title: "שיוך אחראי למשימה (לאחראי)", to: "admin" },
   { key: "ticket_reply", title: "התכתבות עם לקוח", to: "client" },
   { key: "client_reply_admin", title: "תגובה מלקוח (למנהלים)", to: "admin" },
+  { key: "admin_reply_opener", title: "תגובת מנהל במשימה (לפותח המשימה)", to: "admin" },
 ] as const;
 
 export type EmailKey = (typeof EMAIL_DEFS)[number]["key"];
@@ -114,7 +115,7 @@ export const MERGE_TAGS: {
 }[] = [
   {
     group: "כללי",
-    emails: ["welcome", "password_reset", "task_completed", "task_completed_flat", "package_half", "package_depleted", "hours_added", "package_added_studio", "package_ended_admin", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin"],
+    emails: ["welcome", "password_reset", "task_completed", "task_completed_flat", "package_half", "package_depleted", "hours_added", "package_added_studio", "package_ended_admin", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "admin_reply_opener"],
     tags: [
       { token: "{first_name}", label: "שם פרטי" },
       { token: "{last_name}", label: "שם משפחה" },
@@ -143,7 +144,7 @@ export const MERGE_TAGS: {
   },
   {
     group: "משימה",
-    emails: ["task_completed", "task_completed_flat", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "package_ended_admin"],
+    emails: ["task_completed", "task_completed_flat", "new_task_admin", "task_assigned", "ticket_reply", "client_reply_admin", "package_ended_admin", "admin_reply_opener"],
     tags: [
       { token: "{task_title}", label: "שם המשימה" },
       { token: "{task_description}", label: "תיאור המשימה" },
@@ -163,8 +164,13 @@ export const MERGE_TAGS: {
   },
   {
     group: "התכתבות",
-    emails: ["ticket_reply", "client_reply_admin"],
+    emails: ["ticket_reply", "client_reply_admin", "admin_reply_opener"],
     tags: [{ token: "{message}", label: "תוכן ההודעה" }],
+  },
+  {
+    group: "תגובת מנהל",
+    emails: ["admin_reply_opener"],
+    tags: [{ token: "{replier_name}", label: "שם המנהל שהגיב" }],
   },
   {
     group: "שעות חבילה",

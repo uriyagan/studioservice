@@ -218,6 +218,9 @@ export async function createAdminTicket(
 ): Promise<ActionResult & { ticketId?: string }> {
   try {
     const supabase = await assertAdmin();
+    const {
+      data: { user: creator },
+    } = await supabase.auth.getUser();
     const projectId = String(formData.get("project_id") ?? "");
     const title = String(formData.get("title") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
@@ -232,7 +235,15 @@ export async function createAdminTicket(
     if (!projectId) return { ok: false, error: "יש לבחור פרויקט" };
     if (!title) return { ok: false, error: "כותרת נדרשת" };
 
-    const base = { project_id: projectId, title, description: description || null, link };
+    // Record the admin who opened the task (created_by) so a co-admin's reply
+    // can notify them. Admin-created tasks previously left this null.
+    const base = {
+      project_id: projectId,
+      title,
+      description: description || null,
+      link,
+      created_by: creator?.id ?? null,
+    };
     // Include assignee_id; retry without it if the column isn't there yet, the
     // same way updateTicket does — an unassigned task beats no task at all.
     let assigneeApplied = true;

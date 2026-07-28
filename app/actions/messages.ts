@@ -630,6 +630,18 @@ export async function sendTicketReply(
       )
     );
 
+    // Notify the admin who OPENED the task (team awareness), excluding the
+    // replier. Best-effort, in the background.
+    const {
+      data: { user: sender },
+    } = await supabase.auth.getUser();
+    if (sender?.id) {
+      await runAfter(async () => {
+        const { notifyOpenerOfAdminReply } = await import("@/lib/email/notifications");
+        await notifyOpenerOfAdminReply(ticketId, sender.id, messageHtml);
+      });
+    }
+
     revalidatePath("/admin");
     return { ok: true, messageId: messageId ?? undefined };
   } catch (e) {

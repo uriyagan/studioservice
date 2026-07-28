@@ -31,6 +31,13 @@ export const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
     { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
     { id: "b", type: "button", text: "פתח/י במערכת", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
   ],
+  admin_reply_opener: [
+    { id: "h", type: "heading", text: "תגובה חדשה במשימה שפתחת", level: "h3", align: "right" },
+    { id: "ctx", type: "text", text: "<b>{replier_name}</b> הגיב/ה ללקוח במשימה <b>{task_title}</b> (פרויקט {project_name}).", align: "right", size: "14" },
+    { id: "div", type: "divider", color: "#e5e7eb" },
+    { id: "m", type: "text", text: "{message}", align: "right", size: "15" },
+    { id: "b", type: "button", text: "פתח/י את המשימה", href: "{task_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
+  ],
   task_completed: [
     { id: "badge", type: "html", html: `<div style="text-align:center;margin-bottom:12px;"><span style="display:inline-block;width:56px;height:56px;line-height:56px;border-radius:50%;background:#10b981;color:#ffffff;font-size:30px;font-weight:bold;text-align:center;">&#10003;</span></div>` },
     { id: "h", type: "heading", text: "המשימה הושלמה", level: "h2", align: "right" },
@@ -101,6 +108,7 @@ export const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   task_assigned: "שויכה אליך משימה: {task_title}",
   ticket_reply: "בנוגע למשימה: {task_title}",
   client_reply_admin: "תגובה חדשה מלקוח: {task_title}",
+  admin_reply_opener: "תגובה חדשה במשימה: {task_title}",
 };
 
 type Vars = Record<string, string | number | undefined>;
