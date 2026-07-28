@@ -4,6 +4,7 @@
 
 import { DEFAULT_DESIGN, fontStack } from "./types";
 import type { BrandSettings, EmailBlock, EmailDesign } from "./types";
+import { sanitizeEmailHtml } from "./sanitize";
 
 function esc(v: unknown): string {
   return String(v ?? "")
@@ -17,7 +18,9 @@ function esc(v: unknown): string {
 // otherwise escape it and turn newlines into <br>.
 function richOrText(v: unknown): string {
   const s = String(v ?? "");
-  if (/<[a-z][\s\S]*>/i.test(s)) return s;
+  // Rich HTML from the inline editor is allowed but sanitized (allowlist) so a
+  // pasted <script>/onerror/javascript: can't reach the email or the preview.
+  if (/<[a-z][\s\S]*>/i.test(s)) return sanitizeEmailHtml(s);
   return esc(s).replace(/\n/g, "<br>");
 }
 
@@ -87,7 +90,7 @@ function renderBlock(b: EmailBlock, d: EmailDesign): string {
       return `<div style="height:${h}px;line-height:${h}px;font-size:0;">&nbsp;</div>`;
     }
     case "html": {
-      return wrap(String(b.html ?? ""));
+      return wrap(sanitizeEmailHtml(String(b.html ?? "")));
     }
     case "video": {
       if (!b.url) return "";

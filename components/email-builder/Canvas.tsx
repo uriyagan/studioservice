@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { GripVertical, Copy, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import type { EmailBlock, EmailDesign } from "@/lib/email/types";
+import { sanitizeEmailHtml } from "@/lib/email/sanitize";
 import { blockLabel, eqLoc, zoneId, dragId, type Loc } from "./blocks";
 import { SOCIAL_PATHS, socialHref } from "./social-icons";
 import { InlineText } from "./InlineText";
@@ -215,7 +216,7 @@ export function CanvasBlock({
       );
     }
     case "html":
-      return <div dangerouslySetInnerHTML={{ __html: String(s.html ?? "") }} />;
+      return <div dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(String(s.html ?? "")) }} />;
     case "video":
       return <VideoPreview block={block} />;
     case "social": {
@@ -281,7 +282,8 @@ function VideoPreview({ block }: { block: EmailBlock }) {
 
 function richOrText(v: unknown): string {
   const str = String(v ?? "");
-  if (/<[a-z][\s\S]*>/i.test(str)) return str;
+  // Allowlist-sanitize editor HTML so a pasted script can't run in the preview.
+  if (/<[a-z][\s\S]*>/i.test(str)) return sanitizeEmailHtml(str);
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
 }
 
