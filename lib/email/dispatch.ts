@@ -107,7 +107,7 @@ export const FALLBACK_SUBJECT: Record<EmailKey, string> = {
   new_task_admin: "פנייה חדשה מלקוח",
   task_assigned: "שויכה אליך משימה: {task_title}",
   ticket_reply: "הודעה חדשה במשימה {task_title}",
-  client_reply_admin: "הודעה חדשה במשימה {task_title}",
+  client_reply_admin: "תגובה מלקוח במשימה {task_title}",
   admin_reply_opener: "תגובה חדשה במשימה: {task_title}",
 };
 
