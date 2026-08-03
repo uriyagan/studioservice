@@ -79,7 +79,7 @@ export async function notifyTaskCompleted(ticketId: string, note?: string) {
             site_url: SITE,
           },
           { completion_note: completionNoteHtml(note) },
-          { replyTo: replyAddress(ticketId), ticketId }
+          { replyTo: replyAddress(ticketId), ticketId, logToThread: true }
         );
       }
     }
@@ -245,14 +245,20 @@ export async function notifyPackageEnded(ticketId: string, projectId: string) {
       clientName = c?.name ?? "";
     }
 
-    await dispatchEmail("package_ended_admin", recipients, {
-      project_name: proj?.name ?? "",
-      client_name: clientName,
-      task_title: ticket?.title ?? "",
-      task_url: `${SITE}/admin/tasks/${ticketId}`,
-      site_url: SITE,
-      portal_url: `${SITE}/portal`,
-    });
+    await dispatchEmail(
+      "package_ended_admin",
+      recipients,
+      {
+        project_name: proj?.name ?? "",
+        client_name: clientName,
+        task_title: ticket?.title ?? "",
+        task_url: `${SITE}/admin/tasks/${ticketId}`,
+        site_url: SITE,
+        portal_url: `${SITE}/portal`,
+      },
+      {},
+      { ticketId }
+    );
   } catch (e) {
     console.error("notifyPackageEnded failed:", (e as Error).message);
   }
@@ -303,7 +309,7 @@ export async function notifyOpenerOfAdminReply(
         portal_url: `${SITE}/portal`,
       },
       { message: messageHtml },
-      { replyTo: replyAddress(ticketId) }
+      { replyTo: replyAddress(ticketId), ticketId }
     );
   } catch (e) {
     console.error("notifyOpenerOfAdminReply failed:", (e as Error).message);
@@ -343,18 +349,24 @@ export async function notifyTaskAssigned(ticketId: string, assigneeId: string) {
       }
     }
 
-    await dispatchEmail("task_assigned", assignee.email, {
-      assignee_name: assignee.first_name || assignee.name || "",
-      first_name: assignee.first_name ?? "",
-      full_name: assignee.name ?? "",
-      client_name: clientName,
-      project_name: projectName,
-      task_title: ticket.title ?? "",
-      task_description: ticket.description ?? "",
-      task_url: `${SITE}/admin/tasks/${ticketId}`,
-      site_url: SITE,
-      portal_url: `${SITE}/portal`,
-    });
+    await dispatchEmail(
+      "task_assigned",
+      assignee.email,
+      {
+        assignee_name: assignee.first_name || assignee.name || "",
+        first_name: assignee.first_name ?? "",
+        full_name: assignee.name ?? "",
+        client_name: clientName,
+        project_name: projectName,
+        task_title: ticket.title ?? "",
+        task_description: ticket.description ?? "",
+        task_url: `${SITE}/admin/tasks/${ticketId}`,
+        site_url: SITE,
+        portal_url: `${SITE}/portal`,
+      },
+      {},
+      { ticketId }
+    );
   } catch (e) {
     console.error("notifyTaskAssigned failed:", (e as Error).message);
   }
@@ -406,7 +418,7 @@ export async function notifyAdminsNewTask(ticketId: string) {
         portal_url: `${SITE}/portal`,
       },
       {},
-      { replyTo: replyAddress(ticketId) }
+      { replyTo: replyAddress(ticketId), ticketId }
     );
   } catch (e) {
     console.error("notifyAdminsNewTask failed:", (e as Error).message);

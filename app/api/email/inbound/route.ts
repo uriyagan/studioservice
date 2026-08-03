@@ -153,7 +153,7 @@ export async function POST(req: NextRequest) {
           site_url: "https://service.uriyaganor.com",
         },
         { message: messageHtml },
-        { replyTo: replyAddress(ticketId) }
+        { replyTo: replyAddress(ticketId), ticketId }
       );
     }
   } catch (e) {

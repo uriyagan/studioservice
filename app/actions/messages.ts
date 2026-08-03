@@ -499,7 +499,7 @@ export async function sendClientReply(
             site_url: "https://service.uriyaganor.com",
           },
           { message: messageHtml },
-          { replyTo: replyAddress(ticketId) }
+          { replyTo: replyAddress(ticketId), ticketId }
         )
       );
     }
@@ -620,7 +620,7 @@ export async function sendTicketReply(
           client_name: fullName,
         },
         { message: messageHtml },
-        { replyTo: replyAddress(ticketId), attachments }
+        { replyTo: replyAddress(ticketId), ticketId, attachments }
       )
     );
 

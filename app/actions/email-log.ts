@@ -24,15 +24,39 @@ export async function getEmailLog(opts: {
     const supabase = await assertAdmin();
     const db = supabase as unknown as { from: (t: string) => any };
     const offset = opts.offset ?? 0;
-    let q = db
-      .from("email_log")
-      .select("id, to_email, subject, template, status, created_at")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + EMAIL_LOG_PAGE - 1);
     const search = (opts.query ?? "").trim();
-    if (search) q = q.or(`to_email.ilike.%${search}%,subject.ilike.%${search}%`);
-    const { data } = await q;
-    return (data ?? []) as EmailLogRow[];
+    const page = (cols: string) => {
+      let q = db
+        .from("email_log")
+        .select(cols)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + EMAIL_LOG_PAGE - 1);
+      if (search) q = q.or(`to_email.ilike.%${search}%,subject.ilike.%${search}%`);
+      return q;
+    };
+
+    const BASE = "id, to_email, subject, template, status, created_at";
+    // Fall back to the pre-ticket_id shape so the log still renders if that
+    // column hasn't been migrated yet.
+    let { data, error } = await page(`${BASE}, ticket_id`);
+    if (error) ({ data } = await page(BASE));
+    const rows = ((data ?? []) as EmailLogRow[]).map((r) => ({
+      ...r,
+      ticket_id: r.ticket_id ?? null,
+      task_title: null as string | null,
+    }));
+
+    // Resolve task names in one round-trip (a plain lookup, not an embed, so
+    // it doesn't depend on the FK being in PostgREST's schema cache).
+    const ids = Array.from(new Set(rows.map((r) => r.ticket_id).filter(Boolean)));
+    if (ids.length) {
+      const { data: tix } = await db.from("tickets").select("id, title").in("id", ids);
+      const titleById = new Map<string, string | null>(
+        ((tix ?? []) as { id: string; title: string | null }[]).map((t) => [t.id, t.title])
+      );
+      for (const r of rows) if (r.ticket_id) r.task_title = titleById.get(r.ticket_id) ?? null;
+    }
+    return rows;
   } catch {
     return [];
   }

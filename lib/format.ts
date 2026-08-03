@@ -47,6 +47,30 @@ export function formatDate(iso: string | null): string {
   });
 }
 
+// Date + wall-clock time (with seconds) as separate strings, for logs where
+// the exact moment matters. Pinned to the studio's timezone so the server
+// render and the browser render agree (the Worker runs in UTC).
+export function formatDateTimeParts(iso: string | null): { date: string; time: string } {
+  if (!iso) return { date: "—", time: "" };
+  const d = new Date(iso);
+  const opts = { timeZone: "Asia/Jerusalem" } as const;
+  return {
+    date: d.toLocaleDateString("he-IL", {
+      ...opts,
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }),
+    time: d.toLocaleTimeString("he-IL", {
+      ...opts,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }),
+  };
+}
+
 // "היום" / "אתמול" for recent dates, otherwise the regular short date —
 // used for "last activity" style columns where recency is the point.
 export function formatRelativeDay(iso: string | null): string {

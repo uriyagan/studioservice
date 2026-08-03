@@ -7,4 +7,7 @@ export interface EmailLogRow {
   template: string | null;
   status: string;
   created_at: string;
+  // The task this email was sent about, when it was sent from a task context.
+  ticket_id: string | null;
+  task_title: string | null;
 }

@@ -156,7 +156,12 @@ export async function dispatchEmail(
   rawVars: Record<string, string | undefined> = {},
   opts: {
     replyTo?: string;
+    // The task this email is about: recorded on the email-log row so the log
+    // can show the task name. Thread logging is opt-in via `logToThread`,
+    // since most task emails (assignment, admin notices) aren't part of the
+    // client-facing conversation.
     ticketId?: string;
+    logToThread?: boolean;
     attachments?: { filename: string; path: string }[];
   } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
@@ -211,9 +216,10 @@ export async function dispatchEmail(
       replyTo: opts.replyTo || brand.replyTo || undefined,
       attachments: opts.attachments,
       template: key,
+      ticketId: opts.ticketId,
     });
 
-    if (opts.ticketId) {
+    if (opts.ticketId && opts.logToThread) {
       const { logMessage } = await import("./thread");
       await logMessage({
         ticketId: opts.ticketId,

@@ -17,11 +17,13 @@ export async function sendEmail(opts: {
   attachments?: { filename: string; path: string }[];
   // For the email log — the template key, or 'custom' / 'test'.
   template?: string;
+  // For the email log — the task this email is about, when there is one.
+  ticketId?: string;
 }): Promise<{ id?: string }> {
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
   const key = process.env.RESEND_API_KEY;
   if (!key) {
-    await logEmail(recipients, opts.subject, opts.template, "failed", "RESEND_API_KEY חסר");
+    await logEmail(recipients, opts.subject, opts.template, opts.ticketId, "failed", "RESEND_API_KEY חסר");
     throw new Error("RESEND_API_KEY חסר — לא ניתן לשלוח מייל");
   }
 
@@ -53,11 +55,11 @@ export async function sendEmail(opts: {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    await logEmail(recipients, opts.subject, opts.template, "failed", `Resend ${res.status}: ${body}`);
+    await logEmail(recipients, opts.subject, opts.template, opts.ticketId, "failed", `Resend ${res.status}: ${body}`);
     throw new Error(`Resend ${res.status}: ${body}`);
   }
   const json = (await res.json().catch(() => ({}))) as { id?: string };
-  await logEmail(recipients, opts.subject, opts.template, "sent", undefined, json.id);
+  await logEmail(recipients, opts.subject, opts.template, opts.ticketId, "sent", undefined, json.id);
   return json;
 }
 
@@ -67,6 +69,7 @@ async function logEmail(
   recipients: string[],
   subject: string,
   template: string | undefined,
+  ticketId: string | undefined,
   status: "sent" | "failed",
   error?: string,
   resendId?: string
@@ -74,18 +77,25 @@ async function logEmail(
   try {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adb = createAdminClient() as unknown as { from: (t: string) => any };
-    await adb.from("email_log").insert(
-      recipients.filter(Boolean).map((to, i) => ({
-        to_email: to,
-        subject,
-        template: template ?? null,
-        status,
-        error: error ?? null,
-        // Resend returns one id per send → put it only on the first recipient
-        // row (the unique index on resend_id forbids duplicates; nulls are OK).
-        resend_id: i === 0 ? resendId ?? null : null,
-      }))
-    );
+    const rows = recipients.filter(Boolean).map((to, i) => ({
+      to_email: to,
+      subject,
+      template: template ?? null,
+      ticket_id: ticketId ?? null,
+      status,
+      error: error ?? null,
+      // Resend returns one id per send → put it only on the first recipient
+      // row (the unique index on resend_id forbids duplicates; nulls are OK).
+      resend_id: i === 0 ? resendId ?? null : null,
+    }));
+    const { error: insErr } = await adb.from("email_log").insert(rows);
+    // Retry without the task link if the ticket_id column isn't migrated yet —
+    // a missing column must not cost us the whole log row.
+    if (insErr) {
+      await adb
+        .from("email_log")
+        .insert(rows.map(({ ticket_id: _ignored, ...rest }) => rest));
+    }
   } catch {
     /* table not migrated yet, or logging failed — ignore */
   }
