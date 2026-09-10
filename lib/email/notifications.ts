@@ -140,15 +140,7 @@ export async function checkUsageThresholds(projectId: string) {
     };
 
     if (used >= total && !notifiedDepleted) {
-      const { data: tix } = await d
-        .from("tickets")
-        .select("title, time_logs(duration_seconds)")
-        .eq("project_id", projectId)
-        .eq("status", "completed");
-      const rows = ((tix ?? []) as { title: string | null; time_logs: { duration_seconds: number | null }[] }[]).map((t) => ({
-        title: t.title,
-        seconds: (t.time_logs ?? []).reduce((a, l) => a + (l.duration_seconds ?? 0), 0),
-      }));
+      const rows = await packageTaskRows(projectId, await windowStart(projectId, null), null);
       await dispatchEmail("package_depleted", client.email, vars, {
         tasks_summary: renderTasksSummary(rows),
       });
@@ -171,24 +163,80 @@ export async function checkUsageThresholds(projectId: string) {
   }
 }
 
+// Where a package's window starts: the moment the PREVIOUS package closed,
+// not this package's activated_at. Consumption is allocated by cumulative
+// time, so work logged before a (back-filled) activation still counts against
+// the package — anchoring on activated_at would silently drop it from the
+// summary. Null means "from the beginning of the project".
+async function windowStart(projectId: string, beforeIso: string | null): Promise<string | null> {
+  const d = db();
+  let q = d
+    .from("project_packages")
+    .select("closed_at")
+    .eq("project_id", projectId)
+    .eq("status", "depleted")
+    .not("closed_at", "is", null)
+    .order("closed_at", { ascending: false })
+    .limit(1);
+  if (beforeIso) q = q.lt("closed_at", beforeIso);
+  const { data } = await q;
+  return ((data ?? [])[0]?.closed_at as string | undefined) ?? null;
+}
+
+// Per-task time consumed inside ONE package's window, for {tasks_summary}.
+// Scoped to the window rather than the project's whole history, so the table's
+// total matches the package it describes — a client on their third package
+// must not be re-shown work they already paid for. Any task that burned time
+// counts, finished or not: an open task spent the hours just the same.
+async function packageTaskRows(
+  projectId: string,
+  fromIso: string | null,
+  toIso: string | null
+): Promise<{ title: string | null; seconds: number }[]> {
+  const d = db();
+  const { data: tix } = await d.from("tickets").select("id, title").eq("project_id", projectId);
+  const tickets = (tix ?? []) as { id: string; title: string | null }[];
+  if (!tickets.length) return [];
+
+  type Log = { ticket_id: string; start_time: string; end_time: string | null; duration_seconds: number | null };
+  let q = d
+    .from("time_logs")
+    .select("ticket_id, start_time, end_time, duration_seconds")
+    .in("ticket_id", tickets.map((t) => t.id));
+  // Segments are capped at the package boundary when it closes, so a segment
+  // belongs to the window it started in.
+  if (fromIso) q = q.gte("start_time", fromIso);
+  if (toIso) q = q.lte("start_time", toIso);
+  const { data: logs } = await q;
+
+  const byTicket = new Map<string, Log[]>();
+  for (const l of (logs ?? []) as Log[]) {
+    const arr = byTicket.get(l.ticket_id) ?? [];
+    arr.push(l);
+    byTicket.set(l.ticket_id, arr);
+  }
+
+  return tickets
+    .map((t) => ({ title: t.title, seconds: sumLoggedSeconds(byTicket.get(t.id) ?? []) }))
+    .filter((r) => r.seconds > 0)
+    .sort((a, b) => b.seconds - a.seconds);
+}
+
 // Email the client that their package ran out. Fired at the MOMENT of
 // depletion (from reconcileProject), not from checkUsageThresholds: closing a
 // package clears the project's active package, and project_stats then reports
 // has_active=false with zeroed hours — so the threshold check can no longer
 // see the event that just happened, and bails before it would send.
-export async function notifyPackageDepleted(
-  projectId: string,
-  pkg: { id: string; hours: number }
-) {
+export async function notifyPackageDepleted(projectId: string, packageId: string) {
   try {
     const d = db();
     // Only tell the client once — the flag means "the client was told".
-    const { data: existing } = await d
+    const { data: pkg } = await d
       .from("project_packages")
-      .select("notified_depleted")
-      .eq("id", pkg.id)
+      .select("hours, notified_depleted, closed_at")
+      .eq("id", packageId)
       .maybeSingle();
-    if (existing?.notified_depleted) return;
+    if (!pkg || pkg.notified_depleted) return;
 
     const { data: proj } = await d
       .from("projects")
@@ -204,15 +252,8 @@ export async function notifyPackageDepleted(
       .maybeSingle();
     if (!client?.email) return;
 
-    const { data: tix } = await d
-      .from("tickets")
-      .select("title, time_logs(duration_seconds)")
-      .eq("project_id", projectId)
-      .eq("status", "completed");
-    const rows = ((tix ?? []) as { title: string | null; time_logs: { duration_seconds: number | null }[] }[]).map((t) => ({
-      title: t.title,
-      seconds: (t.time_logs ?? []).reduce((a, l) => a + (l.duration_seconds ?? 0), 0),
-    }));
+    const closedAt = (pkg.closed_at as string | null) ?? new Date().toISOString();
+    const rows = await packageTaskRows(projectId, await windowStart(projectId, closedAt), closedAt);
 
     // The package is spent by definition, so the figures come from the
     // package that just closed (project_stats no longer reports them).
@@ -239,7 +280,7 @@ export async function notifyPackageDepleted(
     // Set the flag only on a real send: a disabled template or a Resend
     // failure must not be recorded as "the client knows".
     if (res.sent) {
-      await d.from("project_packages").update({ notified_depleted: true }).eq("id", pkg.id);
+      await d.from("project_packages").update({ notified_depleted: true }).eq("id", packageId);
     }
   } catch (e) {
     console.error("notifyPackageDepleted failed:", (e as Error).message);

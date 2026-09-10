@@ -269,10 +269,7 @@ export async function reconcileProject(projectId: string): Promise<{
     if (!activatedId) {
       try {
         const { notifyPackageDepleted } = await import("@/lib/email/notifications");
-        await notifyPackageDepleted(projectId, {
-          id: active.id as string,
-          hours: Number(active.hours),
-        });
+        await notifyPackageDepleted(projectId, active.id as string);
       } catch {
         /* best-effort */
       }
