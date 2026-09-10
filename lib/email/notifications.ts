@@ -238,6 +238,13 @@ export async function notifyPackageDepleted(projectId: string, packageId: string
       .maybeSingle();
     if (!pkg || pkg.notified_depleted) return;
 
+    // A zero-hour package is a placeholder (projects migrated into the ledger
+    // with no hours carry one), not something the client bought — telling them
+    // it "ran out" would be nonsense. Mirrors the total <= 0 guard in
+    // checkUsageThresholds.
+    const hours = Number(pkg.hours) || 0;
+    if (hours <= 0) return;
+
     const { data: proj } = await d
       .from("projects")
       .select("name, client_id")
@@ -257,7 +264,6 @@ export async function notifyPackageDepleted(projectId: string, packageId: string
 
     // The package is spent by definition, so the figures come from the
     // package that just closed (project_stats no longer reports them).
-    const hours = Number(pkg.hours) || 0;
     const res = await dispatchEmail(
       "package_depleted",
       client.email,
