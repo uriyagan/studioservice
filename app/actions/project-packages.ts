@@ -62,7 +62,7 @@ export async function createProjectPackage(
     const { runAfter } = await import("@/lib/after");
     await runAfter(async () => {
       const { notifyPackageAdded } = await import("@/lib/email/notifications");
-      await notifyPackageAdded(projectId, hours);
+      await notifyPackageAdded(projectId, hours, !!res.activated);
     });
 
     revalidatePath("/admin/projects");

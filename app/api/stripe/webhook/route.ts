@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe, stripeWebhookCrypto } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dispatchEmail } from "@/lib/email/dispatch";
+import { packageStatusLine } from "@/lib/email/notifications";
 import { formatHours } from "@/lib/format";
 
 const SITE = "https://service.uriyaganor.com";
@@ -74,7 +75,7 @@ async function processSuccess(opts: {
   // Create a discrete package — active if the project has none active,
   // otherwise queued (FIFO). This replaces bumping the old scalar.
   const { addPackage } = await import("@/lib/packages");
-  await addPackage({
+  const added = await addPackage({
     projectId,
     clientId: clientId ?? null,
     hours,
@@ -104,6 +105,11 @@ async function processSuccess(opts: {
         hours_added: formatHours(hours),
         hours_remaining: formatHours(stats?.hours_remaining ?? 0),
         total_hours: formatHours(stats?.total_hours_allocated ?? 0),
+        package_status: packageStatusLine(
+          !!added.activated,
+          Number(stats?.hours_remaining) || 0,
+          Number(stats?.total_hours_allocated) || 0
+        ),
         portal_url: `${SITE}/portal`,
         site_url: SITE,
       });

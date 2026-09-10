@@ -293,8 +293,27 @@ export async function notifyPackageDepleted(projectId: string, packageId: string
   }
 }
 
+// One truthful line about the package that was just added. A package bought
+// while another is still running is QUEUED, and project_stats keeps reporting
+// the ACTIVE one — so "נותרו X מתוך Y" describes the wrong package unless the
+// sentence says which package it is talking about.
+export function packageStatusLine(
+  activated: boolean,
+  remaining: number,
+  total: number
+): string {
+  const balance = `${formatHours(remaining)} מתוך ${formatHours(total)}`;
+  return activated
+    ? `החבילה נכנסה לתוקף. זמן שנותר בחבילה: ${balance}.`
+    : `החבילה תיכנס לתוקף אוטומטית כשהחבילה הנוכחית תסתיים (נותרו בה ${balance}).`;
+}
+
 // Email the client that the studio added a new package for them.
-export async function notifyPackageAdded(projectId: string, hoursAdded: number) {
+export async function notifyPackageAdded(
+  projectId: string,
+  hoursAdded: number,
+  activated: boolean
+) {
   try {
     const d = db();
     const { data: stats } = await d
@@ -320,6 +339,11 @@ export async function notifyPackageAdded(projectId: string, hoursAdded: number) 
       hours_added: formatHours(hoursAdded),
       hours_remaining: formatHours(stats.hours_remaining ?? 0),
       total_hours: formatHours(stats.total_hours_allocated ?? 0),
+      package_status: packageStatusLine(
+        activated,
+        Number(stats.hours_remaining) || 0,
+        Number(stats.total_hours_allocated) || 0
+      ),
       portal_url: `${SITE}/portal`,
       site_url: SITE,
     });

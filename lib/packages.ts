@@ -277,6 +277,18 @@ export async function reconcileProject(projectId: string): Promise<{
     }
   }
 
+  // Usage thresholds (the 50% notice) are evaluated here rather than only on
+  // task completion: hours move on every timer stop and manual edit, and a
+  // client can sail past half a package for weeks without a task closing.
+  // Cheap when there's nothing to say — it returns at once with no active
+  // package, and its own flag stops it repeating.
+  try {
+    const { checkUsageThresholds } = await import("@/lib/email/notifications");
+    await checkUsageThresholds(projectId);
+  } catch {
+    /* best-effort */
+  }
+
   return out;
 }
 

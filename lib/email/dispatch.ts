@@ -56,12 +56,12 @@ export const DEFAULT_BLOCKS: Partial<Record<EmailKey, EmailBlock[]>> = {
   hours_added: [
     { id: "h", type: "heading", text: "נוספו שעות לחבילה", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, נוספו {hours_added} לחבילת השירות שלך.", align: "right", size: "15" },
-    { id: "t2", type: "text", text: "זמן שנותר בחבילה: {hours_remaining} מתוך {total_hours}.", align: "right", size: "15" },
+    { id: "t2", type: "text", text: "{package_status}", align: "right", size: "15" },
   ],
   package_added_studio: [
     { id: "h", type: "heading", text: "נוספה לך חבילת שעות", level: "h2", align: "right" },
     { id: "t", type: "text", text: "היי {first_name}, הצוות הוסיף עבורך חבילת שירות חדשה של {hours_added}.", align: "right", size: "15" },
-    { id: "t2", type: "text", text: "זמן שנותר בחבילה הפעילה: {hours_remaining} מתוך {total_hours}.", align: "right", size: "15" },
+    { id: "t2", type: "text", text: "{package_status}", align: "right", size: "15" },
     { id: "b", type: "button", text: "צפייה בפורטל", href: "{portal_url}", bg: "#111111", color: "#ffffff", align: "center", radius: "6", fontSize: "15" },
   ],
   package_ended_admin: [
