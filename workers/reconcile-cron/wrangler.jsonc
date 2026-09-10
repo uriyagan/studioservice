@@ -12,6 +12,18 @@
   },
   "vars": {
     "RECONCILE_URL": "https://service.uriyaganor.com/api/cron/reconcile"
+  },
+  // Workers Logs. Kept here and not just toggled in the dashboard: every push
+  // to main redeploys this worker, and a deploy resets observability to
+  // whatever the config says — a dashboard-only toggle would be switched back
+  // off. Without logs, a failing cron is silent, which is how this one went
+  // unnoticed for a month.
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    }
   }
   // Set the shared secret with:  wrangler secret put CRON_SECRET
   // (must match the CRON_SECRET set on the main `studioservice` worker).
