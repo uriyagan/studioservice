@@ -38,6 +38,16 @@ export function TasksView({
   const newProject = projects.find((p) => p.id === newProjectId) ?? projects[0];
   const newBlocked = !!newProject && isBlocked(newProject);
 
+  // Open on a project that can take work, so a client whose first project is
+  // spent still reaches the form for the others. The notice only shows when
+  // they pick a spent project themselves, or when every project is spent — and
+  // reopening the modal brings them back to a usable one either way.
+  const openNew = () => {
+    const usable = projects.find((p) => !isBlocked(p)) ?? projects[0];
+    if (usable) setNewProjectId(usable.id);
+    setShowNew(true);
+  };
+
   const isUnread = (t: PortalTask) => t.unread && !readIds.has(t.id);
 
   const openThread = (t: PortalTask) => {
@@ -97,7 +107,7 @@ export function TasksView({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-900">משימות</h1>
-        <Button onClick={() => setShowNew(true)} disabled={!projects.length} className="flex items-center gap-1.5">
+        <Button onClick={openNew} disabled={!projects.length} className="flex items-center gap-1.5">
           <PlusCircle className="h-4 w-4 text-white" /> משימה חדשה
         </Button>
       </div>
@@ -198,7 +208,7 @@ export function TasksView({
           // accident.
           closeOnBackdrop={newBlocked}
         >
-          {multiProject && (
+          {multiProject && !newBlocked && (
             <div className="mb-3">
               <label className="mb-1 block text-sm text-slate-600">פרויקט</label>
               <select
