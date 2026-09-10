@@ -18,7 +18,15 @@ async function handle(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
   const key = new URL(req.url).searchParams.get("key") ?? "";
   const provided = auth.replace(/^Bearer\s+/i, "") || key;
-  if (!secret || provided !== secret) {
+  // A missing secret and a wrong one both used to answer 401, so a cron that
+  // was never given the secret looked exactly like one sending a stale value —
+  // which is how a dead cron survived a month unnoticed. Separate them. With
+  // no secret configured the endpoint is closed to everyone, so saying so
+  // hands an attacker nothing.
+  if (!secret) {
+    return new NextResponse("CRON_SECRET is not configured on this worker", { status: 503 });
+  }
+  if (provided !== secret) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
