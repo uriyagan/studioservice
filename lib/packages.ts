@@ -244,7 +244,7 @@ export async function reconcileProject(projectId: string): Promise<{
 
     await d
       .from("project_packages")
-      .update({ status: "depleted", closed_at: boundaryIso, notified_depleted: true })
+      .update({ status: "depleted", closed_at: boundaryIso })
       .eq("id", active.id);
     out.depleted = true;
     out.cappedTicketId = cappedTicket;
@@ -261,7 +261,23 @@ export async function reconcileProject(projectId: string): Promise<{
       }
     }
 
-    if (!activatedId) break; // no next package → stop
+    // Tell the CLIENT their package is finished — but only when nothing took
+    // its place: with a next package now active they aren't blocked, and this
+    // email asks them to buy hours. This is the only point where the
+    // depletion is observable; once the package closes, project_stats reports
+    // no active package, so the usage-threshold check can't detect it later.
+    if (!activatedId) {
+      try {
+        const { notifyPackageDepleted } = await import("@/lib/email/notifications");
+        await notifyPackageDepleted(projectId, {
+          id: active.id as string,
+          hours: Number(active.hours),
+        });
+      } catch {
+        /* best-effort */
+      }
+      break; // no next package → stop
+    }
   }
 
   return out;

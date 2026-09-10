@@ -171,6 +171,81 @@ export async function checkUsageThresholds(projectId: string) {
   }
 }
 
+// Email the client that their package ran out. Fired at the MOMENT of
+// depletion (from reconcileProject), not from checkUsageThresholds: closing a
+// package clears the project's active package, and project_stats then reports
+// has_active=false with zeroed hours — so the threshold check can no longer
+// see the event that just happened, and bails before it would send.
+export async function notifyPackageDepleted(
+  projectId: string,
+  pkg: { id: string; hours: number }
+) {
+  try {
+    const d = db();
+    // Only tell the client once — the flag means "the client was told".
+    const { data: existing } = await d
+      .from("project_packages")
+      .select("notified_depleted")
+      .eq("id", pkg.id)
+      .maybeSingle();
+    if (existing?.notified_depleted) return;
+
+    const { data: proj } = await d
+      .from("projects")
+      .select("name, client_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!proj?.client_id) return;
+
+    const { data: client } = await d
+      .from("profiles")
+      .select("email, name, first_name, last_name")
+      .eq("id", proj.client_id)
+      .maybeSingle();
+    if (!client?.email) return;
+
+    const { data: tix } = await d
+      .from("tickets")
+      .select("title, time_logs(duration_seconds)")
+      .eq("project_id", projectId)
+      .eq("status", "completed");
+    const rows = ((tix ?? []) as { title: string | null; time_logs: { duration_seconds: number | null }[] }[]).map((t) => ({
+      title: t.title,
+      seconds: (t.time_logs ?? []).reduce((a, l) => a + (l.duration_seconds ?? 0), 0),
+    }));
+
+    // The package is spent by definition, so the figures come from the
+    // package that just closed (project_stats no longer reports them).
+    const hours = Number(pkg.hours) || 0;
+    const res = await dispatchEmail(
+      "package_depleted",
+      client.email,
+      {
+        first_name: client.first_name ?? "",
+        last_name: client.last_name ?? "",
+        full_name: client.name ?? "",
+        client_name: client.name ?? "",
+        project_name: proj.name ?? "",
+        hours_used: formatHours(hours),
+        hours_remaining: formatHours(0),
+        total_hours: formatHours(hours),
+        buy_url: `${SITE}/portal`,
+        portal_url: `${SITE}/portal`,
+        site_url: SITE,
+      },
+      { tasks_summary: renderTasksSummary(rows) }
+    );
+
+    // Set the flag only on a real send: a disabled template or a Resend
+    // failure must not be recorded as "the client knows".
+    if (res.sent) {
+      await d.from("project_packages").update({ notified_depleted: true }).eq("id", pkg.id);
+    }
+  } catch (e) {
+    console.error("notifyPackageDepleted failed:", (e as Error).message);
+  }
+}
+
 // Email the client that the studio added a new package for them.
 export async function notifyPackageAdded(projectId: string, hoursAdded: number) {
   try {
