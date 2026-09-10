@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PurchaseForm, BillingInfo } from "@/components/portal/PurchaseForm";
+import { PackageStatus } from "@/components/portal/PackageStatus";
 import { formatHours, formatDate } from "@/lib/format";
 import { History, Download, ArrowLeft } from "@/components/icons";
 import { HourPackageRow, ProjectPackage, ProjectStats, Purchase } from "@/lib/types";
@@ -42,73 +43,12 @@ export function PurchaseView({
         <h2 className="mb-3 font-semibold text-slate-900">חבילות פעילות</h2>
         <Card>
           <div className="space-y-5">
-            {projects.map((p) => {
-              if (p.is_build) {
-                return (
-                  <div key={p.id} className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-800">{p.name}</span>
-                    <span className="text-sm text-slate-500">פרוייקט הקמה</span>
-                  </div>
-                );
-              }
-              if (p.is_retainer) {
-                return (
-                  <div key={p.id} className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-800">{p.name}</span>
-                    <span className="text-sm text-slate-500">ריטיינר · ללא הגבלה</span>
-                  </div>
-                );
-              }
-              const total = Number(p.total_hours_allocated) || 0;
-              const remaining = Math.max(0, Number(p.hours_remaining) || 0);
-              const used = Math.max(0, total - remaining);
-              const usedPct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
-              const low = total > 0 && remaining / total <= 0.2;
-              if (!p.has_active) {
-                return (
-                  <div key={p.id}>
-                    <div className="mb-2 font-semibold text-slate-800">{p.name}</div>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 text-sm">
-                      <p className="font-medium text-amber-700">אין חבילה פעילה — החבילה הסתיימה</p>
-                      <p className="mt-1 text-slate-500">כדי להמשיך יש לרכוש חבילה חדשה למטה.</p>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div key={p.id}>
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-slate-800">{p.name}</span>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                      {p.active_source === "studio" ? 'נוספה ע"י הצוות' : "רכשת"}
-                    </span>
-                    {p.active_started_at && (
-                      <span className="text-xs text-slate-400">הופעלה {formatDate(p.active_started_at)}</span>
-                    )}
-                  </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full transition-all ${low ? "bg-red-500" : "bg-primary"}`}
-                      style={{ width: `${usedPct}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-500">
-                    <span>
-                      נרכשו: <b className="font-medium text-slate-800">{formatHours(total)}</b>
-                    </span>
-                    <span>
-                      נוצלו: <b className="font-medium text-slate-800">{formatHours(used)}</b>
-                    </span>
-                    <span>
-                      נותרו:{" "}
-                      <b className={`font-medium ${low ? "text-red-600" : "text-slate-800"}`}>
-                        {formatHours(remaining)}
-                      </b>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            {projects.map((p) => (
+              <div key={p.id}>
+                <div className="mb-1.5 font-semibold text-slate-800">{p.name}</div>
+                <PackageStatus project={p} />
+              </div>
+            ))}
           </div>
         </Card>
       </div>

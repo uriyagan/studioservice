@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { ClientStatusBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { showToast } from "@/components/ui/Toast";
@@ -31,6 +32,11 @@ export function TasksView({
   // waiting for a server refresh to pick up the new read_at.
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const multiProject = projects.length > 1;
+  // An hours project with no package left can't take new work. Retainer and
+  // build projects aren't billed by the hour, so they're never blocked.
+  const isBlocked = (p: ProjectStats) => !p.is_retainer && !p.is_build && !p.has_active;
+  const newProject = projects.find((p) => p.id === newProjectId) ?? projects[0];
+  const newBlocked = !!newProject && isBlocked(newProject);
 
   const isUnread = (t: PortalTask) => t.unread && !readIds.has(t.id);
 
@@ -184,7 +190,14 @@ export function TasksView({
       </Card>
 
       {showNew && (
-        <Modal title="משימה חדשה" onClose={() => setShowNew(false)} closeOnBackdrop={false}>
+        <Modal
+          title={newBlocked ? "אין חבילת שעות בתוקף" : "משימה חדשה"}
+          onClose={() => setShowNew(false)}
+          // Nothing typed yet to lose when the notice is showing, so let the
+          // backdrop and Esc dismiss it; the form still can't be closed by
+          // accident.
+          closeOnBackdrop={newBlocked}
+        >
           {multiProject && (
             <div className="mb-3">
               <label className="mb-1 block text-sm text-slate-600">פרויקט</label>
@@ -202,13 +215,24 @@ export function TasksView({
               </select>
             </div>
           )}
-          <TicketForm
-            projectId={newProjectId}
-            onDone={() => {
-              setShowNew(false);
-              showToast("המשימה נוצרה בהצלחה");
-            }}
-          />
+          {newBlocked ? (
+            <div>
+              <p className="text-sm text-slate-600">
+                כדי לפתוח משימות חדשות, יש לרכוש חבילת שירות חדשה.
+              </p>
+              <Link href="/portal/packages" className={buttonClass("primary", "mt-4")}>
+                רכישת חבילת שירות
+              </Link>
+            </div>
+          ) : (
+            <TicketForm
+              projectId={newProjectId}
+              onDone={() => {
+                setShowNew(false);
+                showToast("המשימה נוצרה בהצלחה");
+              }}
+            />
+          )}
         </Modal>
       )}
 

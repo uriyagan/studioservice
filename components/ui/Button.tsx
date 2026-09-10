@@ -16,6 +16,16 @@ const variants: Record<Variant, string> = {
   ghost: "bg-transparent text-black hover:bg-slate-100",
 };
 
+const base =
+  "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50";
+
+// The button's look, without the <button>. For the cases that must be a real
+// link (navigation), so an anchor can carry the same styling instead of a
+// hand-copied class string that drifts.
+export function buttonClass(variant: Variant = "primary", className = ""): string {
+  return `${base} ${variants[variant]} ${className}`;
+}
+
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   children: ReactNode;
@@ -29,7 +39,7 @@ export function Button({
 }: Props) {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={buttonClass(variant, className)}
       {...props}
     >
       {children}
